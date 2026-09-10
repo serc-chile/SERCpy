@@ -2,7 +2,7 @@
 
 # -- Project information
 
-project = 'sercpy'
+project = 'SERCpy'
 copyright = '2026, SERC Chile'
 author = 'Solar Energy Research Center (SERC) Chile'
 
