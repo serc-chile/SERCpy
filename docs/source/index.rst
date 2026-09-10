@@ -6,7 +6,7 @@ Welcome to SERCpy's documentation!
 **SERCpy** is a Python library for advanced simulation of solar energy systems, developed by Chilean organization Solar Energy Research Center (SERC).
 
 Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
+how to `install <:ref:`installation`>`_ the project.
 
 Contents
 --------
