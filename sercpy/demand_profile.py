@@ -168,13 +168,13 @@ class DemandProfile:
     heat_source : str, optional
         Name of the heat source. Needed if the heat demand is computed from ``monthly_consumption``. Not needed if the user manually specifies the parameters ``heat_source_heating_value`` and ``heat_source_density``. Accepted values (upper cases as well): ``'electricity'``, ``'lpg'``, ``'ng'``, ``'methane'``, ``'propane'``, ``'butane'``, ``'diesel'``, ``'coal'``, ``'biomass'``.
     consumption_units : str, optional
-        Needed if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``. For electricity, energy units are accepted: ``'kWh'``, ``'MWh'``, ``'J'``, ``'kJ'``, ``'MJ'``, ``'BTU'``, ``'kBTU'``, ``'MBTU'``. For fuels, mass and volue units are accepted: 
+        Needed if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``. For electricity, energy units are accepted: ``'kWh'``, ``'MWh'``, ``'J'``, ``'kJ'``, ``'MJ'``, ``'BTU'``, ``'kBTU'``, ``'MBTU'``. For fuels, mass and volume units are accepted: ``'kg'``, ``'ton'``, ``'lb'``, ``'m3'``, ``'L'``, ``'gal'``, ``'ft3'``.
     heater_efficiency : float, optional
         Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
     heat_source_heating_value : float, optional
-        Heating value of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Needed only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+        Heating value of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
     heat_source_density : float, optional
-        Density of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Needed only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+        Density of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
         
     daily_demand_profile : list of float, optional
         List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
