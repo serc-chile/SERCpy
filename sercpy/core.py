@@ -8,6 +8,9 @@ Created on Mon Aug 17 12:33:21 2026
 class SHIPcalError(Exception):
     def __init__(self, message):
         super().__init__(message)
+        
+class UnitConversionError(Exception):
+    pass
 
 
 weekday_names = [ "Monday", "Tuesday", "Wednesday", "Thursay", "Friday", "Saturday", "Sunday" ]
@@ -42,6 +45,8 @@ Energy_Sources_Database = { 'LIQUEFIED PETROLEUM GAS': {'density': 2.15, 'LHV': 
                             'BIOMASS': {'density': 760*0.9, 'LHV': 14.4e6, 'HHV': 17.6e6, 'EF': 1.7472 },
                             'ELECTRICITY': { 'EF': 0.4 } }
 
+Energy_Sources_Database['LIQUEFIED_PETROLEUM_GAS'] = Energy_Sources_Database['LIQUEFIED PETROLEUM GAS']
+Energy_Sources_Database['NATURAL_GAS'] = Energy_Sources_Database['NATURAL GAS']
 Energy_Sources_Database['LPG'] = Energy_Sources_Database['LIQUEFIED PETROLEUM GAS']
 Energy_Sources_Database['NG'] = Energy_Sources_Database['NATURAL GAS']
 Energy_Sources_Database['CH4'] = Energy_Sources_Database['METHANE']
@@ -171,6 +176,7 @@ def convert_SI_units(input_value, goal_units):
         return input_value*6e3/2.83168
     if goal_units == 'ft3/h':
         return input_value*3.6e5/2.83168
+    raise UnitConversionError("convert_SI_units: Units provided are not available.")
 
 ## Función para convertir unidades al sistema internacional
 def convert_to_SI_units(input_value, original_units):
@@ -294,6 +300,7 @@ def convert_to_SI_units(input_value, original_units):
         return input_value*2.83168e-3/6
     if original_units == 'ft3/h':
         return input_value*2.83168e-5/3.6
+    raise UnitConversionError("convert_to_SI_units: Units provided are not available.")
 
 ## Función para convertir cualquier par de unidades
 def convert_units(input_value, original_units, goal_units, density = None):
@@ -338,16 +345,7 @@ def convert_units(input_value, original_units, goal_units, density = None):
         q_m3 = convert_to_SI_units(input_value, original_units)
         q_kg = q_m3*density
         return convert_SI_units(q_kg, goal_units)
-    raise ValueError("convert_units: Units provided are not available.")
-
-def fuel_to_energy(fuel_name, fuel_quantity, fuel_quantity_units, goal_units = 'J', HV_type = 'LHV'):
-    assert fuel_name in Energy_Sources_Database
-    assert HV_type in ['LHV', 'HHV']
-    fuel_quantity_kg = convert_units(fuel_quantity, fuel_quantity_units, 'kg', density = Energy_Sources_Database[fuel_name]['density'])
-    energy_J = fuel_quantity_kg*Energy_Sources_Database[fuel_name][HV_type]
-    if goal_units == 'J':
-        return energy_J
-    return convert_units(energy_J, 'J', goal_units)
+    raise UnitConversionError("convert_units: Units provided are not available.")
 
 def mean_squared_error(list_1, list_2):
     """
