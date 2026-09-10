@@ -35,20 +35,20 @@ After doing this, meteorological data files will be downloaded automatically fro
 Running a simulation in 3 steps
 -------------------------------
 
-Creating the meteorological profile
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. Creating the meteorological profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In order to generate a meteorological profile...
 
-Creating the demand profile
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2. Creating the demand profile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To compute and obtain the demand conditions of a thermal load throughout an entire operation year, use the class ``DemandProfile``:
 
 .. autoclass:: sercpy.thermal.demand_profile.DemandProfile
 
 
-Configuring the solar energy system
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+3. Configuring the solar energy system
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The solar system consists of...
