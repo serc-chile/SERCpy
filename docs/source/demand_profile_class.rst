@@ -11,4 +11,4 @@ Creating demand profiles
 
 To compute and obtain the demand conditions of a thermal load throughout an entire operation year, use the class ``DemandProfile``:
 
-.. autoclass:: sercpy.thermal.demand_profile.DemandProfile
+.. autoclass:: sercpy.demand_profile.DemandProfile
