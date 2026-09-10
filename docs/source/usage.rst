@@ -6,7 +6,7 @@ Usage
 Installation
 ------------
 
-**The library is not yet available for installation via pip.**
+**The library will soon be available for installation via pip.**
 
 Setting the API key for "Energias Renovables" by Chile's Ministry of Energy
 ---------------------------------------------------------------------------
