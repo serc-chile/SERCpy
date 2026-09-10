@@ -6,11 +6,7 @@ Usage
 Installation
 ------------
 
-To use SERCpy, first install it using pip:
-
-.. code-block:: console
-
-   (.venv) $ pip install sercpy
+The library is not yet available for installation via pip.
 
 Setting the API key for "Energias Renovables" by Chile's Ministry of Energy
 ---------------------------------------------------------------------------
