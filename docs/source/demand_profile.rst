@@ -14,7 +14,7 @@ Contents
   :titlesonly:
 
   demand_profile_class
-  examples/DemandProfile_example
+  examples/DemandProfile_Tutorial
 
 Creating demand profiles
 ------------------------
