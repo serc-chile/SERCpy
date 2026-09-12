@@ -1,0 +1,9 @@
+/* extra breathing room after a code cell, before whatever follows (e.g. markdown text) */
+div.nblast.container {
+    margin-bottom: 20px;   /* tweak to taste */
+}
+
+/* ...but keep two back-to-back code cells tight, like a real notebook */
+div.nblast.container + div.nbinput.container {
+    margin-top: -20px;
+}
