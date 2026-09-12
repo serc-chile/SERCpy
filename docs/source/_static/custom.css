@@ -7,10 +7,3 @@ div.nblast.container {
 div.nblast.container + div.nbinput.container {
     margin-top: -20px;
 }
-
-div.nbsphinx-centered {
-    text-align: center;
-}
-div.nbsphinx-centered p {
-    text-align: center !important;
-}
