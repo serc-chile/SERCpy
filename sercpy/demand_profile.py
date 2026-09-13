@@ -151,6 +151,7 @@ class DemandProfile:
     ----------
     `fluid` : str, optional
         Heat transfer fluid name. Accepted values: 
+            
             - `"water"`
             - `"air"`
             - `"therminol 66"`.
