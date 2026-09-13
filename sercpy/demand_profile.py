@@ -150,11 +150,7 @@ class DemandProfile:
     Parameters
     ----------
     `fluid` : str, optional
-        Heat transfer fluid name. Accepted values: 
-            
-            - `"water"`
-            - `"air"`
-            - `"therminol 66"`.
+        Heat transfer fluid name. Accepted values: `"water"`, `"air"` and `"therminol 66"`.
     
     `fluid_cp` : float, optional
         Specific heat capacity of the heat transfer fluid (J/kg K). Needed if the parameter `fluid` is not specified.
