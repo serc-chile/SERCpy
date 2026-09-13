@@ -7,3 +7,22 @@ div.nblast.container {
 div.nblast.container + div.nbinput.container {
     margin-top: -20px;
 }
+
+/* Stack field lists (Parameters, Returns, Raises, etc.) instead of two columns */
+dl.field-list {
+    display: block !important;
+}
+
+dl.field-list > dt {
+    display: block;
+    width: 100%;
+    padding-left: 0;
+    margin-bottom: 0.4em;
+}
+
+dl.field-list > dd {
+    display: block;
+    width: 100%;
+    margin-left: 1.5em;   /* indent the parameter list a bit */
+    margin-bottom: 1em;
+}
