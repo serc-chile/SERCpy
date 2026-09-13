@@ -22,6 +22,9 @@ extensions = [
     'sphinx_new_tab_link',
 ]
 
+# Make the compiler interpret backticks (`word`) as code-like text
+default_role = "literal"
+
 # -- Options for autodoc / napoleon
 autodoc_class_signature = "separated"
 autodoc_typehints = "description"
