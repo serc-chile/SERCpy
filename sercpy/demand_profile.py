@@ -151,77 +151,109 @@ class DemandProfile:
     ----------
     fluid : str, optional
         Heat transfer fluid name. Accepted values: 'water', 'air', 'therminol 66'.
+    
     fluid_cp : float, optional
         Specific heat capacity of the heat transfer fluid (J/kg K). Needed if the parameter 'fluid' is not specified.
+    
     fluid_density : float, optional
         Density of the heat transfer fluid (kg/m3). Needed if the parameter 'fluid' is not specified.
+    
     T_set : float or list of float
         Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 25 <= T_set <= 150.
+    
     T_in : float or list of float
         Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 2 <= T_set <= 130.
+    
     monthly_heat_demand : list of float, optional
         List of values >= 0, representing the heat demand of the thermal load in each month of the year.
+    
     heat_demand_units : str, optional
         Energy units used for the list ``monthly_heat_demand``. Only needed if that parameter is specified. Any of the following energy units is valid: ``'kWh'``, ``'MWh'``, ``'J'``, ``'kJ'``, ``'MJ'``, ``'BTU'``, ``'kBTU'``, ``'MBTU'``.
         
     monthly_consumption : float, optional
         Similar to ``monthly_heat_demand``. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels and electricity.
+    
     heat_source : str, optional
         Name of the heat source. Needed if the heat demand is computed from ``monthly_consumption``. Not needed if the user manually specifies the parameters ``heat_source_heating_value`` and ``heat_source_density``. Accepted values (upper cases as well): ``'electricity'``, ``'lpg'``, ``'ng'``, ``'methane'``, ``'propane'``, ``'butane'``, ``'diesel'``, ``'coal'``, ``'biomass'``.
+    
     consumption_units : str, optional
         Needed if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``. For electricity, energy units are accepted: ``'kWh'``, ``'MWh'``, ``'J'``, ``'kJ'``, ``'MJ'``, ``'BTU'``, ``'kBTU'``, ``'MBTU'``. For fuels, mass and volume units are accepted: ``'kg'``, ``'ton'``, ``'lb'``, ``'m3'``, ``'L'``, ``'gal'``, ``'ft3'``.
+    
     heater_efficiency : float, optional
         Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+    
     heat_source_heating_value : float, optional
         Heating value of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+    
     heat_source_density : float, optional
         Density of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+    
     condensation_boiler : bool, optional
         Whether the heater corresponds to a condensation boiler. 
         
-        
     daily_demand_profile : list of float, optional
         List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
+    
     daily_demand_profile_saturday : list of float, optional
         Special daily demand profile for saturday. This parameter is only considered if ``daily_demand_profile`` is specified. The format required is the same as for ``daily_demand_profile``. If not specified, saturday is assumed to have the same profile as week days (given by the parameter ``daily_demand_profile``).
+    
     daily_demand_profile_sunday : list of float, optional
         Special daily demand profile for sunday. This parameter is only considered if ``daily_demand_profile`` is specified. The format required is the same as for ``daily_demand_profile``. If not specified, the behavior depends on whether ``daily_demand_profile_saturday`` was specified. If it was specified, sunday is assumed to have no demand at all. If it was not specified, all days are assumed to have the same profile, defined by the parameter ``daily_demand_profile``.
+    
     daily_demand_ratio_saturday : float, optional
         Ratio between the total daily demand on saturdays and the total daily demand on a week day.
+    
     daily_demand_ratio_sunday : float, optional
         Ratio between the total daily demand on sundays and the total daily demand on a week day.
+    
     peak_demand_ratio_saturday : float, optional
         Ratio between the peak demand on saturdays and the peak on a week day. If specified, this parameter overrides ``daily_demand_ratio_saturday``.
+    
     peak_demand_ratio_sunday : float, optional
         Ratio between the peak demand on sundays and the peak on a week day. If specified, this parameter overrides ``daily_demand_ratio_sunday``..
+    
     weekly_demand_factors : list of float, optional
         List of seven values defining the relative total daily demand of each day of the week, starting on monday. If specified, this parameter overrides the four "ratio" parameters just described.
+    
     daily_demand_profiles : list of list of float, optional
         List of seven daily demand profiles; one for each day of the week, starting on monday see ``daily_demand_profile``. It must be specified along with ``weekly_demand_factors``.
+    
     weekly_demand_profile : list of float, optional
         Demand profile encompassing an entire week. It is equivalent to concatenating seven daily demand profiles of the same length, where the values of all profiles have a comparable scale.
+    
     op_start : str, optional
         Operation start time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with ``op_end``. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters ``daily_demand_profile``, ``daily_demand_profiles``, or ``weekly_demand_profile`` is specified.
+    
     op_end : str, optional
         Operation end time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with ``op_start``. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters ``daily_demand_profile``, ``daily_demand_profiles``, or ``weekly_demand_profile`` is specified..
+    
     op_start_saturday : str, optional
         DESCRIPTION.
+    
     op_end_saturday : str, optional
         DESCRIPTION.
+    
     op_start_sunday : str, optional
         DESCRIPTION.
+    
     op_end_sunday : str, optional
         DESCRIPTION.
+    
     monthly_production : list of float, optional
         DESCRIPTION.
+    
     Tamb_profile : list of float, optional
         DESCRIPTION.
+    
     Tamb_dependence : float, optional
         DESCRIPTION.
+    
     smooth_Tamb_profile : bool, optional
         DESCRIPTION.
+    
     year : int, optional
         DESCRIPTION.
+    
     **kwargs : dict, optional
         DESCRIPTION.
 
