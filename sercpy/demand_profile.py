@@ -121,6 +121,7 @@ DemandProfile_accepted_args = [
     "heater_efficiency",
     "heat_source_heating_value",
     "heat_source_density",
+    "condensation_boiler",
     
     "monthly_production",
     
@@ -149,11 +150,11 @@ class DemandProfile:
     Parameters
     ----------
     fluid : str, optional
-        Working fluid name. Accepted values: 'water', 'air', 'therminol 66'.
+        Heat transfer fluid name. Accepted values: 'water', 'air', 'therminol 66'.
     fluid_cp : float, optional
-        Specific heat capacity of the working fluid (J/kg K). Needed if the parameter 'fluid' is not specified.
+        Specific heat capacity of the heat transfer fluid (J/kg K). Needed if the parameter 'fluid' is not specified.
     fluid_density : float, optional
-        Density of the working fluid (kg/m3). Needed if the parameter 'fluid' is not specified.
+        Density of the heat transfer fluid (kg/m3). Needed if the parameter 'fluid' is not specified.
     T_set : float or list of float
         Setpoint of the heating system (°C). It can be a floating point value or a list of 12 values (one per month). Range: 25 <= T_set <= 150.
     T_in : float or list of float
@@ -175,6 +176,9 @@ class DemandProfile:
         Heating value of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
     heat_source_density : float, optional
         Density of the heat source (fuel). Not needed if a valid ``heat_source`` is provided. Considered only if ``monthly_consumption`` is specified instead of ``monthly_heat_demand``.
+    condensation_boiler : bool, optional
+        Whether the heater corresponds to a condensation boiler. 
+        
         
     daily_demand_profile : list of float, optional
         List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
@@ -256,6 +260,7 @@ class DemandProfile:
             heat_source: Optional[ str ] = None,
             heat_source_heating_value: Optional[ float ] = None,
             heat_source_density: Optional[ float ] = None,
+            condensation_boiler: Optional[ bool ] = None,
             
             daily_demand_profile: Optional[ list[float] ] = None,
             daily_demand_profile_saturday: Optional[ list[float] ] = None,
@@ -297,6 +302,9 @@ class DemandProfile:
         self._monthly_T_in = self.validate_argument("T_in", T_in)
         if self._monthly_T_set is None or self._monthly_T_in is None:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
+            
+        if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
+            raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
         
         self._fluid = self.validate_argument("fluid", fluid)
         if self._fluid == "WATER":
@@ -314,8 +322,47 @@ class DemandProfile:
             self._fluid_density = self.validate_argument("fluid_density", fluid_density)
             
         if self._fluid_cp is None or self._fluid_density is None:
-            raise ValueError("Class DemandProfile: 'fluid_cp' and 'fluid_density' must be provided, either directly or indirectly through the working fluid's name." )
+            raise ValueError("Class DemandProfile: 'fluid_cp' and 'fluid_density' must be provided, either directly or indirectly through the heat transfer fluid's name." )
             
+        if monthly_heat_demand is not None:
+            self._monthly_heat_demand = self.validate_argument("monthly_heat_demand", monthly_heat_demand)
+            if heat_demand_units is not None:
+                self._heat_demand_units = self.validate_argument("heat_demand_units", heat_demand_units)
+            else:
+                warnings.warn("Class DemandProfile: 'monthly_heat_demand' argument was provided but no 'heat_demand_units'. Joule is assumed as default.")
+                self._heat_demand_units = 'J'
+        elif monthly_consumption is not None:
+            monthly_consumption = self.validate_argument("monthly_consumption", monthly_consumption)
+            if consumption_units is None:
+                raise ValueError("Class DemandProfile: Argument 'consumption_units' must be provided along with 'monthly_consumption'.")
+            else:
+                consumption_units = self.validate_argument("consumption_units", consumption_units)
+            if heater_efficiency is None:
+                heater_efficiency = 0.8
+            else:
+                heater_efficiency = self.validate_argument("heater_efficiency", heater_efficiency)
+            heat_source = self.validate_argument("heat_source", heat_source)
+            heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
+            heat_source_heating_value = self.validate_argument("heat_source_heating_value", heat_source_heating_value)
+            valid_heat_source = any( [ 
+                heat_source is not None,
+                heat_source_heating_value is not None and consumption_units in [ "kg", "ton", "lb" ],
+                heat_source_heating_value is not None and heat_source_density is not None ] )
+            if not valid_heat_source:
+                raise ValueError("Class DemandProfile: Not enough data to convert consumption to heat demand.")
+            if condensation_boiler is not None:
+                condensation_boiler = self.validate_argument("condensation_boiler", condensation_boiler)
+            else:
+                condensation_boiler = False
+            if condensation_boiler:
+                HV_type = "HHV"
+            else:
+                HV_type = "LHV"
+            self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency, HV_type, heat_source_density, heat_source_heating_value)
+            self._heat_demand_units = "J"
+        else:
+            raise ValueError("Class DemandProfile: either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
+
         if weekly_demand_profile is not None:
             weekly_demand_profile = self.validate_argument("weekly_demand_profile", weekly_demand_profile)
             self._weekly_demand_profile = self._extend_profile(weekly_demand_profile, 48*7)
@@ -353,20 +400,13 @@ class DemandProfile:
             self._week_constructor_3()
             
         else:
-            self._weekly_demand_profile = [ [ 1 ]*48*7 ]
+            self._weekly_demand_profile = [ 1 ]*48*7
             
         if Tamb_dependence is not None:
             self._Tamb_dependence_mode = "manual"
             self._Tamb_dependence = self.validate_argument("Tamb_dependence", Tamb_dependence)
         else:
             self._Tamb_dependence_mode = "auto"
-            
-        self._monthly_heat_demand = self.validate_argument("monthly_heat_demand", monthly_heat_demand)
-        if heat_demand_units is not None:
-            self._heat_demand_units = self.validate_argument("heat_demand_units", heat_demand_units)
-        else:
-            warnings.warn("Class DemandProfile: 'monthly_heat_demand' argument was provided but no 'heat_demand_units'. Joule is assumed as default.")
-            self._heat_demand_units = 'J'
                 
         self._monthly_production = self.validate_argument("monthly_production", monthly_production)
         self._Tamb_profile = self.validate_argument("Tamb_profile", Tamb_profile)
@@ -1026,10 +1066,6 @@ class DemandProfile:
                 value = str(value)
             except:
                 raise ValueError("Class DemandProfile: Argument 'heat_source' must be convertible to string.")
-            
-            value = value.upper()
-            if not value in Energy_Sources_Database:
-                raise ValueError("Class DemandProfile: Non-valid argument 'heat_source'.")
                 
         if argument_name == "consumption_units":
             try:
@@ -1064,6 +1100,10 @@ class DemandProfile:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be convertible to type 'float'.")
             if value <= 0:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be > 0.")
+                
+        if argument_name == "condensation_boiler":
+            if not type(value) is bool:
+                raise ValueError("Class DemandProfile: Argument 'condensation_boiler' must be boolean.")
         
         return value
         
@@ -1370,6 +1410,7 @@ class DemandProfile:
                     temp_factor = temp_to_factor(Tamb_profile[day])
                 for half_hour_n in range(len(daily_demand_profile)):
                     factors.append(temp_factor*daily_demand_profile[half_hour_n])
+            
             total_factor = sum(factors)
             if total_factor <= 0:
                 raise SHIPcalError(f"compute_minutal_demand_profiles: sum of scaling factors is negative or equal to zero for the following month: {month_names[month]}. Check the temperature dependence provided.")
@@ -1403,6 +1444,10 @@ class DemandProfile:
         day_number = monthly_cummulated_days[ month - 1 ] + day - 1
         minute_number = hour*60 + minute
         
+        if month == 2 and day == 29:
+            warnings.warn("Class DemandProfile: Data for February 29 was requested. Leap years are not supported. Data for February 28 is returned instead.")
+            day = 28
+        
         flowrate = self._flowrate_profile[ day_number ][ minute_number ]
         demanded_power = self._demanded_power_profile[ day_number ][ minute_number ]
         T_in = self._T_in_profile[ day_number ][ minute_number ]
@@ -1412,7 +1457,8 @@ class DemandProfile:
     
     def _return_lists_from_date_range(self, date_range ):
         
-        assert type( date_range ) is pd.DatetimeIndex
+        if not type( date_range ) is pd.DatetimeIndex:
+            raise ValueError("DemandProfile._return_lists_from_date_range: type of date_range must be pandas.DatetimeIndex.")
         
         flowrate_list = []
         demanded_power_list = []
@@ -1430,6 +1476,52 @@ class DemandProfile:
         return flowrate_list, demanded_power_list, T_in_list, T_set_list
     
     def get_demand_conditions(self, *args, **kwargs ):
+        """
+        Get the demand conditions for an instant or time period.
+        
+        If the conditions for a single instant are asked for, this method returns a dictionary with the following keys:
+            - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user.
+            - `"demanded_power"`: Thermal power demanded, given by the flowrate and the enthalpy changed needed. The units are 'W' unless something different is specified by the user.
+            - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
+            - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
+            
+        If the conditions for a time period are asked for, this method returns a pandas.DataFrame object. The first column's name is 'timestamp' and it stores all instants considered when computing the result.
+        The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
+        
+        
+            
+        Parameters
+        ----------
+        *args : datetime.datetime or similar, or pandas.DatetimeIndex
+            This method computes the results for a single instant if only one datetime.datetime instance is provided.
+            
+            On the other hand, it returns the result for a time period if:
+                - Two `datetime.datetime` instances are provided as positional arguments.
+                - One `pandas.DatetimeIndex` instance is provided as positional argument.
+        **kwargs :
+            Accepted keyword arguments are:
+                - `month` : int
+                - `day` : int
+                - `hour` : int
+                - `minute` : int
+                
+                The four keyword arguments just mentioned can be used instead of a datetime.datetime instance to ask for the conditions in a single instant in time.
+                
+                - flowrate_units
+
+        Raises
+        ------
+        KeyError
+            DESCRIPTION.
+        ValueError
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         
         if "flowrate_units" in kwargs:
             def convert_flowrate(flowrate):
@@ -1476,6 +1568,23 @@ class DemandProfile:
                 day = int(dt.day)
                 hour = int(dt.hour)
                 minute = int(dt.minute)
+                
+            try:
+                month = int(month)
+                day = int(day)
+                hour = int(hour)
+                minute = int(minute)
+            except:
+                raise ValueError("DemandProfile.get_demand_conditions: Values 'month', 'day', 'hour', and 'minute' must be convertible to type 'float'.")
+            
+            if not (month >= 1 and month <= 12):
+                raise ValueError("DemandProfile._return_single_instant: Month value is not within the accepted range.")
+            if not ( ( day >= 1 and day <= month_days[ month - 1 ] ) or ( month == 2 and day == 29 ) ):
+                raise ValueError("DemandProfile._return_single_instant: Day value is not within the accepted range.")
+            if not (hour >= 0 and hour <= 23):
+                raise ValueError("DemandProfile._return_single_instant: Hour value is not within the accepted range.")
+            if not (minute >= 0 and minute <= 59):
+                raise ValueError("DemandProfile._return_single_instant: Minute value is not within the accepted range.")
             
             flowrate, demanded_power, T_in, T_set = self._return_single_instant(month, day, hour, minute)
             
@@ -1517,7 +1626,7 @@ class DemandProfile:
                 try:
                     date_range = pd.date_range( args[0], args[1], freq = freq, tz = tz, inclusive = inclusive )
                 except:
-                    raise ValueError("DemandProfile.get_demand_conditions: No pandas.DatetimeIndex could be generated from the two positional arguments provided.")
+                    raise ValueError("DemandProfile.get_demand_conditions: No pandas.DatetimeIndex could be generated from the arguments provided.")
                 
             flowrate_list, demanded_power_list, T_in_list, T_set_list = self._return_lists_from_date_range( date_range )
             
