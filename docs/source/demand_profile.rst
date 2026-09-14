@@ -14,7 +14,3 @@ Contents
 
   examples/DemandProfile_tutorial
 
-Class `DemandProfiles`
-----------------------
-
-.. autoclass:: sercpy.demand_profile.DemandProfile
