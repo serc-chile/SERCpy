@@ -17,4 +17,3 @@ Contents
 
    usage
    demand_profile
-   examples/DemandProfile_example
