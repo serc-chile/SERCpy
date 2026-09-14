@@ -12,5 +12,6 @@ Contents
 .. toctree::
   :maxdepth: 2
 
+  demand_profile_class
   examples/DemandProfile_tutorial
 
