@@ -29,6 +29,9 @@ default_role = "literal"
 autodoc_class_signature = "separated"
 autodoc_typehints = "description"
 add_module_names = False
+autodoc_default_options = {
+    'exclude-members': '__init__, __new__',
+}
 
 # Prevent Notebooks from being executed
 nbsphinx_execute = 'never'
