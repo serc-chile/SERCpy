@@ -12,10 +12,9 @@ Contents
 .. toctree::
   :maxdepth: 2
 
-  demand_profile_class
   examples/DemandProfile_tutorial
 
-Creating demand profiles
-------------------------
+Class `DemandProfiles`
+----------------------
 
-To create a demand profile...
+.. autoclass:: sercpy.demand_profile.DemandProfile
