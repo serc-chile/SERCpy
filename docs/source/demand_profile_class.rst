@@ -1,7 +1,7 @@
 Class DemandProfile
 ===================
 
-.. currentmodule:: sercpy
+.. currentmodule:: sercpy.demand_profile
 
 .. autoclass:: DemandProfile
 
