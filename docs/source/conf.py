@@ -28,7 +28,6 @@ default_role = "literal"
 # -- Options for autodoc / napoleon
 autodoc_class_signature = "separated"
 autodoc_typehints = "description"
-add_module_names = False
 
 # Prevent Notebooks from being executed
 nbsphinx_execute = 'never'
