@@ -8,6 +8,6 @@ Class DemandProfile
 .. autosummary::
    :toctree: generated/
 
-   DemandProfile.method_one
+   DemandProfile.get_demand_conditions
    DemandProfile.method_two
    DemandProfile.method_three
