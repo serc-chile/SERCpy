@@ -30,3 +30,30 @@ dl.field-list > dd {
 dl.field-list > dd > ul.simple > li {
     margin-bottom: 0.6em;
 }
+
+/* Widen the sidebar navigation */
+.wy-nav-side {
+    width: 400px;
+}
+
+.wy-menu-vertical {
+    width: auto;
+}
+
+.wy-nav-content-wrap {
+    margin-left: 400px;
+}
+
+/* Let long, underscore-heavy method names wrap onto a new line
+   instead of being clipped at the sidebar's edge */
+.wy-menu-vertical a {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    white-space: normal;
+}
+
+/* Widen the main content column (it's capped at 800px and centered
+   by default, leaving a lot of unused space on wide screens) */
+.wy-nav-content {
+    max-width: 1100px;
+}
