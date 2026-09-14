@@ -8,6 +8,6 @@ Class DemandProfile
 .. autosummary::
    :toctree: generated/
 
+   DemandProfile.consumption_to_thermal_demand
    DemandProfile.get_demand_conditions
-   DemandProfile.method_two
-   DemandProfile.method_three
+   DemandProfile.open_profile_app
