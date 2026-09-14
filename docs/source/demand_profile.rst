@@ -13,7 +13,7 @@ Contents
   :maxdepth: 2
 
   demand_profile_class
-  examples/DemandProfile_Tutorial
+  examples/DemandProfile_tutorial
 
 Creating demand profiles
 ------------------------
