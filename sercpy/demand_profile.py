@@ -10,7 +10,7 @@ import pandas as pd
 import warnings
 import numpy as np
 from datetime import datetime
-from . import profiles_app
+from . import profile_app
 from timeit import default_timer
 from types import SimpleNamespace
 from .core import (
@@ -468,6 +468,42 @@ class DemandProfile:
             fuel_HV = None
             
             ):
+        """
+        Static method that converts the consumption of a certain energy source (electricity or fuel) to heat demand, assuming a constant efficiency for the heater.
+
+        Parameters
+        ----------
+        energy_source_consumption : TYPE
+            DESCRIPTION.
+        consumption_units : TYPE
+            DESCRIPTION.
+        energy_source_name : TYPE, optional
+            DESCRIPTION. The default is None.
+        goal_units : TYPE, optional
+            DESCRIPTION. The default is 'J'.
+        heater_efficiency : TYPE, optional
+            DESCRIPTION. The default is 1.
+        HV_type : TYPE, optional
+            DESCRIPTION. The default is 'LHV'.
+        fuel_density : TYPE, optional
+            DESCRIPTION. The default is None.
+        fuel_HV : TYPE, optional
+            DESCRIPTION. The default is None.
+
+        Raises
+        ------
+        ValueError
+            DESCRIPTION.
+        Exception
+            DESCRIPTION.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
+        
         try:
             heater_efficiency = float( heater_efficiency )
             assert heater_efficiency > 0
@@ -797,7 +833,7 @@ class DemandProfile:
         # Function to compute the operation time based on the starting step and on the ending step
         # It return the number of "half hours" of operation, taking into account the possibility of 
         # operation from one day to another.
-        def compute_operation_time( start_step, end_step ):
+        def _compute_operation_time( start_step, end_step ):
             if start_step < end_step:
                 return end_step - start_step
             else:
@@ -832,12 +868,12 @@ class DemandProfile:
                     
                 if weekly_demand_factors is not None:
                     daily_demand_ratio = weekly_demand_factors[ day ]
-                    peak_demand_ratio = daily_demand_ratio*compute_operation_time( start_step_week, end_step_week )/compute_operation_time(start_step, end_step)
+                    peak_demand_ratio = daily_demand_ratio*_compute_operation_time( start_step_week, end_step_week )/_compute_operation_time(start_step, end_step)
                     
                 elif peak_demand_ratio is None:
                     
                     if daily_demand_ratio is not None:
-                        peak_demand_ratio = daily_demand_ratio*compute_operation_time( start_step_week, end_step_week )/compute_operation_time(start_step, end_step)
+                        peak_demand_ratio = daily_demand_ratio*_compute_operation_time( start_step_week, end_step_week )/_compute_operation_time(start_step, end_step)
                         
                     else:
                         peak_demand_ratio = 1
@@ -883,9 +919,13 @@ class DemandProfile:
                               "op_end_sunday" ]:
             try:
                 assert type(value) is str and ':' in value
-                hours = int( value.split(':')[0] )
-                minutes = int( value.split(':')[1] )
-                assert hours >= 0 and hours <= 24 and minutes in [0, 30] and not (hours == 24 and minutes == 30)
+                hour = int( value.split(':')[0] )
+                minute = int( value.split(':')[1] )
+                assert hour >= 0 and hour <= 24 and minute in [0, 30] and not (hour == 24 and minute == 30)
+                if argument_name.startswith( "op_start" ) and hour == 24:
+                    value = "00:00"
+                elif argument_name.startswith( "op_end" ) and hour == 0 and minute == 0:
+                    value = "24:00"
             except:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a string with format 'hh:mm', with 'hh' from '00' to '24' and 'mm' equal to '00' or '30'. '24:30' is not allowed.")
         
@@ -1140,8 +1180,16 @@ class DemandProfile:
         return value
         
     @staticmethod
-    def open_profiles_app():
-        profiles_app.launch()
+    def open_profile_app():
+        """
+        Static method to open the Profiles App of the class, developed on Python's GUI tool Tkinter.
+
+        Returns
+        -------
+        None.
+
+        """
+        profile_app.launch()
         
     @staticmethod
     def _extend_profile( profile, desired_length ):
@@ -1509,18 +1557,16 @@ class DemandProfile:
     
     def get_demand_conditions(self, *args, **kwargs ):
         """
-        Get the demand conditions for an instant or time period.
+        Method to obtain the demand conditions for a certain instant or time period.
         
         If the conditions for a single instant are asked for, this method returns a dictionary with the following keys:
             - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user.
-            - `"demanded_power"`: Thermal power demanded, given by the flowrate and the enthalpy changed needed. The units are 'W' unless something different is specified by the user.
+            - `"demanded_power"`: Thermal power demanded, given by the flowrate and the enthalpy change needed. The units are 'W' unless something different is specified by the user.
             - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
             - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
             
         If the conditions for a time period are asked for, this method returns a pandas.DataFrame object. The first column's name is 'timestamp' and it stores all instants considered when computing the result.
         The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
-        
-        
             
         Parameters
         ----------
@@ -1529,9 +1575,10 @@ class DemandProfile:
             
             On the other hand, it returns the result for a time period if:
                 - Two `datetime.datetime` instances are provided as positional arguments.
-                - One `pandas.DatetimeIndex` instance is provided as positional argument.
+                - A `pandas.DatetimeIndex` instance is provided as the only positional argument.
         **kwargs :
             Accepted keyword arguments are:
+                
                 - `month` : int
                 - `day` : int
                 - `hour` : int
@@ -1539,7 +1586,11 @@ class DemandProfile:
                 
                 The four keyword arguments just mentioned can be used instead of a datetime.datetime instance to ask for the conditions in a single instant in time.
                 
-                - flowrate_units
+                - `flowrate_units` : str. Units for flowrate
+                - `power_units` : str. Units for demanded power
+                - `temp_units` or `T_units` : Units for temperature.
+                
+                Acce
 
         Raises
         ------
