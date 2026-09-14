@@ -31,17 +31,22 @@ dl.field-list > dd > ul.simple > li {
     margin-bottom: 0.6em;
 }
 
+/* Define sidebar width */
+:root {
+    --sidebar-width: 350px;
+}
+
 /* Widen the sidebar navigation */
 .wy-nav-side {
-    width: 350px;
+    width: var(--sidebar-width);
 }
 
 .wy-side-nav-search {
-    width: 350px;
+    width: var(--sidebar-width);
 }
 
 .wy-side-scroll {
-    width: 350px;
+    width: var(--sidebar-width);
     overflow-y: auto;
 }
 
@@ -50,7 +55,7 @@ dl.field-list > dd > ul.simple > li {
 }
 
 .wy-nav-content-wrap {
-    margin-left: 350px;
+    margin-left: var(--sidebar-width);
 }
 
 /* Let long, underscore-heavy method names wrap instead of being clipped */
