@@ -33,15 +33,15 @@ dl.field-list > dd > ul.simple > li {
 
 /* Widen the sidebar navigation */
 .wy-nav-side {
-    width: 400px;
+    width: 350px;
 }
 
 .wy-side-nav-search {
-    width: 400px;
+    width: 350px;
 }
 
 .wy-side-scroll {
-    width: 400px;
+    width: 350px;
     overflow-y: auto;
 }
 
@@ -50,7 +50,7 @@ dl.field-list > dd > ul.simple > li {
 }
 
 .wy-nav-content-wrap {
-    margin-left: 400px;
+    margin-left: 350px;
 }
 
 /* Let long, underscore-heavy method names wrap instead of being clipped */
