@@ -28,7 +28,7 @@ default_role = "literal"
 # -- Options for autodoc / napoleon
 autodoc_class_signature = "separated"
 autodoc_typehints = "description"
-add_module_names = False
+#add_module_names = False
 autodoc_default_options = {
     'exclude-members': '__init__, __new__',
 }
