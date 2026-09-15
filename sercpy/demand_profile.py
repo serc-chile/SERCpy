@@ -141,7 +141,7 @@ DemandProfile_accepted_args = [
 class DemandProfile:
     
     """
-    Class that computes, stores, and provides the thermal demand of a heating system throughout an entire operation year..
+    Class that computes, stores, and provides the thermal demand of a heating system throughout an entire operation year.
 
     It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
     
@@ -149,7 +149,7 @@ class DemandProfile:
 
     Parameters
     ----------
-    `fluid` : str, optional
+    ``fluid`` : str, optional
         Heat transfer fluid name. Accepted values: `"water"`, `"air"` and `"therminol 66"`.
     
     `fluid_cp` : float, optional
@@ -458,31 +458,31 @@ class DemandProfile:
     @staticmethod
     def consumption_to_thermal_demand(
             
-            energy_source_consumption,
-            consumption_units,
+            energy_source_consumption: float | list[ float ],
+            consumption_units: str,
             energy_source_name = None,
-            goal_units = 'J',
-            heater_efficiency = 1,
-            HV_type = 'LHV',
-            fuel_density = None,
-            fuel_HV = None
+            goal_units: str = 'J',
+            heater_efficiency: float = 1,
+            HV_type: str = 'LHV',
+            fuel_density: Optional[ float ] = None,
+            fuel_HV: Optional[ float ] = None
             
-            ):
+            ) -> float | list[ float ]:
         """
         Static method that converts the consumption of a certain energy source (electricity or fuel) to heat demand, assuming a constant efficiency for the heater.
 
         Parameters
         ----------
-        energy_source_consumption : TYPE
-            DESCRIPTION.
-        consumption_units : TYPE
-            DESCRIPTION.
-        energy_source_name : TYPE, optional
-            DESCRIPTION. The default is None.
+        energy_source_consumption : float or list of float
+            Consumption or list of consumption.
+        consumption_units : str
+            Consumption units. If the energy source is `'electricity'`, the accepted values are the following energy units: `.
+        energy_source_name : str, optional
+            Name if the energy source. The default is None.
         goal_units : TYPE, optional
             DESCRIPTION. The default is 'J'.
         heater_efficiency : TYPE, optional
-            DESCRIPTION. The default is 1.
+            Efficiency of the heater as a floating point decimal value; e.g. 80% efficiency must be specified as 0.8. The default is 1.
         HV_type : TYPE, optional
             DESCRIPTION. The default is 'LHV'.
         fuel_density : TYPE, optional
@@ -490,17 +490,10 @@ class DemandProfile:
         fuel_HV : TYPE, optional
             DESCRIPTION. The default is None.
 
-        Raises
-        ------
-        ValueError
-            DESCRIPTION.
-        Exception
-            DESCRIPTION.
-
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        float or list of float
+            Consumption converted to energy demand. It has the same format as the parameter `energy_source_consumption` (float or list of float).
 
         """
         
