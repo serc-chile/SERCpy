@@ -222,10 +222,10 @@ class DemandProfile:
         Demand profile encompassing an entire week. It is equivalent to concatenating seven daily demand profiles of the same length, where the values of all profiles have a comparable scale.
     
     op_start : str, optional
-        Operation start time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_end`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
+        Operation start time. It must be a string with the format `"hh:mm"`, going from `"00:00"` to `"23:30"`. The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_end`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
     
     op_end : str, optional
-        Operation end time. It must be a string with the format "hh:mm", going from `"00:00"` to "23:30". The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_start`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified..
+        Operation end time. It must be a string with the format `"hh:mm"`, going from `"00:30"` to `"24:00"`. The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_start`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
     
     op_start_saturday : str, optional
         DESCRIPTION.
