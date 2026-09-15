@@ -222,54 +222,54 @@ class DemandProfile:
         Demand profile encompassing an entire week. It is equivalent to concatenating seven daily demand profiles of the same length, where the values of all profiles have a comparable scale.
     
     op_start : str, optional
-        Operation start time. It must be a string with the format `"hh:mm"`, going from `"00:00"` to `"23:30"`. The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_end`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
+        Operation start time. It must be a string with the format `"hh:mm"`, going from `"00:00"` to `"23:30"`. The "minutes" part of the time (i.e. the string `"mm"`) must be either `"00" or `"30". This parameter must be provided along with `op_end`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
     
     op_end : str, optional
-        Operation end time. It must be a string with the format `"hh:mm"`, going from `"00:30"` to `"24:00"`. The "minutes" part of the time (i.e. the string "mm") must be either "00" or "30". This parameter must be provided along with `op_start`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
+        Operation end time. This parameter is only taken into account when provided along with `op_start`. The format expected from this parameter is the same as for `op_start`, with the difference that `op_end` is expected to be in the range `"00:30"` to `"24:00"`.
     
     op_start_saturday : str, optional
-        DESCRIPTION.
+        Special operation start time for saturday. The expected type and format is the same as `op_start`. Only has effect if provided along with `op_start`.
     
     op_end_saturday : str, optional
-        DESCRIPTION.
+        Special operation end time for saturday. The expected type and format is the same as `op_end`. Must be provided along with `op_start_saturday`.
     
     op_start_sunday : str, optional
-        DESCRIPTION.
+        Special operation start time for sunday. The expected type and format is the same as `op_start`. Only has effect if provided along with `op_start`.
     
     op_end_sunday : str, optional
-        DESCRIPTION.
-    
-    monthly_production : list of float, optional
-        DESCRIPTION.
+        Special operation end time for sunday. The expected type and format is the same as `op_end`. Must be provided along with `op_start_sunday`.
     
     Tamb_profile : list of float, optional
-        DESCRIPTION.
+        Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
+    
+    monthly_production : list of float, optional
+        List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with ambient temperature.
     
     Tamb_dependence : float, optional
-        DESCRIPTION.
+        Level of dependence of thermal demand on ambient temperature. Valid range: 0 <= `Tamb_dependence` <= 3. It is not recommended to provide this parameter manually since the class is meant to automatically determine its value.
     
     smooth_Tamb_profile : bool, optional
-        DESCRIPTION.
-    
-    year : int, optional
-        DESCRIPTION.
+        Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corr=(T[i]+0.5*T[i-1]+0.25*T[i-1]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
     
     **kwargs : dict, optional
-        DESCRIPTION.
-
-    Attributes
-    ----------
-    ATTRIBUTE_NAME : TYPE
-        DESCRIPTION.
-
-    Notes
-    -----
-    NOTES, if needed.
-
-    Examples
-    --------
-    EXAMPLES, if needed.
+        For compatibility only.
     """
+    
+    ## END OF DOCSTRING
+    # Attributes
+    # ----------
+    # ATTRIBUTE_NAME : TYPE
+    #     DESCRIPTION.
+
+    # Notes
+    # -----
+    # NOTES, if needed.
+
+    # Examples
+    # --------
+    # EXAMPLES, if needed.
+    
+    ## Add: year
     
     def __init__(
             
