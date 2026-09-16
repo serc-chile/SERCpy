@@ -11,10 +11,9 @@ import json
 import pandas as pd
 from datetime import datetime
 import numpy as np
-from .core import SHIPcalError
 from pvlib.solarposition import get_solarposition
 
-class LocationError(Exception):
+class TMY_Error(Exception):
     pass
     
 
@@ -35,10 +34,11 @@ def download_TMY(latitude, longitude, API_KEY):
 
     Raises
     ------
-    SHIPcalError
-        Errors such as connection error, timeout error, incorrect API key, etc. Also raised when the latitude or longitude provided cannot be interpreted as floating point values.
-    LocationError
-        If the site 'API Energias Renovables' is not able to produce the data requested because the location porvided is out of the allowed range.
+    TMY_Error
+    
+        - Errors such as connection error, timeout error, incorrect API key, etc. Also raised when the latitude or longitude provided cannot be interpreted as floating point values.
+        
+        - If the site 'API Energias Renovables' is not able to produce the data requested because the location porvided is out of the allowed range.
 
     Returns
     -------
@@ -53,7 +53,7 @@ def download_TMY(latitude, longitude, API_KEY):
         latitude = float(latitude)
         longitude = float(longitude)
     except:
-        raise SHIPcalError("Function download_TMY: Parameters 'latitude' and 'longitude' must be convertible to type 'float'.")
+        raise TMY_Error("Function download_TMY: Parameters 'latitude' and 'longitude' must be convertible to type 'float'.")
     
     # API's url
     url = "https://api.exploradorenergia.cl/api/proxy"
@@ -152,7 +152,7 @@ def download_TMY(latitude, longitude, API_KEY):
             
             if not csv_url:
                 print(f"response_data: {response_data}")
-                raise LocationError("Function download_TMY: No url was received from 'API Energias Renovables' (url: https://api.minenergia.cl/). Probably, the location provided is outside the accepted range.")
+                raise TMY_Error("Function download_TMY: No url was received from 'API Energias Renovables' (url: https://api.minenergia.cl/). Probably, the location provided is outside the accepted range.")
                 
             # Download CSV content
             csv_response = requests.get(csv_url)
@@ -190,25 +190,25 @@ def download_TMY(latitude, longitude, API_KEY):
     # Manage errors
             
             else:
-                raise SHIPcalError("Function download_TMY: The data could not be downloaded from the url provided by 'API Energias Renovables' (url: https://api.minenergia.cl/). Check your internet connection and try again later.")
+                raise TMY_Error("Function download_TMY: The data could not be downloaded from the url provided by 'API Energias Renovables' (url: https://api.minenergia.cl/). Check your internet connection and try again later.")
                 
         else:
             if response.status_code == 403:
-                raise SHIPcalError("Function download_TMY: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: 403 (non-valid API Key)")
+                raise TMY_Error("Function download_TMY: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: 403 (non-valid API Key)")
             else:
-                raise SHIPcalError(f"Function download_TMY: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: {response.status_code}")
+                raise TMY_Error(f"Function download_TMY: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: {response.status_code}")
         
     except requests.exceptions.ConnectionError:
-        raise SHIPcalError("Function download_TMY: Could not connect to the server. Check your internet connection and try again later.")
+        raise TMY_Error("Function download_TMY: Could not connect to the server. Check your internet connection and try again later.")
         
     except requests.exceptions.Timeout:
-        raise SHIPcalError("Function download_TMY: The server took too long to respond.")
+        raise TMY_Error("Function download_TMY: The server took too long to respond.")
         
     except requests.exceptions.RequestException as e:
-        raise SHIPcalError("Function download_TMY: A requests/network error occurred:", e)
+        raise TMY_Error("Function download_TMY: A requests/network error occurred:", e)
         
     except:
-        raise SHIPcalError("Function download_TMY: An unknown exception occurred when contacting 'API Energias Renovables' (url: https://api.minenergia.cl/).")
+        raise TMY_Error("Function download_TMY: An unknown exception occurred when contacting 'API Energias Renovables' (url: https://api.minenergia.cl/).")
 
 def average_azimuth(azimuth_list):
     """
@@ -241,7 +241,7 @@ def average_azimuth(azimuth_list):
             continue
         if abs( azimuth_list[i] - azimuth_list[i - 1] ) > 180:
             if midday_found:
-                raise SHIPcalError("Function average_azimuth: midday found two times in a list.")
+                raise ValueError("Function average_azimuth: midday found two times in a list.")
             if azimuth_list[i - 1] > azimuth_list[i]:
                 correction_type = 'above_360'
             else:
@@ -280,7 +280,7 @@ class MeteoProfile:
             try:
                 assert "latitude" in kwargs and "longitude" in kwargs
             except:
-                raise SHIPcalError("Class MeteoProfile: Arguments 'latitude' and 'longitude' must be specified together.")
+                raise ValueError("Class MeteoProfile: Arguments 'latitude' and 'longitude' must be specified together.")
             try:
                 self._latitude = kwargs["latitude"]
                 self._longitude = kwargs["longitude"]
@@ -314,7 +314,7 @@ class MeteoProfile:
         try:
             assert type(time_step) is int and time_step in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]
         except:
-            raise SHIPcalError("DemandProfile.set_time_step: time_step (in minutes) must be an integer within the possible values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60")
+            raise ValueError("DemandProfile.set_time_step: time_step (in minutes) must be an integer within the possible values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60")
         self._time_step = time_step
         self._time_steps_per_year = 8760*60//time_step
         self.update_effective_profiles()
@@ -369,7 +369,7 @@ class MeteoProfile:
         try:
             assert type(UTC) is int and UTC >= -12 and UTC <= 14
         except AssertionError:
-            raise SHIPcalError("MeteoProfile.set_UTC: UTC value must be an integer greater than or queal to -12, and smaller than or equal to 14.")
+            raise ValueError("MeteoProfile.set_UTC: UTC value must be an integer greater than or queal to -12, and smaller than or equal to 14.")
         
         self._UTC = UTC
         self.update_minutal_solar_position_profiles()
@@ -405,5 +405,5 @@ class MeteoProfile:
                         )
                 
                 except:
-                    raise SHIPcalError("MeteoProfile.load_TMY: Custom TMY files must have an ambient temperature column and at least two of three irradiance components (GHI, DNI, DHI)")
+                    raise ValueError("MeteoProfile.load_TMY: Custom TMY files must have an ambient temperature column and at least two of three irradiance components (GHI, DNI, DHI)")
         

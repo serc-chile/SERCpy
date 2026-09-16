@@ -13,11 +13,13 @@ from datetime import datetime
 from . import profile_app
 from timeit import default_timer
 from types import SimpleNamespace
+from .units import (
+    
+    convert_units,
+    UnitsError,
+    )
 from .core import (
     
-    SHIPcalError,
-    UnitConversionError,
-    convert_units,
     weekday_names,
     month_days,
     monthly_cummulated_days,
@@ -249,7 +251,7 @@ class DemandProfile:
         Level of dependence of thermal demand on ambient temperature. Valid range: 0 <= `Tamb_dependence` <= 3. It is not recommended to provide this parameter manually since the class is meant to automatically determine its value.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corr=(T[i]+0.5*T[i-1]+0.25*T[i-1]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
+        Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corr=(T[i]+0.5*T[i-1]+0.25*T[i-2]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
     
     **kwargs : dict, optional
         For compatibility only.
@@ -474,11 +476,11 @@ class DemandProfile:
         Parameters
         ----------
         energy_source_consumption : float or list of float
-            Consumption or list of consumption.
+            Consumption or list of consumption values to convert.
         consumption_units : str
-            Consumption units. If the energy source is `'electricity'`, the accepted values are the following energy units: `.
+            Consumption units. If the energy source is `'electricity'`, accepted values are energy units ().
         energy_source_name : str, optional
-            Name if the energy source. The default is None.
+            Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. The default is None.
         goal_units : TYPE, optional
             DESCRIPTION. The default is 'J'.
         heater_efficiency : TYPE, optional
@@ -588,7 +590,7 @@ class DemandProfile:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: energy_source_consumption must be >= 0.")
             try:
                 energy_source_consumption = convert_units(energy_source_consumption, consumption_units, 'kg', density = fuel_density)
-            except UnitConversionError:
+            except UnitsError:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
             return heater_efficiency*fuel_HV*energy_source_consumption
         
@@ -597,7 +599,7 @@ class DemandProfile:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: value within list energy_source_consumption must be >= 0.")
             try:
                 energy_source_consumption = [ convert_units(value, consumption_units, 'kg', density = fuel_density) for value in energy_source_consumption  ]
-            except UnitConversionError:
+            except UnitsError:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
             return [ heater_efficiency*fuel_HV*value for value in energy_source_consumption ]
         
@@ -783,7 +785,7 @@ class DemandProfile:
             
             
             if start_step_saturday == end_step_saturday:
-                raise SHIPcalError("Class DemandProfile: Argument 'op_end_saturday' must be different from 'op_start_saturday'.")
+                raise ValueError("Class DemandProfile: Argument 'op_end_saturday' must be different from 'op_start_saturday'.")
                 
             if op_start_sunday is not None:
                 if op_end_sunday is None:
@@ -1262,11 +1264,11 @@ class DemandProfile:
         try:
             dependence_coeff = float(dependence_coeff)
         except:
-            raise SHIPcalError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be convertible to type 'float'.")
+            raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be convertible to type 'float'.")
         try:
             assert dependence_coeff >= 0 and dependence_coeff <= 3
         except:
-            raise SHIPcalError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be larger than or equal to 0, and smaller than or equal to 3.")
+            raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be larger than or equal to 0, and smaller than or equal to 3.")
         
         if dependence_coeff.is_integer():
             
@@ -1392,7 +1394,7 @@ class DemandProfile:
                 break
         
         if not solving_success:
-            raise SHIPcalError("DemandProfile.determine_Tamb_dependence: It was not possible to solve the minimization problem.")
+            raise ValueError("DemandProfile.determine_Tamb_dependence: It was not possible to solve the minimization problem.")
             
         dependence_coeff = float (minimize_result['x'][0])
         
@@ -1486,7 +1488,7 @@ class DemandProfile:
             
             total_factor = sum(factors)
             if total_factor <= 0:
-                raise SHIPcalError(f"compute_minutal_demand_profiles: sum of scaling factors is negative or equal to zero for the following month: {month_names[month]}. Check the temperature dependence provided.")
+                raise ValueError(f"compute_minutal_demand_profiles: sum of scaling factors is negative or equal to zero for the following month: {month_names[month]}. Check the temperature dependence provided.")
             for n in range(len(factors)):
                 energy = demand_this_month*factors[n]/total_factor
                 power = energy/1800
