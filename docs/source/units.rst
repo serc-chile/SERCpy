@@ -105,12 +105,14 @@ The platform avoids the use of the unit name `"ton"` because it may lead to conf
 Power
 ~~~~~
 
-Power is a special type of quantity because the units can be created from the energy and time units already specified (see  :ref:`Compound units`), and also be chosen from the following list of named units:
+Power is a special type of quantity because the units can be created from the energy and time units already specified (see  :ref:`compound_units`), and also be chosen from the following list of named units:
   
   - `"W"` or  `"w"`: Watt 
   - `"kW"` or `"kw"`: Kilowatt 
   - `"MW"` or `"Mw": Megawatt
   - `"HP"` or `"hp"` or `"Hp"`: Horsepower
+
+.. _compound_units:
 
 Compound units
 ~~~~~~~~~~~~~~
