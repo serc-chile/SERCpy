@@ -149,7 +149,7 @@ class DemandProfile:
 
     It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
     
-    Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default dehavior is to automatically determine the level of dependence based on the monthly heat demand and ammbient temperature provided by the user.
+    Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default dehavior is to automatically determine the level of dependence based on the monthly heat demand and ambient temperature provided by the user.
 
     Parameters
     ----------
@@ -166,7 +166,7 @@ class DemandProfile:
         Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_density_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `kg/m3`. See :doc:`units`.
+        Units in which `fluid_density` is being specified. If not provided, it defaults to `kg/m3`. See :doc:`units`.
     
     T_set : float or list of float
         Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
@@ -175,7 +175,7 @@ class DemandProfile:
         Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
         
     T_units : str, optional
-        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
+        Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
         
     temp_units : str, optional
         Alias for `T_units`.
