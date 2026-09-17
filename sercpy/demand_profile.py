@@ -65,7 +65,7 @@ def translate_utc(utc_based_tz):
         return "Etc/GMT" + GMT_sign + str(offset)
     
     except:
-        raise SHIPcalError("UTC-based timezone could not be translated to Etc/GMT")
+        raise ValueError("UTC-based timezone could not be translated to Etc/GMT")
         
 def time_to_half_hours(time_string):
     
