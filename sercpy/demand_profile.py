@@ -86,7 +86,9 @@ DemandProfile_accepted_args = [
     "flowrate_profile",
     "fluid",
     "fluid_cp",
+    "fluid_cp_units",
     "fluid_density",
+    "fluid_density_units",
     "pressure",
     
     "op_start",
@@ -143,11 +145,11 @@ DemandProfile_accepted_args = [
 class DemandProfile:
     
     """
-    Class that computes, stores, and provides the thermal demand of a heating system throughout an entire operation year.
+    Class that computes, stores, and provides the thermal demand conditions of a heating system throughout an entire operation year.
 
     It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
     
-    This class also takes into account the dependence of the demanded power on the ambient temperature, also being capable of determining that degree of dependence based on the monthly heat demand provided by the user.
+    Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default dehavior is to automatically determine the level of dependence based on the monthly heat demand and ammbient temperature provided by the user.
 
     Parameters
     ----------
@@ -155,16 +157,28 @@ class DemandProfile:
         Heat transfer fluid name. Accepted values: `"water"`, `"air"` and `"therminol 66"`.
     
     fluid_cp : float, optional
-        Specific heat capacity of the heat transfer fluid (J/kg K). Needed if the parameter `fluid` is not specified.
+        Specific heat capacity of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
+        
+    fluid_cp_units : str, optional
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `J/kg K`.
     
     fluid_density : float, optional
-        Density of the heat transfer fluid (kg/m3). Needed if the parameter `fluid` is not specified.
+        Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise..
+        
+    fluid_density_units : str, optional
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `kg/m3`.
     
     T_set : float or list of float
-        Setpoint temperature of the heating system (C). It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
+        Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
     
     T_in : float or list of float
-        Setpoint of the heating system (C). It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
+        Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
+        
+    T_units : str, optional
+        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`.
+        
+    temp_units : str, optional
+        Alias for `T_units`.
     
     monthly_heat_demand : list of float, optional
         List of values >= 0, representing the heat demand of the thermal load in each month of the year. Either this parameter or `monthly_consumption` must be provided.
@@ -244,6 +258,9 @@ class DemandProfile:
     Tamb_profile : list of float, optional
         Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
     
+    Tamb_units : str, optional
+        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `T_units`/`temp_units`.
+    
     monthly_production : list of float, optional
         List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with ambient temperature.
     
@@ -280,10 +297,14 @@ class DemandProfile:
             
             fluid: Optional[ str ] = None,
             fluid_cp: Optional[ float ] = None,
+            fluid_cp_units: Optional[ str ] = None,
             fluid_density: Optional[ float ] = None,
+            fluid_density_units: Optional[ str ] = None,
             
             T_set: float | list[float],
             T_in: float | list[float],
+            T_units: Optional[ str ] = None,
+            temp_units: Optional[ str ] = None,
             
             monthly_heat_demand: Optional[ list[float] ] = None,
             heat_demand_units: Optional[ str ] = None,
@@ -320,6 +341,7 @@ class DemandProfile:
             monthly_production: Optional[ list[float] ] = None,
             
             Tamb_profile: Optional[ list[float] ] = None,
+            Tamb_units: Optional[ str ] = None,
             Tamb_dependence: Optional[ float ] = None,
             
             
@@ -337,6 +359,13 @@ class DemandProfile:
         if self._monthly_T_set is None or self._monthly_T_in is None:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
             
+        if T_units is not None:
+            self._monthly_T_set = convert_units( self._monthly_T_set, T_units, 'C' )
+            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, 'C' )
+        elif temp_units is not None:
+            self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, 'C' )
+            self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, 'C' )
+            
         if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
             raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
         
@@ -352,8 +381,12 @@ class DemandProfile:
             self._fluid_density = 920
         if fluid_cp is not None:
             self._fluid_cp = self.validate_argument("fluid_cp", fluid_cp)
+            if fluid_cp_units is not None:
+                self._fluid_cp = convert_units(self._fluid_cp, fluid_cp_units, 'J/kg K')
         if fluid_density is not None:
             self._fluid_density = self.validate_argument("fluid_density", fluid_density)
+            if fluid_density_units is not None:
+                self._fluid_density = convert_units( self._fluid_density, fluid_density_units, 'kg/m3' )
             
         if self._fluid_cp is None or self._fluid_density is None:
             raise ValueError("Class DemandProfile: 'fluid_cp' and 'fluid_density' must be provided, either directly or indirectly through the heat transfer fluid's name." )
@@ -444,6 +477,14 @@ class DemandProfile:
                 
         self._monthly_production = self.validate_argument("monthly_production", monthly_production)
         self._Tamb_profile = self.validate_argument("Tamb_profile", Tamb_profile)
+        
+        if self._Tamb_profile is not None:
+            if Tamb_units is not None:
+                self._Tamb_profile = convert_units( self._Tamb_profile, Tamb_units, 'C' )
+            elif T_units is not None:
+                self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
+            elif temp_units is not None:
+                self._Tamb_profile = convert_units( self._Tamb_profile, temp_units, 'C' )
             
         if smooth_Tamb_profile is not None:
             self._smooth_Tamb_profile = self.validate_argument( "smooth_Tamb_profile", smooth_Tamb_profile )
