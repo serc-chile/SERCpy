@@ -82,7 +82,7 @@ Available volume units are:
   - `"L"`: Liter
   - `"ft3"`: Cubic foot
   - `"in3"`: Cubic inch
-  - `"gal"` or `"gallon"`: US gallon, equivalent to 231 cubic inches or, approximately, 3.785 L
+  - `"gal"` or `"gallon"`: US gallon, equivalent to 231 cubic inches or, approximately, 3.7854 L
   - `"bbl"` or `"barrel"`: US standard oil barrel, equivalent to 158.99 L
   - `"dm3"`: Cubic decimeter, equivalent to 1 L
   - `"cm3"`: Cubic centimeter
