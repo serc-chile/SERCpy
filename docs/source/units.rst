@@ -61,9 +61,63 @@ Available pressure units are:
   - `"mbar"`: Milibar
   - `"atm"` or `"ATM"`: Atmosphere
   - `"mmHg"` or `"mmhg"`: Milimeter of mercury
-  - : 
-  - `"psi"`: 
-  - `"PSI"`: 
+  - `"psi"` or `"PSI"`: Pounds per square inch 
+
+Area
+~~~~
+
+Available area units are:
+
+  - `"m2"`: Square meter
+  - `"ha"` or `"Ha"` or `"HA"`: Hectare
+  - `"ft2"`: Square foot
+
+Volume
+~~~~~~
+
+Available volume units are:
+
+  - `"m3"`: Cubic meter
+  - `"L"`: Liter
+  - `"ft3"`: Cubic foot
+  - `"in3"`: Cubic inch
+  - `"gal"` or `"gallon"`: US gallon, equivalent to 231 cubic inches or, approximately, 3.785 L
+  - `"bbl"` or `"barrel"`: US standard oil barrel, equivalent to 158.99 L
+  - `"dm3"`: Cubic decimeter, equivalent to 1 L
+  - `"cm3"`: Cubic centimeter
+  - `"mm3"`: Cubic milimeter
+
+Mass
+~~~~
+
+Available mass units are:
+
+  - `"kg"` or `"KG"`: Kilogram
+  - `"g"`: Gram
+  - `"Mg"`: Megagram, equivalent to 1 metric ton
+  - `"mg"`: Miligram
+  - `"lb"`: Pound
+  - `"short_ton"` or `"short ton"` or `"st"`: Short ton, equivalent to 2000 lb
+  - `"metric_ton"` or `"metric ton"` or `"tonne"`: Metric ton, equivalent to 1000 kg
+
+The platform avoids the use of the unit name `"ton"` because it may lead to confussion between the concepts of "short ton", equivalent to 2000 lb, and metric ton or tonne, equivalent to 1000 kg.
+
+Power
+~~~~~
+
+Power is a special type of quantity because the units can be customized from the energy and time units already specified (see ), and also be chosen from the following list of named units:
+  
+  - `"W"` or  `"w"`: Watt 
+  - `"kW"` or `"kw"`: Kilowatt 
+  - `"MW"` or `"Mw": Megawatt
+  - `"HP"` or `"hp"` or `"Hp"`: Horsepower
+
+Compound units
+~~~~~~~~~~~~~~
+
+
+
+Units for volumetric flowrate, mass flowrate, specific heat, and density are important for 
 
 Unit converting function
 ------------------------
