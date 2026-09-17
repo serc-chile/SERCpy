@@ -67,9 +67,9 @@ Area
 Available area units are:
 
   - `"m2"`: Square meter
-  - `"cm2': Square centimeter
-  - `"hm2': Square hectometer, equivalent to 10,000 m2
-  - `in2`: Square inch
+  - `"cm2"`: Square centimeter
+  - `"hm2"`: Square hectometer, equivalent to 10,000 m2
+  - `"in2"`: Square inch
   - `"ft2"`: Square foot
   - `"ha"` or `"Ha"` or `"HA"`: Hectare, equivalent to 1 square hectometer
 
