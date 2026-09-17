@@ -136,6 +136,7 @@ Quantities that can be constructed in this way are:
   - Power units: `"E/t"`
   - Density units: `"M/V"`
   - Specific heat capacity units: `"E/M T"`
+  - Specific energy units (e.g heating value of fuels): `"E/M"`
 
 Where:
 
