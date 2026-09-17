@@ -37,6 +37,9 @@ unit_database = {
         'j': 1,
         'kj': 1e3,
         'KJ': 1e3,
+        'cal': 4.184,
+        'kcal': 4184,
+        'Mcal': 4.184e6,
         'btu': 1055.056,
         'kbtu': 1e3*1055.056,
         'BTU': 1055.056,
@@ -270,7 +273,10 @@ def _identify_variable_type( units ):
         return 'power'
     
     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass'}:
-        return 'specific_energy'
+        return 'specific_energy_mass'
+
+    if unit_types_numerator == {'energy'} and unit_types_denominator == {'volume'}:
+        return 'specific_energy_volume'
     
     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
         return 'specific_heat_capacity'
@@ -585,6 +591,11 @@ if __name__ == "__main__":
     density_1 = 1
     density_units = 'tonne/bbl'
     print( f"15 m3/day to kg/min (new density): { convert_units( 15, 'm3/day', 'kg/min', density = density_1, density_units = density_units ) }" )
+    
+    
+    # Convert heating value of a fuel
+    # Convert 4000 kJ/kg to kcal/lb
+    print( f"4000 kJ/kg to kcal/lb: { convert_units( 4000, 'kJ/kg', 'kcal/lb' ) }" )
     
     
     

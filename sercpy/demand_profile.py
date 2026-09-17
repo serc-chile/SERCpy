@@ -160,13 +160,13 @@ class DemandProfile:
         Specific heat capacity of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_cp_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `J/kg K`.
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `J/kg K`. See :doc:`units`.
     
     fluid_density : float, optional
-        Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise..
+        Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_density_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `kg/m3`.
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `kg/m3`. See :doc:`units`.
     
     T_set : float or list of float
         Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
@@ -175,7 +175,7 @@ class DemandProfile:
         Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
         
     T_units : str, optional
-        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`
+        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
         
     temp_units : str, optional
         Alias for `T_units`.
@@ -193,7 +193,7 @@ class DemandProfile:
         Name of the heat source. Needed if the heat demand is computed from `monthly_consumption`. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `'electricity'`, `'lpg'`, `'ng'`, `'methane'`, `'propane'`, `'butane'`, `'diesel'`, `'coal'`, `'biomass'`.
     
     consumption_units : str, optional
-        Needed if `monthly_consumption` is specified instead of `monthly_heat_demand`. For electricity, energy units are accepted: `'kWh'`, `'MWh'`, `'J'`, `'kJ'`, `'MJ'`, `'BTU'`, `'kBTU'`, `'MBTU'`. For fuels, mass and volume units are accepted: `'kg'`, `'ton'`, `'lb'`, `'m3'`, `'L'`, `'gal'`, `'ft3'`.
+        Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`units`.
     
     heater_efficiency : float, optional
         Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
@@ -201,8 +201,14 @@ class DemandProfile:
     heat_source_heating_value : float, optional
         Heating value of the heat source (fuel). Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
     
+    heat_source_heating_value_units : str, optional
+        Units in which `heat_source_heating_value` is being provided. Only specific energy units in terms of mass (not volume) are allowed. If not provided, it defaults to `J/kg`. See :doc:`units`.
+    
     heat_source_density : float, optional
         Density of the heat source (fuel). Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
+        
+    heat_source_density_units : str, optional
+        Units in which `heat_source_density` is being provided. If not provided, it defaults to `kg/m3`. See :doc:`units`.
     
     condensation_boiler : bool, optional
         Whether the heater corresponds to a condensation boiler. 
@@ -226,7 +232,7 @@ class DemandProfile:
         Ratio between the peak demand on saturdays and the peak on a week day. If specified, this parameter overrides `daily_demand_ratio_saturday`.
     
     peak_demand_ratio_sunday : float, optional
-        Ratio between the peak demand on sundays and the peak on a week day. If specified, this parameter overrides `daily_demand_ratio_sunday`..
+        Ratio between the peak demand on sundays and the peak on a week day. If specified, this parameter overrides `daily_demand_ratio_sunday`.
     
     weekly_demand_factors : list of float, optional
         List of seven values defining the relative total daily demand of each day of the week, starting on monday. If specified, this parameter overrides the four "ratio" parameters just described.
@@ -259,7 +265,7 @@ class DemandProfile:
         Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
     
     Tamb_units : str, optional
-        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `T_units`/`temp_units`.
+        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `T_units`/`temp_units`. See :doc:`units`.
     
     monthly_production : list of float, optional
         List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with ambient temperature.
@@ -314,7 +320,9 @@ class DemandProfile:
             heater_efficiency: Optional[ float ] = None,
             heat_source: Optional[ str ] = None,
             heat_source_heating_value: Optional[ float ] = None,
+            heat_source_heating_value_units: Optional[ str ] = None,
             heat_source_density: Optional[ float ] = None,
+            heat_source_density_units: Optional[ str ] = None,
             condensation_boiler: Optional[ bool ] = None,
             
             daily_demand_profile: Optional[ list[float] ] = None,
@@ -410,7 +418,11 @@ class DemandProfile:
                 heater_efficiency = self.validate_argument("heater_efficiency", heater_efficiency)
             heat_source = self.validate_argument("heat_source", heat_source)
             heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
+            if heat_source_density is not None and heat_source_density_units is not None:
+                heat_source_density = convert_units(heat_source_density, heat_source_density_units, 'kg/m3')
             heat_source_heating_value = self.validate_argument("heat_source_heating_value", heat_source_heating_value)
+            if heat_source_heating_value is not None and heat_source_heating_value_units is not None:
+                heat_source_heating_value = convert_units( heat_source_heating_value, heat_source_heating_value_units, 'J/kg' )
             valid_heat_source = any( [ 
                 heat_source is not None,
                 heat_source_heating_value is not None and consumption_units in [ "kg", "ton", "lb" ],
