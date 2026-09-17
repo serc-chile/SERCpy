@@ -98,10 +98,10 @@ Available mass units are:
   - `"Mg"`: Megagram, equivalent to 1 metric ton
   - `"mg"`: Miligram
   - `"lb"`: Pound
-  - `"short_ton"` or `"short ton"` or `"st"`: Short ton, equivalent to 2000 lb
-  - `"metric_ton"` or `"metric ton"` or `"tonne"`: Metric ton, equivalent to 1000 kg
+  - `"short_ton"` or `"short ton"` or `"st"`: Short ton, equivalent to 2,000 lb
+  - `"metric_ton"` or `"metric ton"` or `"tonne"`: Metric ton, equivalent to 1,000 kg
 
-The platform avoids the use of the unit name `"ton"` because it may lead to confussion between the concepts of "short ton", equivalent to 2000 lb, and metric ton or tonne, equivalent to 1000 kg.
+The platform avoids the use of the unit name `"ton"` because it may lead to confussion between the concepts of "short ton", equivalent to 2,000 lb, and metric ton or tonne, equivalent to 1,000 kg.
 
 Power
 ~~~~~
