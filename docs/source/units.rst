@@ -110,7 +110,7 @@ Power is a special type of quantity because the units can be created from the en
   
   - `"W"` or  `"w"`: Watt 
   - `"kW"` or `"kw"`: Kilowatt 
-  - `"MW"` or `"Mw": Megawatt
+  - `"MW"` or `"Mw"`: Megawatt
   - `"HP"` or `"hp"` or `"Hp"`: Horsepower
 
 .. _compound_units:
