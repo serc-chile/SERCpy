@@ -27,3 +27,5 @@ Available temperature units are:
 
 Unit converting function
 ------------------------
+
+.. autofunction:: sercpy.units.convert_units
