@@ -105,6 +105,9 @@ unit_database = {
     'area': {
         
         'm2': 1,
+        'cm2': 1e-4,
+        'hm2': 1e4,
+        'in2': 0.00064516,
         'ha': 1e4,
         'HA': 1e4,
         'Ha': 1e4,
@@ -117,6 +120,7 @@ unit_database = {
         'm3': 1,
         'L': 1e-3,
         'ft3': 0.0283168,
+        'in3': 1.6387e-5,
         'gal': 0.003785411784,
         'gallon': 0.003785411784,
         'barrel': 0.15899,
@@ -130,6 +134,7 @@ unit_database = {
     'mass': {
         
         'kg': 1,
+        'KG': 1,
         'g': 1e-3,
         'Mg': 1e3,
         'mg': 1e-6,
@@ -333,7 +338,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
     density : float, optional
         Only needed if a conversion between mass and volumes (or flowrates involving volumes and masses) is being carried out. The default is None.
     density_units : str, optional
-        Units in which the density of the fluid is being expressed. The default is 'kg/m3'.
+        Units in which the density of the fluid is being expressed. The default is `"kg/m3"`.
 
     Raises
     ------
