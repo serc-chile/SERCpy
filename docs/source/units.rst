@@ -1,11 +1,9 @@
 Units
 =====
 
-SERCpy has its own unit management module, which has the feature that it can convert mass to volume and viceversa, and also mass flowrate to volumetric flowrate and viceversa, if the density of the substance involved is known.
+SERCpy has its own unit management module, called "units", which has the feature that it can convert mass to volume and viceversa, and also mass flowrate to volumetric flowrate and viceversa, if the density of the substance involved is known.
 
 Internally, classes and simulations work with SI units, except for temperature which is expressed in °C. Furthermore, flowrates are internally treated as mass flowrates, although they can easily be converted to volumetric flowrates as just discussed. Nevertheless, the user can specify most variables with various possible units, and they are converted to the default system when processed. This section details all the possible units available to the user.
-
-The main tool to work with units is the function `convert_units`, which belongs to the module `units` and is documented below.
 
 Available units
 ---------------
@@ -117,17 +115,33 @@ Power is a special type of quantity because the units can be created from the en
 Compound units
 ~~~~~~~~~~~~~~
 
-Some quantities relevant for SERCpy are expressed in units that do not have a specific name, but are instead constructed from more basic units. A simple example is mass flowrate, which is expressed in terms of `M/T`, where `M` is any mass unit and `T`is any time unit.
+Some quantities relevant for SERCpy are expressed in units that do not have a specific name, but are instead constructed from more basic units. A simple example is mass flowrate, which is expressed in terms of `M/t`, where `M` is a mass unit and `t` is a time unit.
 
 The rules for constructing units are the following:
 
-  - Division of units (i.e., units to the power of `-1`) is expressed by `"/"`.
+  - Division of units is expressed with `"/"`.
   - Multiplication of units is expressed by placing a space between the units.
-  - All units at the right side of `"/"` are interpreted as being raise to `-1`. For example, in the case of specific heat capacity units, `"J/kg K"` is correct without the need to put `"kg K"` between parenthesis.
+  - All units at the right side of `"/"` are interpreted as being raised to `-1`. For example, in the case of specific heat capacity units, `"J/kg K"` is correct without the need to put `"kg K"` between parenthesis.
 
-Units for volumetric flowrate, mass flowrate, specific heat, and density are important for 
+Quantities that can be constructed in this way are:
+
+  - Mass flowrate units: `"M/t"`
+  - Volumetric flowrate units: `"V/t"`
+  - Power units: `"E/t"`
+  - Density units: `"M/V"`
+  - Specific heat capacity units: `"E/M T"`
+
+Where:
+
+  - `M` stands for any mass unit
+  - `V` stands for any volume unit
+  - `E` stands for any energy unit
+  - `T` stands for any temperature unit
+  - `t` stands for any time unit
 
 Unit converting function
 ------------------------
+
+The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
 .. autofunction:: sercpy.units.convert_units
