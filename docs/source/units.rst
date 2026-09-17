@@ -39,6 +39,9 @@ Available energy units are:
   - `"MJ"`: Megajoule
   - `"GJ"`: Gigajoule
   - `"TJ"`: Terajoule
+  - `"cal"`: **Small** calorie, equivalent to 4.184 J
+  - `"kcal"`: Kilo-Calorie or **large** calorie, equivalent to 4184 J
+  - `"Mcal"`: Mega-Calorie, equivalent to 1,000,000 small calories
   - `"BTU"` or `"btu"`: British Thermal Unit
   - `"kBTU"` or `"kbtu"`: Kilo-BTU
   - `"MBTU"`: Mega-BTU
