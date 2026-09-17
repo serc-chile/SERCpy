@@ -175,7 +175,7 @@ class DemandProfile:
         Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
         
     T_units : str, optional
-        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`.
+        Units in which T_in and T_set are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`
         
     temp_units : str, optional
         Alias for `T_units`.
