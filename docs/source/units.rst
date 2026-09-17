@@ -105,7 +105,7 @@ The platform avoids the use of the unit name `"ton"` because it may lead to conf
 Power
 ~~~~~
 
-Power is a special type of quantity because the units can be customized from the energy and time units already specified (see ), and also be chosen from the following list of named units:
+Power is a special type of quantity because the units can be created from the energy and time units already specified (see  :ref:`Compound units`), and also be chosen from the following list of named units:
   
   - `"W"` or  `"w"`: Watt 
   - `"kW"` or `"kw"`: Kilowatt 
@@ -115,7 +115,13 @@ Power is a special type of quantity because the units can be customized from the
 Compound units
 ~~~~~~~~~~~~~~
 
+Some quantities relevant for SERCpy are expressed in units that do not have a specific name, but are instead constructed from more basic units. A simple example is mass flowrate, which is expressed in terms of `M/T`, where `M` is any mass unit and `T`is any time unit.
 
+The rules for constructing units are the following:
+
+  - Division of units (i.e., units to the power of `-1`) is expressed by `"/"`.
+  - Multiplication of units is expressed by placing a space between the units.
+  - All units at the right side of `"/"` are interpreted as being raise to `-1`. For example, in the case of specific heat capacity units, `"J/kg K"` is correct without the need to put `"kg K"` between parenthesis.
 
 Units for volumetric flowrate, mass flowrate, specific heat, and density are important for 
 
