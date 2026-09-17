@@ -348,7 +348,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
     Returns
     -------
     float or list of float
-        Quantity specified as input_value, in the new unit system. If the input is a list, so is the returned value.
+        Quantity specified as `input_value`, in the new unit system. If the input is a list, so is the returned value.
 
     """
     
