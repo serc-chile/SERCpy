@@ -3,6 +3,8 @@ DemandProfile.open_profile_app
 
 The "Profile App" is a small GUI included within the SERCpy library that makes it easier for the user to establish daily demand profiles with different time resolutions, but also yearly profiles with monthly resolution, and weekly profiles with daily resolution.
 
+This GUI can be launched by the user with the method `DemandProfile.open_profile_app()`, which does not take any argument.
+
 For more details on how to use this tool, see the :doc:`tutorial about the DemandProfile class </examples/DemandProfile_tutorial>`
 
 .. figure:: /images/demand_profiles_app_img.png
