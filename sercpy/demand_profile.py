@@ -1632,44 +1632,31 @@ class DemandProfile:
             - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
             - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
             
-        If the conditions for a time period are asked for, this method returns a pandas.DataFrame object. The first column's name is 'timestamp' and it stores all instants considered when computing the result.
+        If the conditions for a time period are asked for, this method returns a `pandas.DataFrame` object. The first column's name is `"timestamp"` and it stores all instants considered when computing the result.
         The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
             
         Parameters
         ----------
-        *args : datetime.datetime or similar, or pandas.DatetimeIndex
-            This method computes the results for a single instant if only one datetime.datetime instance is provided.
-            
+        *args : `datetime.datetime` or similar, or `pandas.DatetimeIndex`
+            Positional arguments. No keyword allowed.
+            The function computes the results for a single instant in time if only one `datetime.datetime` instance is provided as positional arguments.
             On the other hand, it returns the result for a time period if:
+                
                 - Two `datetime.datetime` instances are provided as positional arguments.
                 - A `pandas.DatetimeIndex` instance is provided as the only positional argument.
         **kwargs :
-            Accepted keyword arguments are:
+            Keyword arguments. Accepted argument names are:
                 
-                - `month` : int
-                - `day` : int
-                - `hour` : int
-                - `minute` : int
+                - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a signle instant in time.
                 
-                The four keyword arguments just mentioned can be used instead of a datetime.datetime instance to ask for the conditions in a single instant in time.
+                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is anallowed alias for `temp_units`.
                 
-                - `flowrate_units` : str. Units for flowrate
-                - `power_units` : str. Units for demanded power
-                - `temp_units` or `T_units` : Units for temperature.
-                
-                Acce
-
-        Raises
-        ------
-        KeyError
-            DESCRIPTION.
-        ValueError
-            DESCRIPTION.
+                - `inclusive`, `freq`, and `tz` can be used to customize the generation of the `pandas.DatetimeIndex` instance. These keyword arguments are thus only taken into account when two `datetime.datetime` instances are provided as positional arguments. See `pandas.date_range <https://pandas.pydata.org/docs/reference/api/pandas.date_range.html>`_
 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        dictionary or `pandas.DataFrame`
+            A dictionary is returned when the conditions for a single instant in time are asked for, whereas a `pandas.DataFrame` instance is returned when for periods of time.
 
         """
         
