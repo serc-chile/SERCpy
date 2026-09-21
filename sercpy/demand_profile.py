@@ -1637,7 +1637,7 @@ class DemandProfile:
             - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
             - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
             
-        If the conditions for a time period are asked for, this method returns a `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_. The first column's name is `"timestamp"` and it stores all the instants considered when computing the result.
+        If the conditions for a time period are asked for, this method returns a `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_. The first column of the `DataFrame` is called `"timestamp"` and it stores all the instants considered when computing the result.
         The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
             
         Parameters
@@ -1663,9 +1663,16 @@ class DemandProfile:
 
         Returns
         -------
-        `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ or `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_
-            A dictionary is returned when the conditions for a single instant in time are asked for, whereas a `pandas.DataFrame` instance is returned when for periods of time.
-
+        `dict` or `pandas.DataFrame`
+            A `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ is returned when the conditions for a single instant in time are asked for. This dictionary has the following keys:
+                
+                - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user (see ****kwargs**).
+                - `"demanded_power"`: Thermal power demanded, obtained from the flowrate and the enthalpy change between the inlet temperature and the setpoint. The unit is W unless a different unit is specified by the user (see ****kwargs**).
+                - `"T_in"`: Temperature of the flow when it enters the heating system. The unit is °C unless a different unit is specified by the user (see ****kwargs**).
+                - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The unit is °C unless other units are specified by the user (see ****kwargs**).
+            
+            A `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_ is returned when the conditions for a time period are asked for. The first column of the `DataFrame` is called `"timestamp"` and it stores all the instants considered when computing the result.
+            The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
         """
         
         if len( args ) == 0 or ( len( args ) == 1 and type( args[0] ) is not pd.DatetimeIndex ):
