@@ -1657,13 +1657,13 @@ class DemandProfile:
                 
                 - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a single instant in time. The expected type for all these arguments is `int`, with ranges 1 to 12, 1 to 31, 0 to 23, and 0 to 59, respectively.
                 
-                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units`.
+                - `flowrate_units`, `power_units`, and `temp_units` can be used to customize the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units`.
                 
                 - `inclusive`, `freq`, and `tz` can be used to customize the generation of the `pandas.DatetimeIndex` instance. These keyword arguments are thus only taken into account when two `datetime.datetime` instances are provided as positional arguments. See `pandas.date_range <https://pandas.pydata.org/docs/reference/api/pandas.date_range.html>`_
 
         Returns
         -------
-        dictionary or `pandas.DataFrame`
+        `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ or `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_
             A dictionary is returned when the conditions for a single instant in time are asked for, whereas a `pandas.DataFrame` instance is returned when for periods of time.
 
         """
