@@ -1376,8 +1376,8 @@ class DemandProfile:
                 
         Returns
         -------
-        float, str, list, or None
-            Attribute defined by the name specified as argument.
+        Any
+            Attribute defined by the name introduced as argument. Possible return types include: `float`, `list`, `str`, 
 
         """
         return getattr(self, "_" + attribute_name, None)
