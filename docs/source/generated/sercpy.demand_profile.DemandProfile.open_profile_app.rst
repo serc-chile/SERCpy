@@ -1,7 +1,7 @@
 sercpy.demand_profile.DemandProfile.open_profile_app
 ====================================================
 
-.. image:: /images/my_diagram.png
+.. image:: /images/demand_profiles_app_img.png
    :alt: Short description of the image
    :width: 600px
    :align: center
