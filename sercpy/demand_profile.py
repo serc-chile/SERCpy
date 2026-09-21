@@ -1638,8 +1638,6 @@ class DemandProfile:
             
         If the conditions for a time period are asked for, this method returns a `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_. The first column's name is `"timestamp"` and it stores all the instants considered when computing the result.
         The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
-        
-        See :doc:`units`
             
         Parameters
         ----------
@@ -1658,7 +1656,7 @@ class DemandProfile:
                 
                 - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a signle instant in time.
                 
-                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`units`.
+                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units`.
                 
                 - `inclusive`, `freq`, and `tz` can be used to customize the generation of the `pandas.DatetimeIndex` instance. These keyword arguments are thus only taken into account when two `datetime.datetime` instances are provided as positional arguments. See `pandas.date_range <https://pandas.pydata.org/docs/reference/api/pandas.date_range.html>`_
 
