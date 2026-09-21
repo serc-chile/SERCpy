@@ -22,6 +22,8 @@ extensions = [
     'sphinx_new_tab_link',
 ]
 
+autosummary_generate_overwrite = False
+
 # Make the compiler interpret backticks (`word`) as code-like text
 default_role = "literal"
 
