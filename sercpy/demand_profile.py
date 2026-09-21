@@ -186,8 +186,8 @@ class DemandProfile:
     heat_demand_units : str, optional
         Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. See :doc:`units`
         
-    monthly_consumption : float, optional
-        Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels and electricity.
+    monthly_consumption : list of float, optional
+        Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels or electricity.
     
     heat_source : str, optional
         Name of the heat source. Needed if the heat demand is computed from `monthly_consumption`. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `'electricity'`, `'liquefied petroleum gas'`, `'natural gas'`, `'methane'`, `'propane'`, `'butane'`, `'diesel'`, `'coal'`, `'biomass'`.
