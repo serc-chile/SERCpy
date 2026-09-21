@@ -184,13 +184,13 @@ class DemandProfile:
         List of values >= 0, representing the heat demand of the thermal load in each month of the year. Either this parameter or `monthly_consumption` must be provided.
     
     heat_demand_units : str, optional
-        Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. Any of the following energy units is valid: `'kWh'`, `'MWh'`, `'J'`, `'kJ'`, `'MJ'`, `'BTU'`, `'kBTU'`, `'MBTU'`.
+        Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. See :doc:`units`
         
     monthly_consumption : float, optional
         Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels and electricity.
     
     heat_source : str, optional
-        Name of the heat source. Needed if the heat demand is computed from `monthly_consumption`. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `'electricity'`, `'lpg'`, `'ng'`, `'methane'`, `'propane'`, `'butane'`, `'diesel'`, `'coal'`, `'biomass'`.
+        Name of the heat source. Needed if the heat demand is computed from `monthly_consumption`. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `'electricity'`, `'liquefied petroleum gas'`, `'natural gas'`, `'methane'`, `'propane'`, `'butane'`, `'diesel'`, `'coal'`, `'biomass'`.
     
     consumption_units : str, optional
         Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`units`.
@@ -268,13 +268,13 @@ class DemandProfile:
         Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `T_units`/`temp_units`. See :doc:`units`.
     
     monthly_production : list of float, optional
-        List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with ambient temperature.
+        List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with the ambient temperature.
     
     Tamb_dependence : float, optional
         Level of dependence of thermal demand on ambient temperature. Valid range: 0 <= `Tamb_dependence` <= 3. It is not recommended to provide this parameter manually since the class is meant to automatically determine its value.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corr=(T[i]+0.5*T[i-1]+0.25*T[i-2]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
+        Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corrected=(T[i]+0.5*T[i-1]+0.25*T[i-2]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
     
     **kwargs : dict, optional
         For compatibility only.
@@ -520,30 +520,38 @@ class DemandProfile:
             heater_efficiency: float = 1,
             HV_type: str = 'LHV',
             fuel_density: Optional[ float ] = None,
-            fuel_HV: Optional[ float ] = None
+            fuel_density_units: Optional[ float ] = None,
+            fuel_HV: Optional[ float ] = None,
+            fuel_HV_units: Optional[ float ] = None
             
             ) -> float | list[ float ]:
         """
         Static method that converts the consumption of a certain energy source (electricity or fuel) to heat demand, assuming a constant efficiency for the heater.
+        
+        DemandProfile objects call this method automatically when `monthly_consumption` is provided to the initializing function.
 
         Parameters
         ----------
         energy_source_consumption : float or list of float
             Consumption or list of consumption values to convert.
         consumption_units : str
-            Consumption units. If the energy source is `'electricity'`, accepted values are energy units ().
+            Consumption units. If the `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`units`.
         energy_source_name : str, optional
-            Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. The default is None.
-        goal_units : TYPE, optional
-            DESCRIPTION. The default is 'J'.
-        heater_efficiency : TYPE, optional
+            Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. If not provided, it defaults to None.
+        goal_units : str, optional
+            Energy units in which the heat demand should be returned. If not provided, it defaults to `"J"`.
+        heater_efficiency : float, optional
             Efficiency of the heater as a floating point decimal value; e.g. 80% efficiency must be specified as 0.8. The default is 1.
-        HV_type : TYPE, optional
-            DESCRIPTION. The default is 'LHV'.
-        fuel_density : TYPE, optional
-            DESCRIPTION. The default is None.
-        fuel_HV : TYPE, optional
-            DESCRIPTION. The default is None.
+        HV_type : str, optional
+            Type of heating value to use. Its value must be either `"LHV"` (for lower heating value) or `"HHV"` (for higher heating value). The default is `"LHV"`.
+        fuel_density : float, optional
+            Density of the fuel used. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
+        fuel_density_units : str, optional
+            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`units`
+        fuel_HV : float, optional
+            Heating value of the fuel used as heat source, in terms of `energy/mass`. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
+        fuel_HV_units : str, optional
+            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`units`
 
         Returns
         -------
@@ -583,11 +591,17 @@ class DemandProfile:
                 fuel_density = float( fuel_density )
             except:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_density must be None or a value convertible to float.")
+            if fuel_HV_units is not None:
+                fuel_HV = convert_units(fuel_HV, fuel_HV_units, 'J/kg')
+            if fuel_density_units is not None:
+                fuel_density = convert_units(fuel_density, fuel_density_units, 'kg/m3')
         elif fuel_density is not None:
             try:
                 fuel_density = float( fuel_density )
             except:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_density must be None or a value convertible to float.")
+            if fuel_density_units is not None:
+                fuel_density = convert_units(fuel_density, fuel_density_units, 'kg/m3')
             if energy_source_name is None:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: Energy source not identified. Heating value must be provided manually.")
             elif energy_source_unknown:
@@ -607,6 +621,8 @@ class DemandProfile:
                 fuel_HV = float(fuel_HV)
             except:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_HV must be None or a value convertible to float.")
+            if fuel_HV_units is not None:
+                fuel_HV = convert_units(fuel_HV, fuel_HV_units, 'J/kg')
             if energy_source_name is None or energy_source_unknown:
                 try:
                     assert consumption_units in [ 'kg', 'ton', 'lb' ]
@@ -645,16 +661,18 @@ class DemandProfile:
                 energy_source_consumption = convert_units(energy_source_consumption, consumption_units, 'kg', density = fuel_density)
             except UnitsError:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
-            return heater_efficiency*fuel_HV*energy_source_consumption
+            energy_demand_J = heater_efficiency*fuel_HV*energy_source_consumption
+            return convert_units( energy_demand_J, 'J', goal_units )
         
         elif type( energy_source_consumption ) is list:
             if any( [ value < 0 for value in energy_source_consumption ] ):
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: value within list energy_source_consumption must be >= 0.")
+                raise ValueError("DemandProfile.consumption_to_thermal_demand: All values within list energy_source_consumption must be >= 0.")
             try:
                 energy_source_consumption = [ convert_units(value, consumption_units, 'kg', density = fuel_density) for value in energy_source_consumption  ]
             except UnitsError:
                 raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
-            return [ heater_efficiency*fuel_HV*value for value in energy_source_consumption ]
+            energy_demand_J = [ heater_efficiency*fuel_HV*value for value in energy_source_consumption ]
+            return convert_units(energy_demand_J, 'J', goal_units)
         
         raise Exception("DemandProfile.consumption_to_thermal_demand: Unknown error.")
     
