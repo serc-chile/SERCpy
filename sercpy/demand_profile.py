@@ -1639,11 +1639,14 @@ class DemandProfile:
         ----------
         *args : `datetime.datetime` or similar, or `pandas.DatetimeIndex`
             Positional arguments. No keyword allowed.
-            The function computes the results for a single instant in time if only one `datetime.datetime` instance is provided as positional arguments.
+            
+            The function computes the results for a single instant in time if only one `datetime.datetime` instance is provided as positional argument.
+            
             On the other hand, it returns the result for a time period if:
                 
                 - Two `datetime.datetime` instances are provided as positional arguments.
                 - A `pandas.DatetimeIndex` instance is provided as the only positional argument.
+        
         **kwargs :
             Keyword arguments. Accepted argument names are:
                 
