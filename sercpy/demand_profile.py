@@ -160,13 +160,13 @@ class DemandProfile:
         Specific heat capacity of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_cp_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `J/kg K`. See :doc:`units`.
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `"J/kg K"`. See :doc:`units`.
     
     fluid_density : float, optional
         Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_density_units : str, optional
-        Units in which `fluid_density` is being specified. If not provided, it defaults to `kg/m3`. See :doc:`units`.
+        Units in which `fluid_density` is being specified. If not provided, it defaults to `"kg/m3"`. See :doc:`units`.
     
     T_set : float or list of float
         Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
@@ -677,6 +677,21 @@ class DemandProfile:
         raise Exception("DemandProfile.consumption_to_thermal_demand: Unknown error.")
     
     def _week_constructor_1( self, ):
+        """
+        Private method that defines the attribute "weekly_demand_profile" from the attributes "daily_demand_profiles" and "weekly_demand_factors".
+        
+        "daily_demand_profiles" is a list of seven lists, where each list defines the dailt demand profile of one day of the week, starting on Monday.
+        
+        "weekly_demand_factors" is a list of seven values defining the relative daily thermal demand of each day of the week, starting on Monday.
+        
+        The generated attribute "weekly_demand_profile" is a list of 336 values defining how thermal demand is distributed throughout a whole week, with 30-minute resolution.
+
+        The method takes no arguments besides the DemandProfile instance.
+        
+        Returns
+        -------
+        None
+        """
         
         daily_demand_profiles = self.get_attribute( "daily_demand_profiles" )
         weekly_demand_factors = self.get_attribute( "weekly_demand_factors" )
@@ -698,6 +713,21 @@ class DemandProfile:
         self._weekly_demand_profile = weekly_demand_profile
             
     def _week_constructor_2(self):
+        """
+        Private method that defines the attributes "daily_demand_profiles" and "weekly_demand_factors" from individual daily profiles, and, if present, special demand ratios or profiles for weekend days.
+        
+        The generated attribute "daily_demand_profiles" is a list of seven lists, where each list defines the dailt demand profile of one day of the week, starting on Monday.
+        
+        The generated attribute "weekly_demand_factors" is a list of seven values defining the relative daily thermal demand of each day of the week, starting on Monday.
+        
+        This method calls the private method "_week_constructor_1" to define the attribute "weekly_demand_profile" from the attributes defined here.
+        
+        The method takes no arguments besides the DemandProfile instance.
+        
+        Returns
+        -------
+        None
+        """
         
         daily_demand_profile = self.get_attribute( "daily_demand_profile" )
         daily_demand_profile_saturday = self.get_attribute( "daily_demand_profile_saturday" )
@@ -824,6 +854,17 @@ class DemandProfile:
         self._week_constructor_1()
     
     def _week_constructor_3(self):
+        """
+        Private method that defines the attribute "weekly_demand_profile" from the attributes "op_start", "op_end", and, if present, special demand ratios or schedules for weekend days.
+        
+        The generated attribute "weekly_demand_profile" is a list of 336 values defining how thermal demand is distributed throughout a whole week, with 30-minute resolution.
+        
+        The method takes no arguments besides the DemandProfile instance.
+        
+        Returns
+        -------
+        None
+        """
         
         op_start = self.get_attribute( "op_start" )
         op_end = self.get_attribute( "op_end" )
