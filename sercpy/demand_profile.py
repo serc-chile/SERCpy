@@ -551,11 +551,11 @@ class DemandProfile:
         fuel_density : float, optional
             Density of the fuel used. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
         fuel_density_units : str, optional
-            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`units`
+            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`/units`
         fuel_HV : float, optional
             Heating value of the fuel used as heat source, in terms of `energy/mass`. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
         fuel_HV_units : str, optional
-            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`units`
+            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`/units`
 
         Returns
         -------
@@ -1354,27 +1354,30 @@ class DemandProfile:
     @classmethod
     def from_dict( cls, kwargs ):
         return cls(**kwargs)
-
+    
     def get_attribute(self, attribute_name):
         """
-        In addition to the demand conditions that can be obtained from the method :meth:`get_demand_conditions <DemandProfile.get_demand_conditions>`, there are several other results that are computed by DemandProfile instances during the construction process that may be useful for the user.
+        In addition to the demand conditions that can be obtained from the method :meth:`get_demand_conditions <DemandProfile.get_demand_conditions>`, there are several other results that are computed by `DemandProfile` instances during the construction process that may be useful to the user.
+        
+        These results can be obtained by using this method. If the DemandProfile instance does not have the attribute that the user is asking for, the method returns None.
         
         Parameters
         ----------
         attribute_name : str
             Name of the attribute to be returned. Possible names are:
                 
-                - `"weekly_demand_profile"` : List of 336 values defining how energy demand is distributed during an entire week, with 30-minute resolution.
+                - `"weekly_demand_profile"` : List of 336 values defining how thermal demand is distributed during an entire week, with 30-minute resolution.
                 - `"Tamb_dependence"` : Floating point value from 0 to 3, which defines the level of dependence of the thermal demand on the average daily temperature.
                 - `"monthly_T_set"` : List of 12 values that define the setpoint of the system for each month of the year, starting on January. Unit: °C
-                - `"monthly_T_in"` : List of 12 values that define temperature with which the heat transfer fluid enters the heating system for each month of the year, starting on January. Units: °C
-                - `"monthly_heat_demand"` : List of 12 values that define thermal energy demanded by the load during each month of the year, starting on January. Units: J
-                - `""`
+                - `"monthly_T_in"` : List of 12 values that define temperature with which the heat transfer fluid enters the heating system for each month of the year, starting on January. Unit: °C
+                - `"monthly_heat_demand"` : List of 12 values that define thermal energy demanded by the load during each month of the year, starting on January. Unit: J
+                - `"monthly_consumption"` : List of 12 values that define the monthly consumption of the heat source (electricity or fuel). This attribute is only available if the argument `monthly_consumption` was provided when defining the instance. If the heat source specified was `"electricity"`, the unit of the values returned is J (Joule). For fuels, the unit is kg.
+                - `"op_start"`, `"op_end"`, `"op_start_saturday"`, `"op_end_saturday"`, `"op_start_sunday"`, `"op_end_sunday"` : See the parameters with the same name in :doc:`the main documentation of the class </demand_profile_class>`.
                 
         Returns
         -------
-        TYPE
-            DESCRIPTION.
+        float, str, list, or None
+            Attribute defined by the name specified as argument.
 
         """
         return getattr(self, "_" + attribute_name, None)
