@@ -437,6 +437,10 @@ class DemandProfile:
                 HV_type = "HHV"
             else:
                 HV_type = "LHV"
+            if heat_source is not None and heat_source.upper() == 'ELECTRICITY':
+                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
+            else:
+                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
             self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency, HV_type, heat_source_density, heat_source_heating_value)
             self._heat_demand_units = "J"
         else:
@@ -1290,11 +1294,12 @@ class DemandProfile:
     def open_profile_app():
         """
         Static method to open the Profiles App of the class, developed on Python's GUI tool Tkinter.
+        
+        The method takes no arguments.
 
         Returns
         -------
         None.
-
         """
         profile_app.launch()
         
@@ -1351,6 +1356,27 @@ class DemandProfile:
         return cls(**kwargs)
 
     def get_attribute(self, attribute_name):
+        """
+        In addition to the demand conditions that can be obtained from the method :meth:`get_demand_conditions <DemandProfile.get_demand_conditions>`, there are several other results that are computed by DemandProfile instances during the construction process that may be useful for the user.
+        
+        Parameters
+        ----------
+        attribute_name : str
+            Name of the attribute to be returned. Possible names are:
+                
+                - `"weekly_demand_profile"` : List of 336 values defining how energy demand is distributed during an entire week, with 30-minute resolution.
+                - `"Tamb_dependence"` : Floating point value from 0 to 3, which defines the level of dependence of the thermal demand on the average daily temperature.
+                - `"monthly_T_set"` : List of 12 values that define the setpoint of the system for each month of the year, starting on January. Unit: °C
+                - `"monthly_T_in"` : List of 12 values that define temperature with which the heat transfer fluid enters the heating system for each month of the year, starting on January. Units: °C
+                - `"monthly_heat_demand"` : List of 12 values that define thermal energy demanded by the load during each month of the year, starting on January. Units: J
+                - `""`
+                
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         return getattr(self, "_" + attribute_name, None)
     
     @staticmethod
@@ -1360,7 +1386,7 @@ class DemandProfile:
         
         The value taken by this function could be interpreted as a 'dependece coefficient' of the thermal demand on the daily average ambient temperature.
         
-        The function returned takes average daily temperature values (in C) and returns a scalar factor that is more dependent on temperature for higher dependece coefficients.
+        The function returned takes average daily temperature values (in °C) and returns a scalar factor that is more dependent on temperature for higher dependece coefficients.
     
         Parameters
         ----------
