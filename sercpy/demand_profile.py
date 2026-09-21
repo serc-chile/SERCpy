@@ -1625,9 +1625,10 @@ class DemandProfile:
         """
         Method to obtain the demand conditions for a certain instant or time period.
         
-        The standard way of obtaining the demand conditions for a single instant in time is by providing a `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instance as the only positional argument.
+        The standard way of obtaining the demand conditions for a single instant in time is by providing a `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instance as the only positional argument. See ****kwargs** for an alternative way.
         
         The conditions for a time period can be obtained either by providing two `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instances, or a single `pandas.DatetimeIndex <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.html>`_, as positional arguments.
+        In the former case, a `pandas.DatetimeIndex` instance is generated internally with minutal frequency, both ends included, and no time zone. See ****kwargs** to customize these conditions.
         
         If the conditions for a single instant are asked for, this method returns a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following keys:
             
