@@ -1629,14 +1629,14 @@ class DemandProfile:
         
         The conditions for a time period can be obtained either by providing two `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instances, or a single `pandas.DatetimeIndex <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.html>`_, as positional arguments.
         
-        If the conditions for a single instant are asked for, this method returns a dictionary with the following keys:
+        If the conditions for a single instant are asked for, this method returns a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following keys:
             
             - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user.
             - `"demanded_power"`: Thermal power demanded, obtained from the flowrate and the enthalpy change between the inlet temperature and the setpoint. The unit is W unless a different unit is specified by the user.
             - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
             - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
             
-        If the conditions for a time period are asked for, this method returns a `pandas.DataFrame` object. The first column's name is `"timestamp"` and it stores all instants considered when computing the result.
+        If the conditions for a time period are asked for, this method returns a `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_. The first column's name is `"timestamp"` and it stores all the instants considered when computing the result.
         The other columns of the DataFrame have the same names as the keys of the dictionary mentioned above, and store the same variables.
             
         Parameters
