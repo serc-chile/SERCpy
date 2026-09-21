@@ -4,7 +4,7 @@ div.nblast.container {
 }
 
 code, .rst-content code.literal, .rst-content tt.literal {
-    font-size: 100% !important;
+    font-size: 93% !important;
 }
 
 /* ...but keep two back-to-back code cells tight, like a real notebook */
