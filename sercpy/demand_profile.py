@@ -1625,6 +1625,10 @@ class DemandProfile:
         """
         Method to obtain the demand conditions for a certain instant or time period.
         
+        The standard way of obtaining the demand conditions for a single instant in time is by providing a `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instance as the only positional argument.
+        
+        The conditions for a time period can be obtained either by providing two `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instances, or a single `pandas.DatetimeIndex <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.html>`_, as positional arguments.
+        
         If the conditions for a single instant are asked for, this method returns a dictionary with the following keys:
             
             - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user.
@@ -1640,9 +1644,9 @@ class DemandProfile:
         *args : `datetime.datetime` or similar, or `pandas.DatetimeIndex`
             Positional arguments. No keyword allowed.
             
-            The function computes the results for a single instant in time if only one `datetime.datetime` instance is provided as positional argument.
+            The function returns the results for a single instant in time if only one `datetime.datetime` instance is provided as positional argument.
             
-            On the other hand, it returns the result for a time period if:
+            On the other hand, the function returns the result for a time period if:
                 
                 - Two `datetime.datetime` instances are provided as positional arguments.
                 - A `pandas.DatetimeIndex` instance is provided as the only positional argument.
