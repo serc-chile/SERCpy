@@ -535,7 +535,7 @@ class DemandProfile:
         energy_source_consumption : float or list of float
             Consumption or list of consumption values to convert.
         consumption_units : str
-            Consumption units. If the `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`units`.
+            Units in which `energy_source_consumption` is being specified. If `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`units`.
         energy_source_name : str, optional
             Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. If not provided, it defaults to None.
         goal_units : str, optional
