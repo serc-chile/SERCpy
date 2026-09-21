@@ -1,5 +1,5 @@
-sercpy.demand_profile.DemandProfile.open_profile_app
-====================================================
+DemandProfile.open_profile_app
+==============================
 
 .. image:: /images/demand_profiles_app_img.png
    :alt: Short description of the image
