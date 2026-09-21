@@ -1652,7 +1652,7 @@ class DemandProfile:
                 
                 - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a signle instant in time.
                 
-                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is anallowed alias for `temp_units`.
+                - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is anallowed alias for `temp_units`. See :doc:`units`.
                 
                 - `inclusive`, `freq`, and `tz` can be used to customize the generation of the `pandas.DatetimeIndex` instance. These keyword arguments are thus only taken into account when two `datetime.datetime` instances are provided as positional arguments. See `pandas.date_range <https://pandas.pydata.org/docs/reference/api/pandas.date_range.html>`_
 
@@ -1662,28 +1662,6 @@ class DemandProfile:
             A dictionary is returned when the conditions for a single instant in time are asked for, whereas a `pandas.DataFrame` instance is returned when for periods of time.
 
         """
-        
-        if "flowrate_units" in kwargs:
-            def convert_flowrate(flowrate):
-                return convert_units(flowrate, 'kg/s', kwargs[ "flowrate_units" ],  density = self.get_attribute( "fluid_density" ))
-        else:
-            convert_flowrate = lambda flowrate: flowrate
-        
-        if "power_units" in kwargs:
-            def convert_power(power):
-                return convert_units(power, 'W', kwargs[ "power_units" ])
-        else:
-            convert_power = lambda power: power
-        
-        if "temp_units" in kwargs or "T_units" in kwargs:
-            if "temp_units" in kwargs:
-                temp_units = kwargs[ "temp_units" ]
-            else:
-                temp_units = kwargs[ "T_units" ]
-            def convert_temp(T):
-                return convert_units(T, 'C', temp_units)
-        else:
-            convert_temp = lambda T: T
         
         if len( args ) == 0 or ( len( args ) == 1 and type( args[0] ) is not pd.DatetimeIndex ):
             
@@ -1728,12 +1706,23 @@ class DemandProfile:
             
             flowrate, demanded_power, T_in, T_set = self._return_single_instant(month, day, hour, minute)
             
+            if "flowrate_units" in kwargs:
+                flowrate = convert_units(flowrate, "kg/s", kwargs[ "flowrate_units" ], density = self.get_attribute( "fluid_density" ))
+            if "power_units" in kwargs:
+                demanded_power = convert_units(demanded_power, 'W', kwargs[ "power_units" ])
+            if "temp_units" in kwargs:
+                T_in = convert_units(T_in, 'C', kwargs[ "temp_units" ])
+                T_set = convert_units(T_set, 'C', kwargs[ "temp_units" ])
+            elif "T_units" in kwargs:
+                T_in = convert_units(T_in, 'C', kwargs[ "T_units" ])
+                T_set = convert_units(T_set, 'C', kwargs[ "T_units" ])
+                
             return {
                 
-                'flowrate': convert_flowrate(flowrate),
-                'demanded_power': convert_power(demanded_power),
-                'T_in': convert_temp(T_in),
-                'T_set': convert_temp(T_set),
+                'flowrate': flowrate,
+                'demanded_power': demanded_power,
+                'T_in': T_in,
+                'T_set': T_set,
                 
                 }
         
@@ -1770,10 +1759,16 @@ class DemandProfile:
                 
             flowrate_list, demanded_power_list, T_in_list, T_set_list = self._return_lists_from_date_range( date_range )
             
-            flowrate_list = [ convert_flowrate( flowrate ) for flowrate in flowrate_list ]
-            demanded_power_list = [ convert_power( power ) for power in demanded_power_list ]
-            T_in_list = [ convert_temp( T ) for T in T_in_list ]
-            T_set_list = [ convert_temp( T ) for T in T_set_list ]
+            if "flowrate_units" in kwargs:
+                flowrate_list = convert_units(flowrate_list, "kg/s", kwargs[ "flowrate_units" ], density = self.get_attribute( "fluid_density" ))
+            if "power_units" in kwargs:
+                demanded_power_list = convert_units(demanded_power_list, 'W', kwargs[ "power_units" ])
+            if "temp_units" in kwargs:
+                T_in_list = convert_units(T_in_list, 'C', kwargs[ "temp_units" ])
+                T_set_list = convert_units(T_set_list, 'C', kwargs[ "temp_units" ])
+            elif "T_units" in kwargs:
+                T_in_list = convert_units(T_in_list, 'C', kwargs[ "T_units" ])
+                T_set_list = convert_units(T_set_list, 'C', kwargs[ "T_units" ])
             
             df = pd.DataFrame.from_dict( {
                 
