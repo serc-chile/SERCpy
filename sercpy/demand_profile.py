@@ -1626,8 +1626,9 @@ class DemandProfile:
         Method to obtain the demand conditions for a certain instant or time period.
         
         If the conditions for a single instant are asked for, this method returns a dictionary with the following keys:
+            
             - `"flowrate"`: Flowrate value in kg/s, unless a different unit is specified by the user.
-            - `"demanded_power"`: Thermal power demanded, given by the flowrate and the enthalpy change needed. The units are 'W' unless something different is specified by the user.
+            - `"demanded_power"`: Thermal power demanded, obtained from the flowrate and the enthalpy change between the inlet temperature and the setpoint. The unit is W unless a different unit is specified by the user.
             - `"T_in"`: Temperature of the flow when it enters the heating system. The units are C unless a different unit is specified by the user.
             - `"T_set"`: Setpoint of the heating system, i.e. the temperature with which the heat transfer fluid is meant to leave the heating system. The units are C unless other units are specified by the user.
             
