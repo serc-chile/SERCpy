@@ -1655,7 +1655,7 @@ class DemandProfile:
         **kwargs :
             Keyword arguments. Accepted argument names are:
                 
-                - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a signle instant in time.
+                - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a single instant in time. The expected type for all these arguments is `int`, with ranges 1 to 12, 1 to 31, 0 to 23, and 0 to 59, respectively.
                 
                 - `flowrate_units`, `power_units`, and `temp_units` can be used to specify the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units`.
                 
