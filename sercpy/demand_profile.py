@@ -10,7 +10,6 @@ import pandas as pd
 import warnings
 import numpy as np
 from datetime import datetime
-from . import profile_app
 from timeit import default_timer
 from types import SimpleNamespace
 from .units import (
@@ -1327,6 +1326,7 @@ class DemandProfile:
         -------
         None.
         """
+        from . import profile_app
         profile_app.launch()
         
     @staticmethod
