@@ -25,7 +25,7 @@ The thermal demand is determined on a daily basis using the average temperature 
 
 This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False` (see :doc:`Class DemandProfile <demand_profile_class>`).
 
-Two limitations of the method just exposed are the following:
+Two limitations of the method just discussed are the following:
 
    - **The levels of dependence are discrete.** As can be seen in the picture, the first dependence level (0) corresponds to a thermal load that presents almost no dependence on ambient temperature, whereas in the second level (1), the thermal demand in June and July is more than twice the demand in December and January. Therefore, there is a considerable spectrum of intermediate cases being left aside.
    - **Most users do now know which dependence level they belong to.** The numbers associated with each dependence level (integers 0 to 3) have little mathematical meaning, other than "the larger the value, the steeper the increase in demand when temperature drops". Thus, this classification method has little applicability without a method to determine the level of dependence of each user.
