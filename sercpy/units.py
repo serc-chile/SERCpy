@@ -240,25 +240,60 @@ def _isolate_units( unit_string ):
         unit_list.remove( '' )
     return set( unit_list )
 
-def _identify_variable_type( units ):
+def get_unit_type( unit: str ) -> str | None:
+    """
+    Function that takes the unit of a physical quantity and identifies the type of quantity involved.
     
-    if not '/' in units:
+    When the type of the unit cannot be identified, the function returns None.
+    
+    The possible unit types that can be identified are:
+        
+        - time
+        - energy
+        - pressure
+        - distance
+        - area
+        - volume
+        - mass
+        - temperature
+        - power
+        - density
+        - volumetric_flowrate
+        - mass_flowrate
+        - power
+        - specific_energy_mass
+        - specific_energy_volume
+        - specific_heat_capacity
+
+    Parameters
+    ----------
+    unit : str
+        Unit to identify.
+
+    Returns
+    -------
+    str or None
+        If the unit type can be identified, it is returned as a string. Else, None is returned.
+
+    """
+    
+    if not '/' in unit:
         try:
-            basic_unit_set = _isolate_units( units )
+            basic_unit_set = _isolate_units( unit )
             assert len( basic_unit_set ) == 1
             basic_unit = basic_unit_set.pop()
             assert basic_unit in unit_type_dict
         except:
-            raise UnitsError(f"Variable type could not be identified from units: {units}")
+            return None
         return unit_type_dict[ basic_unit ]
     
-    units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
+    units_numerator, units_denominator = _isolate_units( unit.split('/')[0] ), _isolate_units( unit.split('/')[1] )
     
     try:
         unit_types_numerator = { unit_type_dict[ unit ] for unit in units_numerator }
         unit_types_denominator = { unit_type_dict[ unit ] for unit in units_denominator }
     except KeyError:
-        raise UnitsError(f"Variable type could not be identified from units: {units}")
+        return None
     
     if unit_types_numerator == {'mass'} and unit_types_denominator == {'volume'}:
         return 'density'
@@ -281,7 +316,7 @@ def _identify_variable_type( units ):
     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
         return 'specific_heat_capacity'
     
-    raise UnitsError(f"Variable type could not be identified from units: {units}")
+    return None
     
 def _conversion_factor_to_basic_units( units ):
     
@@ -400,7 +435,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
                 
         elif '/' in original_units and not '/' in goal_units:
             
-            if not ( _identify_variable_type( original_units ) == 'power' and goal_units in unit_type_dict and unit_type_dict[ goal_units ] ) == 'power':
+            if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
                 raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
             
             original_units_to_W_factor = _conversion_factor_to_basic_units( original_units )
@@ -410,7 +445,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         
         elif not '/' in original_units and '/' in goal_units:
             
-            if not ( _identify_variable_type( goal_units ) == 'power' and original_units in unit_type_dict and unit_type_dict[ original_units ] ) == 'power':
+            if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
                 raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
                 
             original_units_to_W_factor = unit_database[ unit_type_dict[ original_units ] ][ original_units ]
@@ -420,8 +455,13 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
             
         elif '/' in original_units and '/' in goal_units:
             
-            var_type_1 = _identify_variable_type( original_units )
-            var_type_2 = _identify_variable_type( goal_units )
+            var_type_1 = get_unit_type( original_units )
+            var_type_2 = get_unit_type( goal_units )
+            
+            if var_type_1 is None:
+                raise UnitsError(f"convert_units: Unit type of original_units '{original_units}' could not be identified.")
+            if var_type_2 is None:
+                raise UnitsError(f"convert_units: Unit type of goal_units '{goal_units}' could not be identified.")
             
             if not ( var_type_1 == var_type_2 or ( var_type_1.endswith( 'flowrate' ) and var_type_2.endswith( 'flowrate' ) ) ):
                 raise UnitsError("Unit conversion error: original units and goal units do not belong to the same variable type.")

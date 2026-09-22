@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from .units import (
     
     convert_units,
+    get_unit_type,
     UnitsError,
     )
 from .core import (
@@ -199,7 +200,7 @@ class DemandProfile:
         Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
     
     heat_source_heating_value : float, optional
-        Heating value of the heat source (fuel). Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
+        Heating value of the heat source (fuel). Only useful when `monthly_consumption` is specified to compute the heat demand.  Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
     
     heat_source_heating_value_units : str, optional
         Units in which `heat_source_heating_value` is being provided. Only specific energy units in terms of mass (not volume) are allowed. If not provided, it defaults to `J/kg`. See :doc:`units`.
@@ -211,7 +212,7 @@ class DemandProfile:
         Units in which `heat_source_density` is being provided. If not provided, it defaults to `kg/m3`. See :doc:`units`.
     
     condensation_boiler : bool, optional
-        Whether the heater corresponds to a condensation boiler. 
+        Whether the heater corresponds to a condensation boiler. If set to True, the higher heating value of the selected fuel is used to compute the heat demand from consumption values.
         
     daily_demand_profile : list of float, optional
         List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
@@ -385,7 +386,7 @@ class DemandProfile:
             self._fluid_cp = 1050
             self._fluid_density = 1.204
         elif self._fluid == "THERMINOL_66":
-            self._fluid_cp = 2
+            self._fluid_cp = 2000
             self._fluid_density = 920
         if fluid_cp is not None:
             self._fluid_cp = self.validate_argument("fluid_cp", fluid_cp)
@@ -401,22 +402,66 @@ class DemandProfile:
             
         if monthly_heat_demand is not None:
             self._monthly_heat_demand = self.validate_argument("monthly_heat_demand", monthly_heat_demand)
-            if heat_demand_units is not None:
-                self._heat_demand_units = self.validate_argument("heat_demand_units", heat_demand_units)
-            else:
+            heat_demand_units = self.validate_argument("heat_demand_units", heat_demand_units)
+            if heat_demand_units is None:
                 warnings.warn("Class DemandProfile: 'monthly_heat_demand' argument was provided but no 'heat_demand_units'. Joule is assumed as default.")
-                self._heat_demand_units = 'J'
+            else:
+                try:
+                    self._monthly_heat_demand = convert_units(self._monthly_heat_demand, heat_demand_units, 'J')
+                except UnitsError:
+                    raise ValueError( f"Class DemandProfile: monthly_heat_demand could not be converted from the energy units provided: {heat_demand_units}." )
         elif monthly_consumption is not None:
             monthly_consumption = self.validate_argument("monthly_consumption", monthly_consumption)
             if consumption_units is None:
                 raise ValueError("Class DemandProfile: Argument 'consumption_units' must be provided along with 'monthly_consumption'.")
-            else:
-                consumption_units = self.validate_argument("consumption_units", consumption_units)
+            consumption_units = self.validate_argument("consumption_units", consumption_units)
             if heater_efficiency is None:
                 heater_efficiency = 0.8
             else:
                 heater_efficiency = self.validate_argument("heater_efficiency", heater_efficiency)
+            
             heat_source = self.validate_argument("heat_source", heat_source)
+            
+            if heat_source == "ELECTRICITY":
+                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
+                self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency)
+                return
+            
+            heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
+            heat_source_density_units = self.validate_argument("heat_source_density_units", heat_source_density_units)
+            
+            heat_source_heating_value = self.validate_argument("heat_source_heating_value", heat_source_heating_value)
+            heat_source_heating_value_units = self.validate_argument("heat_source_heating_value_units", heat_source_heating_value_units)
+            
+            if heat_source_density is not None and heat_source_density_units is not None:
+                try:
+                    heat_source_density = convert_units(heat_source_density, heat_source_density_units, 'kg/m3')
+                except UnitsError:
+                    raise ValueError( "Class DemandProfile: heat_source_density could not be converted from the units specified: {heat_source_density_units}." )
+            elif heat_source_density is None and heat_source in Energy_Sources_Database:
+                heat_source_density = Energy_Sources_Database[ heat_source ][ 'density' ]
+            
+            if heat_source_heating_value is not None and heat_source_heating_value_units is not None:
+                try:
+                    heat_source_heating_value = convert_units( heat_source_heating_value, heat_source_heating_value_units, 'J/kg' )
+                except UnitsError:
+                    raise ValueError( "Class DemandProfile: heat_source_heating_value could not be converted from the units specified: {heat_source_heating_value_units}." )
+            elif heat_source_heating_value is None and heat_source in Energy_Sources_Database:
+                if condensation_boiler is not None:
+                    condensation_boiler = self.validate_argument("condensation_boiler", condensation_boiler)
+                else:
+                    condensation_boiler = False
+                if condensation_boiler:
+                    heat_source_heating_value = Energy_Sources_Database[ heat_source ][ 'HHV' ]
+                else:
+                    heat_source_heating_value = Energy_Sources_Database[ heat_source ][ 'LHV' ]
+                    
+            if heat_source_heating_value is None:
+                raise ValueError( "Class DemandProfile: Unidentified heat source. Heating value could not be determined. This value can be specified manually through the argument 'heat_source_heating_value'." )
+            
+            if heat_source_density is None and 
+                
+            
             heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
             if heat_source_density is not None and heat_source_density_units is not None:
                 heat_source_density = convert_units(heat_source_density, heat_source_density_units, 'kg/m3')
@@ -424,11 +469,11 @@ class DemandProfile:
             if heat_source_heating_value is not None and heat_source_heating_value_units is not None:
                 heat_source_heating_value = convert_units( heat_source_heating_value, heat_source_heating_value_units, 'J/kg' )
             valid_heat_source = any( [ 
-                heat_source is not None,
+                heat_source is not None and heat_source in Energy_Sources_Database,
                 heat_source_heating_value is not None and consumption_units in [ "kg", "ton", "lb" ],
                 heat_source_heating_value is not None and heat_source_density is not None ] )
             if not valid_heat_source:
-                raise ValueError("Class DemandProfile: Not enough data to convert consumption to heat demand.")
+                raise ValueError("Class DemandProfile: Not enough information to convert consumption data to heat demand. Either a heat source with a valid name must be provided, or the heating value and the density must be provided manually.")
             if condensation_boiler is not None:
                 condensation_boiler = self.validate_argument("condensation_boiler", condensation_boiler)
             else:
@@ -437,7 +482,7 @@ class DemandProfile:
                 HV_type = "HHV"
             else:
                 HV_type = "LHV"
-            if heat_source is not None and heat_source.upper() == 'ELECTRICITY':
+            if heat_source == 'ELECTRICITY':
                 self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
             else:
                 self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
@@ -1201,13 +1246,6 @@ class DemandProfile:
                 assert all([ v >= 0 for v in value ]) and sum(value) > 0
             except:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a list of values convertible to type 'float', all of which must be >= 0. At least one of them must be > 0.")
-        
-        if argument_name == "normalize_daily_demand":
-            
-            try:
-                assert type(value) is bool
-            except:
-                raise ValueError("Class DemandProfile: Argument 'normalize_daily_demand' must be a boolean value.")
                 
         if argument_name in [ "T_set", "T_in" ]:
             temp_limits = [ [ 25, 150 ], [ 2,130 ] ][ [ "T_set", "T_in" ].index( argument_name ) ]
@@ -1257,10 +1295,9 @@ class DemandProfile:
         
         if argument_name == "smooth_Tamb_profile":
             
-            try:
-                assert type(value) is bool
-            except:
+            if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
                 raise ValueError("Class DemandProfile: smooth_Tamb_profile must be a boolean value.")
+            value = bool( value )
                 
         if argument_name == "year":
             
@@ -1273,6 +1310,7 @@ class DemandProfile:
         if argument_name == "heat_source":
             try:
                 value = str(value)
+                value = value.upper()
             except:
                 raise ValueError("Class DemandProfile: Argument 'heat_source' must be convertible to string.")
                 
@@ -1311,8 +1349,9 @@ class DemandProfile:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be > 0.")
                 
         if argument_name == "condensation_boiler":
-            if not type(value) is bool:
+            if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
                 raise ValueError("Class DemandProfile: Argument 'condensation_boiler' must be boolean.")
+            value = bool( value )
         
         return value
         
@@ -1417,7 +1456,9 @@ class DemandProfile:
         
         One of the main features of DemandProfile instances is that they are capable of modeling how thermal demand varies because of changes in ambient temperature.
         
-        The method used by SERCpy is based on the `Paper presented by Jesper et al. (doi: 10.1016/j.ecmx.2021.100085) <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_
+        The method used by SERCpy is based on the `Paper presented by Jesper et al. (DOI: 10.1016/j.ecmx.2021.100085) <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_
+        
+        The authors of that work
         
         Function that takes a numeric value from 0 two 3 (both limits as well as non-integer values are allowed), and returns another function, which computes a scalar factor to take into account the dependence of thermal demand on ambient temperature.
         
@@ -1602,10 +1643,6 @@ class DemandProfile:
         fluid_cp = self.get_attribute( "fluid_cp"  )
         smooth_Tamb_profile = self.get_attribute( "smooth_Tamb_profile" )
         starting_week_day = datetime(self.get_attribute( "year" ), 1, 1).weekday()
-        heat_demand_units = self.get_attribute( "heat_demand_units" )
-        
-        if heat_demand_units is not None:
-            monthly_heat_demand = [ convert_units(value, heat_demand_units, 'J') for value in monthly_heat_demand ]
         
         if Tamb_profile is None:
             warnings.warn("Class DemandProfile: Attribute 'Tamb_profile' has not been defined. The dependence of demand on ambient temperature will not be considered.")
