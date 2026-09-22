@@ -153,8 +153,8 @@ The main tool that allows to work with different units is the function `convert_
 
 .. autofunction:: sercpy.units.convert_units
 
-Identifying unit type
----------------------
+Identifying the type of unit
+----------------------------
 
 Another feature that may be helpful to some users is the ability to determine the type of variable that corresponds to some unit; e.g., getting the result `"power"` from the input `"BTU/hr"`. This can be done with the function `get_unit_type`, which is documented below.
 
