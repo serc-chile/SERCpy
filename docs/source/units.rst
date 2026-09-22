@@ -152,3 +152,5 @@ Unit converting function
 The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
 .. autofunction:: sercpy.units.convert_units
+
+.. autofunction:: sercpy.units.get_unit_type
