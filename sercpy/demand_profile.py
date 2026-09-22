@@ -1417,7 +1417,7 @@ class DemandProfile:
         
         One of the main features of DemandProfile instances is that they are capable of modeling how thermal demand varies because of changes in ambient temperature.
         
-        The method used by SERCpy is based on the  
+        The method used by SERCpy is based on the `Paper presented by Jesper et al. (doi: 10.1016/j.ecmx.2021.100085) <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_
         
         Function that takes a numeric value from 0 two 3 (both limits as well as non-integer values are allowed), and returns another function, which computes a scalar factor to take into account the dependence of thermal demand on ambient temperature.
         
