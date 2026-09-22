@@ -5,14 +5,14 @@ One of the main features of DemandProfile instances is that they are capable of 
 
 The method used by SERCpy is based on the `Paper presented by Jesper et al. (DOI: 10.1016/j.ecmx.2021.100085) <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_
 
-The authors of that work
+The authors of that work proposed to classify thermal loads in four discrete levels of dependence of the thermal demand on ambient temperature. 
 
-.. figure:: /images/demand_profiles_app_img.png
-   :alt: Screenshot of the Profile App of SERCpy while being used
+.. figure:: /images/Tamb_dependence_img.png
+   :alt: Yearly thermal demand profiles assuming different levels of ambient temperature dependence
    :width: 600px
    :align: center
 
-   Daily demand profile with a 1-hour time resolution being specified with the Profile App
+   The same total yearly demand 
 
 .. currentmodule:: sercpy.demand_profile
 
