@@ -146,8 +146,8 @@ where:
   - `T` stands for any temperature unit
   - `t` stands for any time unit
 
-Unit converting function
-------------------------
+Converting units
+----------------
 
 The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
