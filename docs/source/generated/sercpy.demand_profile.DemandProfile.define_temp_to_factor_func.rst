@@ -7,3 +7,13 @@ The method used by SERCpy is based on the `Paper presented by Jesper et al. (DOI
 
 The authors of that work
 
+.. figure:: /images/demand_profiles_app_img.png
+   :alt: Screenshot of the Profile App of SERCpy while being used
+   :width: 600px
+   :align: center
+
+   Daily demand profile with a 1-hour time resolution being specified with the Profile App
+
+.. currentmodule:: sercpy.demand_profile
+
+.. automethod:: DemandProfile.open_profile_app
