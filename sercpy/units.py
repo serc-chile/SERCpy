@@ -272,7 +272,7 @@ def get_unit_type( unit: str ) -> str:
 
     Returns
     -------
-    str or None
+    str or NoneType
         If the unit type can be identified, it is returned as a string. Else, None is returned.
 
     """
