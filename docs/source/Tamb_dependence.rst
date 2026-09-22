@@ -23,10 +23,11 @@ The thermal demand is determined on a daily basis using the average temperature 
 
    T_{i, \, \mathrm{corr}} = \frac{ T_i + 0.5 \, T_{i-1} + 0.25 \, T_{i-2} + 0.125 \, T_{i-3}  }{1+0.5+0.25+0.125}
 
-This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False`. See :doc:`Class DemandProfile <demand_profile_class>`
+This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False` (see :doc:`Class DemandProfile <demand_profile_class>`).
 
 Two limitations of the method just exposed are the following:
 
    - **The levels of dependence are discrete.** As can be seen in the picture, the first dependence level (0) corresponds to a thermal load that presents almost no dependence on ambient temperature, whereas in the second level (1), the thermal demand in June and July is more than twice the demand in December and January. Therefore, there is a considerable spectrum of intermediate cases being left aside.
-   - **Most users do now know to which dependence level they belong.** The numbers associated with each dependence level (integers 0 to 3) have little mathematical meaning, other than "the larger the value, the steeper the increase in demand when temperature drops". Thus, this classification method has little applicability without a method to determine the level of dependence of each user.
+   - **Most users do now know which dependence level they belong to.** The numbers associated with each dependence level (integers 0 to 3) have little mathematical meaning, other than "the larger the value, the steeper the increase in demand when temperature drops". Thus, this classification method has little applicability without a method to determine the level of dependence of each user.
 
+To address the limitations just discussed, **SERCpy** expanded the discrete dependence levels to a continuum from 0 to 3; this means that intermediate dependence levels are now available. Moreover, an algorithm to determine the dependence level was introduced. In order for this algorithm to work, the user has to provide a yearly ambient temperature profile when initializing the `DemandProfile` instance. This is done through the argument `Tamb_profile`  (see :doc:`Class DemandProfile <demand_profile_class>`).
