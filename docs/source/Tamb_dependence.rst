@@ -21,7 +21,7 @@ The thermal demand is determined on a daily basis using the average temperature 
 
 .. math::
 
-   T_{i, corr} = \frac{ T_i + 0.5 \cdot T_{i-1} + 0.25 \cdot T_{i-2} + 0.125 \cdot T_{i-3}  }{1+0.5+0.25+0.125}
+   T_{i, corr} = \frac{ T_i + 0.5 \, T_{i-1} + 0.25 \, T_{i-2} + 0.125 \, T_{i-3}  }{1+0.5+0.25+0.125}
 
 This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False`.
 
