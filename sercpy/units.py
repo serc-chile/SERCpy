@@ -240,7 +240,7 @@ def _isolate_units( unit_string ):
         unit_list.remove( '' )
     return set( unit_list )
 
-def get_unit_type( unit: str ) -> str | None:
+def get_unit_type( unit: str ) -> str:
     """
     Function that takes the unit of a physical quantity and identifies the type of quantity involved.
     

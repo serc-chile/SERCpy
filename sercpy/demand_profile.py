@@ -125,7 +125,9 @@ DemandProfile_accepted_args = [
     "consumption_units",
     "heater_efficiency",
     "heat_source_heating_value",
+    "heat_source_heating_value_units",
     "heat_source_density",
+    "heat_source_density_units",
     "condensation_boiler",
     
     "monthly_production",
@@ -459,37 +461,20 @@ class DemandProfile:
             if heat_source_heating_value is None:
                 raise ValueError( "Class DemandProfile: Unidentified heat source. Heating value could not be determined. This value can be specified manually through the argument 'heat_source_heating_value'." )
             
-            if heat_source_density is None and 
-                
+            if heat_source_density is None and get_unit_type( consumption_units ) != 'mass':
+                raise ValueError( "Class DemandProfile: Unidentified heat source. Heat source density could not be determined. Possible fixes: (1) Specify consumption in terms of mass, (2) Specify a valid heat source name, (3) Specify the heat source density manually through the argument 'heat_source_density'." )
             
-            heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
-            if heat_source_density is not None and heat_source_density_units is not None:
-                heat_source_density = convert_units(heat_source_density, heat_source_density_units, 'kg/m3')
-            heat_source_heating_value = self.validate_argument("heat_source_heating_value", heat_source_heating_value)
-            if heat_source_heating_value is not None and heat_source_heating_value_units is not None:
-                heat_source_heating_value = convert_units( heat_source_heating_value, heat_source_heating_value_units, 'J/kg' )
-            valid_heat_source = any( [ 
-                heat_source is not None and heat_source in Energy_Sources_Database,
-                heat_source_heating_value is not None and consumption_units in [ "kg", "ton", "lb" ],
-                heat_source_heating_value is not None and heat_source_density is not None ] )
-            if not valid_heat_source:
-                raise ValueError("Class DemandProfile: Not enough information to convert consumption data to heat demand. Either a heat source with a valid name must be provided, or the heating value and the density must be provided manually.")
-            if condensation_boiler is not None:
-                condensation_boiler = self.validate_argument("condensation_boiler", condensation_boiler)
-            else:
-                condensation_boiler = False
-            if condensation_boiler:
-                HV_type = "HHV"
-            else:
-                HV_type = "LHV"
-            if heat_source == 'ELECTRICITY':
-                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
-            else:
-                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
-            self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency, HV_type, heat_source_density, heat_source_heating_value)
-            self._heat_demand_units = "J"
+            self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
+            self._monthly_heat_demand = self.consumption_to_thermal_demand(
+                
+                energy_source_consumption=monthly_consumption,
+                consumption_units = consumption_units,
+                heater_efficiency = heater_efficiency,
+                fuel_density = heat_source_density,
+                fuel_HV = heat_source_heating_value )
+
         else:
-            raise ValueError("Class DemandProfile: either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
+            raise ValueError("Class DemandProfile: Either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
 
         if weekly_demand_profile is not None:
             weekly_demand_profile = self.validate_argument("weekly_demand_profile", weekly_demand_profile)
@@ -1347,6 +1332,16 @@ class DemandProfile:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be convertible to type 'float'.")
             if value <= 0:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be > 0.")
+        
+        if argument_name in [
+                
+                "heat_source_heating_value_units",
+                "heat_source_density_units" ]:
+            
+            try:
+                value = str(value)
+            except:
+                raise ValueError(f"Class DemandProfile: Argument '{argument_name}' must be a string.")
                 
         if argument_name == "condensation_boiler":
             if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
