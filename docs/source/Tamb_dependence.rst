@@ -17,6 +17,12 @@ The authors of the aforementioned work proposed to classify thermal loads in fou
    
    Results of the same yearly thermal energy demand being distributed throughout the year while assuming different levels of dependence of thermal demand on ambient temperature.
 
+The thermal demand is determined on a daily basis using the average temperature of the corresponding day to obtain a scalar factor that is proportional to the total demand of that day. The dependence level determines how much that scalar factor changes depending on the daily temperature. It was also stated by the authors of the `study <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_ that the accuracy of the algorithm can be improved by obtaining a corrected version of the daily temperature that also considers the temperature of the three preceding days:
+
+.. math::
+
+   T_{i, corr} = \frac{ T_i + 0.5 \cdot T_{i-1} + 0.25 \cdot T_{i-2} + 0.125 \cdot T_{i-3}  }{1+0.5+0.25+0.125}
+
 Two limitations of the method just exposed are the following:
 
    - **The levels of dependence are discrete.** As can be seen in the picture, the first dependence level (0) corresponds to a thermal load that presents almost no dependence on ambient temperature, whereas in the second level (1), the thermal demand in June and July is more than twice the demand in December and January. Therefore, there is a considerable spectrum of intermediate cases being left aside.
