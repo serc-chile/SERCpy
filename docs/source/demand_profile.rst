@@ -13,5 +13,6 @@ Contents
   :maxdepth: 2
 
   demand_profile_class
+  Tamb_dependence
   examples/DemandProfile_tutorial
 
