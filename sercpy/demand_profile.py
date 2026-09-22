@@ -5,7 +5,7 @@ Created on Mon Aug 17 11:18:03 2026
 @author: adria
 """
 
-from typing import Optional
+from typing import Optional, Callable
 import pandas as pd
 import warnings
 import numpy as np
@@ -190,7 +190,7 @@ class DemandProfile:
         Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels or electricity.
     
     heat_source : str, optional
-        Name of the heat source. Needed if the heat demand is computed from `monthly_consumption`. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `'electricity'`, `'liquefied petroleum gas'`, `'natural gas'`, `'methane'`, `'propane'`, `'butane'`, `'diesel'`, `'coal'`, `'biomass'`.
+        Name of the heat source. Needed if the argument `monthly_consumption` is used. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `"electricity"`, `"liquefied petroleum gas"`, `"natural gas"`, `"methane"`, `"propane"`, `"butane"`, `"diesel"`, `"coal"`, `"biomass"`.
     
     consumption_units : str, optional
         Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`units`.
@@ -368,11 +368,11 @@ class DemandProfile:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
             
         if T_units is not None:
-            self._monthly_T_set = convert_units( self._monthly_T_set, T_units, 'C' )
-            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, 'C' )
+            self._monthly_T_set = convert_units( self._monthly_T_set, T_units, "C" )
+            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
         elif temp_units is not None:
-            self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, 'C' )
-            self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, 'C' )
+            self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, "C" )
+            self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, "C" )
             
         if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
             raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
@@ -684,7 +684,7 @@ class DemandProfile:
         """
         Private method that defines the attribute "weekly_demand_profile" from the attributes "daily_demand_profiles" and "weekly_demand_factors".
         
-        "daily_demand_profiles" is a list of seven lists, where each list defines the dailt demand profile of one day of the week, starting on Monday.
+        "daily_demand_profiles" is a list of seven lists, where each list defines the daily demand profile of one day of the week, starting on Monday.
         
         "weekly_demand_factors" is a list of seven values defining the relative daily thermal demand of each day of the week, starting on Monday.
         
@@ -720,7 +720,7 @@ class DemandProfile:
         """
         Private method that defines the attributes "daily_demand_profiles" and "weekly_demand_factors" from individual daily profiles, and, if present, special demand ratios or profiles for weekend days.
         
-        The generated attribute "daily_demand_profiles" is a list of seven lists, where each list defines the dailt demand profile of one day of the week, starting on Monday.
+        The generated attribute "daily_demand_profiles" is a list of seven lists, where each list defines the daily demand profile of one day of the week, starting on Monday.
         
         The generated attribute "weekly_demand_factors" is a list of seven values defining the relative daily thermal demand of each day of the week, starting on Monday.
         
@@ -1012,12 +1012,38 @@ class DemandProfile:
     
     @staticmethod
     def validate_argument(argument_name, value):
+        """
+        Static mathod that takes an argument received by the initializing method (`__init__`) and checks whether its type and value match the expected format.
+        
+        If necessary, this method modifies the value received to adjust it to the expected format, and returns the modified value.
+        
+        Parameters
+        ----------
+        argument_name : str
+            Name of the argument that is being processed.
+        value : Any
+            Value of the variable that is being processed.
+
+        Raises
+        ------
+        TypeError
+            If the argument `argument_name` is not a string.
+        ValueError
+            Any discrepancy between the expected type or value of the argument and the value received.
+
+        Returns
+        -------
+        value : Any
+            If any adjustment to the value received is necessary, the function returns the modified value.
+            Otherwise, the input value is returned as received.
+
+        """
         
         if type(argument_name) is not str:
-            raise ValueError("DemandProfile.validate_attribute: Argument 'argument_name' must be a string.")
+            raise TypeError("DemandProfile.validate_attribute: Argument 'argument_name' must be a string.")
         
         if not argument_name in DemandProfile_accepted_args:
-            raise TypeError(f"Class DemandProfile: Unexpected argument name: {argument_name}")
+            raise ValueError(f"Class DemandProfile: Unexpected argument name: {argument_name}")
         
         if value is None:
             return None
@@ -1357,6 +1383,8 @@ class DemandProfile:
     
     def get_attribute(self, attribute_name):
         """
+        Method to get attributes of a DemandProfile instance.
+        
         In addition to the demand conditions that can be obtained from the method :meth:`get_demand_conditions <DemandProfile.get_demand_conditions>`, there are several other results that are computed by `DemandProfile` instances during the construction process that may be useful to the user.
         
         These results can be obtained by using this method. If the DemandProfile instance does not have the attribute that the user is asking for, the method returns None.
@@ -1377,13 +1405,13 @@ class DemandProfile:
         Returns
         -------
         Any
-            Attribute defined by the name introduced as argument. Possible return types include: `float`, `list`, `str`, 
+            Attribute defined by the name introduced as argument. Possible return types include: `float`, `list`, and `str`
 
         """
         return getattr(self, "_" + attribute_name, None)
     
     @staticmethod
-    def define_temp_to_factor_func(dependence_coeff):
+    def define_temp_to_factor_func(dependence_coeff: float) -> Callable[ float ]:
         """
         Function that takes a numeric value from 0 two 3 (both limits as well as non-integer values are allowed), and returns another function, which computes a scalar factor to take into account the dependence of thermal demand on ambient temperature.
         
@@ -1393,7 +1421,7 @@ class DemandProfile:
     
         Parameters
         ----------
-        dependence_coeff : int or float
+        dependence_coeff : float
             Value from 0 to 3. Both limits are valid.
     
         Returns
@@ -1423,7 +1451,7 @@ class DemandProfile:
             def temp_to_factor(T):
                 if T >= T_hl:
                     return m_w*T + b_w
-                return m_h*T + b_h
+                return max( [ m_h*T + b_h, 0 ] )
         
         else:
             
@@ -1455,7 +1483,7 @@ class DemandProfile:
                 return m_h_2*T + b_h_2
             
             def temp_to_factor(T):
-                return x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T)
+                return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
             
         return temp_to_factor
     
