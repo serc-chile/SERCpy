@@ -3,7 +3,7 @@ Units
 
 SERCpy has its own unit management module, called "units", which has the feature that it can convert mass to volume and viceversa, and also mass flowrate to volumetric flowrate and viceversa, if the density of the substance involved is known.
 
-Internally, classes and simulations work with SI units, except for temperature which is expressed in °C. Furthermore, flowrates are internally treated as mass flowrates, although they can easily be converted to volumetric flowrates as just discussed. Nevertheless, the user can specify most variables with various possible units, and they are converted to the default system when processed. This section details all the possible units available to the user.
+Internally, classes and simulations work with SI units, except for temperature which is stored in °C. Furthermore, flowrates are internally treated as mass flowrates, although they can easily be converted to volumetric flowrates as just discussed. Nevertheless, the user can specify most variables with various possible units, and they are converted to the default system when processed. This section details all the possible units available to the user.
 
 Available units
 ---------------
@@ -126,7 +126,7 @@ Some quantities relevant for SERCpy are expressed in units that do not have a sp
 The rules for constructing units are the following:
 
   - Division of units is expressed with `"/"`.
-  - Multiplication of units is expressed by placing a space between the units.
+  - Multiplication of units is expressed with a space between the units.
   - All units at the right side of `"/"` are interpreted as being raised to `-1`. For example, in the case of specific heat capacity units, `"J/kg K"` is correct without the need to put `"kg K"` between parenthesis.
 
 Quantities that can be constructed in this way are:
@@ -138,7 +138,7 @@ Quantities that can be constructed in this way are:
   - Specific heat capacity units: `"E/M T"`
   - Specific energy units (e.g heating value of fuels): `"E/M"`
 
-Where:
+where:
 
   - `M` stands for any mass unit
   - `V` stands for any volume unit
@@ -152,5 +152,10 @@ Unit converting function
 The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
 .. autofunction:: sercpy.units.convert_units
+
+Identifying unit type
+---------------------
+
+Another feature that may be helpful to some users is the ability to determine the type of variable that corresponds to some unit; e.g., getting the result `"power"` from the input `"BTU/hr"`. This can be done with the function `get_unit_type`, which is documented below.
 
 .. autofunction:: sercpy.units.get_unit_type
