@@ -17,7 +17,7 @@ The authors of the aforementioned work proposed to classify thermal loads in fou
    
    Results of the same yearly thermal energy demand being distributed throughout the year while assuming different levels of dependence of thermal demand on ambient temperature.
 
-The thermal demand is determined on a daily basis using the average temperature of the corresponding day to obtain a scalar factor that is proportional to the total demand of that day. The dependence level determines how much that scalar factor changes depending on the daily temperature. It was also stated by the authors of the `study <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_ that the accuracy of the algorithm can be improved by obtaining a corrected version of the daily temperature that also considers the temperature of the three preceding days:
+The thermal demand is determined on a daily basis using the average temperature of the corresponding day to obtain a scalar factor that is proportional to the total demand of that day. The dependence level determines how much that scalar factor changes depending on the daily temperature. It was also stated by the authors of the `study <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_ that the accuracy of the algorithm can be improved by using a corrected version of the daily temperature that also considers the temperature of the three preceding days:
 
 .. math::
 
