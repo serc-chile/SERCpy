@@ -23,7 +23,7 @@ The thermal demand is determined on a daily basis using the average temperature 
 
    T_{i, \mathrm{corr}} = \frac{ T_i + 0.5 \, T_{i-1} + 0.25 \, T_{i-2} + 0.125 \, T_{i-3}  }{1+0.5+0.25+0.125}
 
-This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False`. See :doc:`
+This temperature correction method is applied by default by `DemandProfile` instances when they are defined. It can be manually deactivated by setting the parameter `smooth_Tamb_profile` to `False`. See :doc:`Class DemandProfile <demand_profile_class>`
 
 Two limitations of the method just exposed are the following:
 
