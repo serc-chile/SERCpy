@@ -18,4 +18,4 @@ The energy demand profiles shown in the image were generated with a temperature 
 
 .. currentmodule:: sercpy.demand_profile
 
-.. automethod:: DemandProfile.open_profile_app
+.. automethod:: DemandProfile.define_temp_to_factor_func
