@@ -2,11 +2,11 @@
 div.nblast.container {
     margin-bottom: 20px;   /* tweak to taste */
 }
-/*
+
 code, .rst-content code.literal, .rst-content tt.literal {
     font-size: 85% !important;
 }
-*/
+
 
 /* ...but keep two back-to-back code cells tight, like a real notebook */
 div.nblast.container + div.nbinput.container {
