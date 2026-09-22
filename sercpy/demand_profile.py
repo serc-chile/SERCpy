@@ -10,6 +10,7 @@ import pandas as pd
 import warnings
 import numpy as np
 from datetime import datetime
+from . import profile_app
 from timeit import default_timer
 from types import SimpleNamespace
 from .units import (
@@ -1326,7 +1327,6 @@ class DemandProfile:
         -------
         None.
         """
-        from . import profile_app
         profile_app.launch()
         
     @staticmethod
@@ -1411,7 +1411,7 @@ class DemandProfile:
         return getattr(self, "_" + attribute_name, None)
     
     @staticmethod
-    def define_temp_to_factor_func(dependence_coeff: float) -> Callable[ float ]:
+    def define_temp_to_factor_func(dependence_coeff: float) -> Callable[[float], float]:
         """
         Define a Temperature-to-Demand-Factor function.
         
