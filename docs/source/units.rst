@@ -1,7 +1,7 @@
 Units
 =====
 
-SERCpy has its own unit management module, called "units", which has the feature that it can convert mass to volume and viceversa, and also mass flowrate to volumetric flowrate and viceversa, if the density of the substance involved is known.
+**SERCpy** has its own unit management module, called "units", which has the feature that it can convert mass to volume and viceversa, and also mass flowrate to volumetric flowrate and viceversa, if the density of the substance involved is known.
 
 Internally, classes and simulations work with SI units, except for temperature which is stored in °C. Furthermore, flowrates are internally treated as mass flowrates, although they can easily be converted to volumetric flowrates as just discussed. Nevertheless, the user can specify most variables with various possible units, and they are converted to the default system when processed. This section details all the possible units available to the user.
 
