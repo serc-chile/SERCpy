@@ -38,46 +38,8 @@ demand_cluster_coefficients = { 0: {"m_h": -0.015442188, "b_h": 1.085192073, "m_
                                 1: {"m_h": -0.05875924, "b_h": 1.469535126, "m_w": -0.013263421, "b_w": 0.677907865, "T_hl": 17.4 },
                                 2: {"m_h": -0.095984753, "b_h": 1.771938814, "m_w": -0.012756454, "b_w": 0.406994714, "T_hl": 16.4 },
                                 3: {"m_h": -0.17801625, "b_h": 2.540402509, "m_w": -0.0214766, "b_w": 0.521041029, "T_hl": 12.9 } }
-
-def translate_utc(utc_based_tz):
-    if type(utc_based_tz) is not str:
-        raise ValueError("Function translate_utc: input must be a string.")
-    if not utc_based_tz.startswith("UTC"):
-        return utc_based_tz
-    if utc_based_tz in [ "UTC", "UTC-0", "UTC+0", "UTC-00:00", "UTC+00:00" ]:
-        return "Etc/GMT"
-    try:
-        if "+" in utc_based_tz:
-            GMT_sign = "-"
-            offset = utc_based_tz.split("+")[1]
-        if "-" in utc_based_tz:
-            GMT_sign = "+"
-            offset = utc_based_tz.split("-")[1]
-        if ":" in offset:
-            offset = int( offset.split(":")[0] )
-        else:
-            offset = int( offset )
-        if GMT_sign == "-":
-            assert offset <= 14
-        else:
-            assert offset <= 12
-        return "Etc/GMT" + GMT_sign + str(offset)
-    
-    except:
-        raise ValueError("UTC-based timezone could not be translated to Etc/GMT")
         
-def time_to_half_hours(time_string):
-    
-    try:
-        assert type(time_string) is str and ":" in time_string
-        hours = int(time_string.split(":")[0])
-        minutes = int(time_string.split(":")[1])
-        assert hours >= 0 and hours <= 24 and minutes in [0,30] and not ( hours == 24 and minutes == 30 )
-        result = 2*hours + 1*(minutes == 30)
-    except:
-        raise ValueError("Function time_to_minute: input must be a string with format 'hh:mm', with 'hh' from '00' to '24' and 'mm' equal to '00' or '30'. '24:30' is not allowed.")
-    return result
-        
+# List of argument names accepted by the DemandProfile class initializer function
 DemandProfile_accepted_args = [
     
     "T_in_profile",
@@ -138,7 +100,6 @@ DemandProfile_accepted_args = [
     "Tamb_profile",
     
     "smooth_Tamb_profile",
-    "year"
     
     ]
 
@@ -271,8 +232,9 @@ class DemandProfile:
     monthly_production : list of float, optional
         List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with the ambient temperature.
     
-    Tamb_dependence : float, optional
-        Level of dependence of thermal demand on ambient temperature. Valid range: 0 <= `Tamb_dependence` <= 3. It is not recommended to provide this parameter manually since the class is meant to automatically determine its value.
+    Tamb_dependence : float or callable, optional
+        Parameter to define the level of dependence of the thermal load on the ambient temperature. Using this parameter is generally discouraged since the class is meant to automatically determine it.
+        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`T_amb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
     
     smooth_Tamb_profile : bool, optional
         Boolean value defining whether to correct the daily ambient temperature with the formula: `T_i_corrected=(T[i]+0.5*T[i-1]+0.25*T[i-2]+0.125*T[i-3])/(1+0.5+0.25+0.125)`. If not provided, it defaults to `True`.
@@ -339,7 +301,6 @@ class DemandProfile:
             
             
             smooth_Tamb_profile: Optional[ bool ] = None,
-            year: Optional[ int ] = None,
             
             **kwargs,
             
@@ -517,10 +478,7 @@ class DemandProfile:
         else:
             self._smooth_Tamb_profile = True
             
-        if year is not None:
-            self._year = self.validate_argument( "year", year )
-        else:
-            self._year = default_year
+        self._year = default_year
             
         self._compute_yearly_profiles()
         
@@ -879,6 +837,20 @@ class DemandProfile:
         -------
         None
         """
+        
+        # Local function that takes a time of day in string format (e.g. "04:30") and returns the number of half hours elapsed since midnight
+        # E.g. To the input "04:30" the function returns 9
+        def time_to_half_hours(time_string):
+            
+            try:
+                assert type(time_string) is str and ":" in time_string
+                hours = int(time_string.split(":")[0])
+                minutes = int(time_string.split(":")[1])
+                assert hours >= 0 and hours <= 24 and minutes in [0,30] and not ( hours == 24 and minutes == 30 )
+                result = 2*hours + 1*(minutes == 30)
+            except:
+                raise ValueError("Function time_to_minute: input must be a string with format 'hh:mm', with 'hh' from '00' to '24' and 'mm' equal to '00' or '30'. '24:30' is not allowed.")
+            return result
         
         op_start = self.get_attribute( "op_start" )
         op_end = self.get_attribute( "op_end" )
@@ -1447,7 +1419,7 @@ class DemandProfile:
         Returns
         -------
         func
-            Function that takes daily temperature values and returns scalar values that are proportional to the demand level of that day.
+            Function that takes a daily temperature value (float) and returns a float value proportional to the demand level of that day.
         """
         try:
             dependence_coeff = float(dependence_coeff)
@@ -1509,24 +1481,24 @@ class DemandProfile:
             
             def temp_to_factor_1(T):
                 if T >= T_hl_1:
-                    return m_w_1*T + b_w_1
-                return m_h_1*T + b_h_1
+                    return max( [ m_w_1*T + b_w_1, 0 ] )
+                return max( [ m_h_1*T + b_h_1, 0 ] )
             
             def temp_to_factor_2(T):
                 if T >= T_hl_2:
-                    return m_w_2*T + b_w_2
-                return m_h_2*T + b_h_2
+                    return max( [ m_w_2*T + b_w_2, 0 ] )
+                return max( [ m_h_2*T + b_h_2, 0 ] )
             
             if convert_temperature:
                 
                 def temp_to_factor(T):
                     T = convert_units( T, temp_units, 'C' )
-                    return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
+                    return x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T)
                 
             else:
                 
                 def temp_to_factor(T):
-                    return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
+                    return x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T)
                 
         return temp_to_factor
     
@@ -1658,6 +1630,19 @@ class DemandProfile:
         return dependence_coeff
     
     def _compute_yearly_profiles(self):
+        """
+        Private method that that generates the attributes "flowrate_profile", "demanded_power_profile", "T_in_profile", and "T_set_profile" for the DemandProfile instance.
+        
+        These attributes contain the data that will be returned thereafter when the method 'get_demand_conditions' is called.
+        
+        Each of these attributes is a list of 365 lists (one for each day of the year, from January 1st to December 31st).
+        Each one of those 365 lists contains 1440 values; one for every minute of the day, starting at 00:00 and ending at 23:59.
+
+        Returns
+        -------
+        None
+
+        """
         
         attributes_needed = [
             "monthly_T_set",
@@ -1775,6 +1760,32 @@ class DemandProfile:
         self._T_set_profile = [ T_set_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( T_set_profile ), minutes_per_day ) ]
     
     def _return_single_instant(self, month, day, hour, minute ):
+        """
+        Private method that returns the demand conditions for a signle instant in time.
+
+        Parameters
+        ----------
+        month : int
+            Month number from 1 to 12.
+        day : int
+            Day number from 1 to 28, 30, or 31, depending on the month.
+        hour : int
+            Hour from 0 to 23.
+        minute : int
+            Minute from 0 to 59.
+
+        Returns
+        -------
+        flowrate : float
+            Flowrate value (kg/s).
+        demanded_power : float
+            Demanded power value (W).
+        T_in : float
+            Inlet temperature value (C).
+        T_set : float
+            Setpoint temperature value (C).
+
+        """
         
         day_number = monthly_cummulated_days[ month - 1 ] + day - 1
         minute_number = hour*60 + minute
@@ -1791,6 +1802,31 @@ class DemandProfile:
         return flowrate, demanded_power, T_in, T_set
     
     def _return_lists_from_date_range(self, date_range ):
+        """
+        Private method that takes a pandas.DatetimeIndex instance and generates 4 lists of values containing the demand conditions (flowrate, demanded_power, T_in, T_set) for each instant contained in the input
+
+        Parameters
+        ----------
+        date_range : pandas.DateTimeindex
+            Object that specifies the set of instants for which the demand conditions must be returned.
+
+        Raises
+        ------
+        ValueError
+            If the input value does not match the expected type.
+
+        Returns
+        -------
+        flowrate_list : list of float
+            List containing the flowrate values (kg/s).
+        demanded_power_list : list of float
+            List containing the demanded power values (W).
+        T_in_list : list of float
+            List containing the inlet temperature values (C).
+        T_set_list : list of float
+            List containing the setpoint temperature values (C).
+
+        """
         
         if not type( date_range ) is pd.DatetimeIndex:
             raise ValueError("DemandProfile._return_lists_from_date_range: type of date_range must be pandas.DatetimeIndex.")
