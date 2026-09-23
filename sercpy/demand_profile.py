@@ -18,6 +18,7 @@ from .units import (
     convert_units,
     get_unit_type,
     UnitsError,
+    
     )
 from .core import (
     
@@ -283,22 +284,6 @@ class DemandProfile:
         For compatibility only.
     """
     
-    ## END OF DOCSTRING
-    # Attributes
-    # ----------
-    # ATTRIBUTE_NAME : TYPE
-    #     DESCRIPTION.
-
-    # Notes
-    # -----
-    # NOTES, if needed.
-
-    # Examples
-    # --------
-    # EXAMPLES, if needed.
-    
-    ## Add: year
-    
     def __init__(
             
             self, 
@@ -362,8 +347,6 @@ class DemandProfile:
             **kwargs,
             
             ):
-        
-        
         
         self._monthly_T_set = self.validate_argument("T_set", T_set)
         self._monthly_T_in = self.validate_argument("T_in", T_in)
@@ -542,7 +525,7 @@ class DemandProfile:
         else:
             self._year = default_year
             
-        self.compute_yearly_profiles()
+        self._compute_yearly_profiles()
         
     @staticmethod
     def consumption_to_thermal_demand(
@@ -1434,7 +1417,7 @@ class DemandProfile:
                 - `"monthly_T_in"` : List of 12 values that define temperature with which the heat transfer fluid enters the heating system for each month of the year, starting on January. Unit: °C
                 - `"monthly_heat_demand"` : List of 12 values that define thermal energy demanded by the load during each month of the year, starting on January. Unit: J
                 - `"monthly_consumption"` : List of 12 values that define the monthly consumption of the heat source (electricity or fuel). This attribute is only available if the argument `monthly_consumption` was provided when defining the instance. If the heat source specified was `"electricity"`, the unit of the values returned is J (Joule). For fuels, the unit is kg.
-                - `"op_start"`, `"op_end"`, `"op_start_saturday"`, `"op_end_saturday"`, `"op_start_sunday"`, `"op_end_sunday"` : See the parameters with the same name in :doc:`the main documentation of the class </demand_profile_class>`.
+                - `"op_start"`, `"op_end"`, `"op_start_saturday"`, `"op_end_saturday"`, `"op_start_sunday"`, `"op_end_sunday"` : See the parameters with the same names in :doc:`the main documentation of the class </demand_profile_class>`.
                 
         Returns
         -------
@@ -1445,41 +1428,45 @@ class DemandProfile:
         return getattr(self, "_" + attribute_name, None)
     
     @staticmethod
-    def define_temp_to_factor_func(dependence_coeff: float) -> Callable[[float], float]:
+    def define_temp_to_factor_func(
+            dependence_coeff: float,
+            temp_units: str = None ) -> Callable[[float], float]:
         """
         Define a Temperature-to-Demand-Factor function.
         
-        One of the main features of DemandProfile instances is that they are capable of modeling how thermal demand varies because of changes in ambient temperature.
+        This static method takes a floating point value from 0 to 3, which defines the dependence level of thermal demand on ambient temperature.
         
-        The method used by SERCpy is based on the `Paper presented by Jesper et al. (DOI: 10.1016/j.ecmx.2021.100085) <https://www.sciencedirect.com/science/article/pii/S2590174521000106>`_
+        It returns a function than can be used thereafter to obtain relative daily demand values from daily temperatures.
         
-        The authors of that work
-        
-        Function that takes a numeric value from 0 two 3 (both limits as well as non-integer values are allowed), and returns another function, which computes a scalar factor to take into account the dependence of thermal demand on ambient temperature.
-        
-        The value taken by this function could be interpreted as a 'dependece coefficient' of the thermal demand on the daily average ambient temperature.
-        
-        The function returned takes average daily temperature values (in °C) and returns a scalar factor that is more dependent on temperature for higher dependece coefficients.
+        The temperature units with wich the returned function will process the temperature data can be managed with the argument `temp_units`.
     
         Parameters
         ----------
         dependence_coeff : float
-            Value from 0 to 3. Both limits are valid.
+            Value from 0 to 3. Both limits are valid. This value defines the level of dependence of the thermal demand on ambient temperature.
+        temp_units : str
+            Units in which the daily temperatures will be provided to the returned function. If not provided, it defaults to °C.
     
         Returns
         -------
         func
-            DESCRIPTION.
-    
+            Function that takes daily temperature values and returns scalar values that are proportional to the demand level of that day.
         """
         try:
             dependence_coeff = float(dependence_coeff)
         except:
             raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be convertible to type 'float'.")
-        try:
-            assert dependence_coeff >= 0 and dependence_coeff <= 3
-        except:
+        
+        if not ( dependence_coeff >= 0 and dependence_coeff <= 3 ):
             raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be larger than or equal to 0, and smaller than or equal to 3.")
+        
+        if not ( temp_units is None or get_unit_type( temp_units ) == 'temperature' ):
+            raise ValueError("DemandProfile.define_temp_to_factor_func: Argument 'temp_units' not valid.")
+            
+        if temp_units is None or temp_units in [ 'C', '°C' ]:
+            convert_temperature = False
+        else:
+            convert_temperature = True
         
         if dependence_coeff.is_integer():
             
@@ -1490,10 +1477,19 @@ class DemandProfile:
             m_w = demand_cluster_coefficients[dependence_coeff]["m_w"]
             b_w = demand_cluster_coefficients[dependence_coeff]["b_w"]
             
-            def temp_to_factor(T):
-                if T >= T_hl:
-                    return m_w*T + b_w
-                return max( [ m_h*T + b_h, 0 ] )
+            if convert_temperature:
+                
+                def temp_to_factor(T):
+                    T = convert_units( T, temp_units, 'C' )
+                    if T >= T_hl:
+                        return max( [ m_w*T + b_w, 0 ] )
+                    return max( [ m_h*T + b_h, 0 ] )
+            else:
+                
+                def temp_to_factor(T):
+                    if T >= T_hl:
+                        return max( [ m_w*T + b_w, 0 ] )
+                    return max( [ m_h*T + b_h, 0 ] )
         
         else:
             
@@ -1524,50 +1520,103 @@ class DemandProfile:
                     return m_w_2*T + b_w_2
                 return m_h_2*T + b_h_2
             
-            def temp_to_factor(T):
-                return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
-            
+            if convert_temperature:
+                
+                def temp_to_factor(T):
+                    T = convert_units( T, temp_units, 'C' )
+                    return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
+                
+            else:
+                
+                def temp_to_factor(T):
+                    return max( [ x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T) , 0 ] )
+                
         return temp_to_factor
     
-    def determine_Tamb_dependence(self, Tamb_profile = None):
+    @staticmethod
+    def compute_Tamb_dependence(
+            monthly_heat_demand,
+            Tamb_profile,
+            temp_units = None,
+            monthly_production = None,
+            epsilon_fraction = None ):
         
-        needed_attributes = [
-            "monthly_heat_demand"
-            ]
+        """
+        Function that determines the level of dependence of the heat demand on the ambient temperature.
+        
+        The function takes monthly heat demand data and a yearly ambient temperature profile.
+        
+        Monthly production values, if provided, are considered as a cause for the variation of the heat demand, in addition to ambient temperature. If no production data is provided, it is assumed that the only cause for variability in the heat demand is differences in ambient temperature.
+
+        Parameters
+        ----------
+        monthly_heat_demand : list of float
+            List of 12 values representing the monthly heat demand, from January to December. The units of the values of the list are not relevant, as long as they are energy units.
+        Tamb_profile : list of float
+            List of at least 365 values defining the yearly ambient temperature profile. The length can also be a multiple of 365; in that case, it is assumed that the profile has a time resolution higher than one value per day; hence, the values are averaged to get a daily resolution.
+        monthly_production : list of float, optional
+            List of 12 values representing the monthly production, from January to December. The units of the values of the list are not relevant. The default is None.
+        temp_units : str, optional
+            Units of the values in `Tamb_profile`. If not provided, °C is assumed.
+        epsilon_fraction : float, optional
+            Value that will be multiplied by the average production value and then added to the monthly production values. This is done in order to avoid divergence when the heat demand values are divided by the monthly production values. If not provided, it defaults to 0.1.
+
+        Raises
+        ------
+        ValueError
+            If the parameters do not match the expected format.
+
+        Returns
+        -------
+        float
+            Value between 0 and 3, representing the level of dependence of the heat demand on ambient temperature.
+
+        """
         
         if Tamb_profile is None:
-            needed_attributes.append( "Tamb_profile" )
-        
-        try:
-            for attribute in needed_attributes:
-                assert hasattr( self, "_" + attribute )
-        except:
-            warnings.warn("Class DemandProfile: Ambient temperature dependence could not be compute due to lack of data.")
+            warnings.warn("Class DemandProfile: Ambient temperature dependence could not be computed because Tamb_profile has not been specified.")
             return 0
         
-        if Tamb_profile is None:
-            Tamb_profile = self.get_attribute( "Tamb_profile" )
-        monthly_energy_demand = self.get_attribute( "monthly_heat_demand" )
-        monthly_production = self.get_attribute( "monthly_production" )
-        epsilon_fraction = self.get_attribute( "epsilon_fraction" )
+        try:
+            monthly_heat_demand = [ float( value ) for value in monthly_heat_demand ]
+            assert len( monthly_heat_demand ) == 12
+        except:
+            raise ValueError("Class DemandProfile: Argument 'monthly_heat_demand' must be a list (or similar) with length 12.")
+        
+        try:
+            Tamb_profile = [ float(value) for value in Tamb_profile ]
+        except:
+            raise ValueError( "DemandProfile.compute_Tamb_dependence: 'Tamb_profile' must be convertible to a list of floating point values." )
         
         if epsilon_fraction is None:
             epsilon_fraction = 0.1
-            
+        else:
+            try:
+                epsilon_fraction = float( epsilon_fraction )
+                assert epsilon_fraction >= 0
+            except:
+                raise ValueError( "DemandProfile.compute_Tamb_dependence: 'epsilon_fraction' must be convertible to float. Its value must be >= 0." )
+
         if monthly_production is None:
             monthly_production = month_days
             epsilon_fraction = 0
+        
+        if not ( temp_units is None or ( type( temp_units ) is str and get_unit_type( temp_units ) == 'temperature' ) ):
+                raise ValueError( "DemandProfile.compute_Tamb_dependence: Argument 'temp_units' is not valid." )
             
-        Tamb_profile = self._reduce_profile(Tamb_profile, 365)
+        if not ( temp_units is None or temp_units in [ 'C', '°C' ] ):
+            Tamb_profile = convert_units(Tamb_profile, temp_units, 'C')
+            
+        Tamb_profile = DemandProfile._reduce_profile(Tamb_profile, 365)
             
         epsilon = epsilon_fraction*float(np.mean(monthly_production))
             
-        monthly_normalized_demand = [ monthly_energy_demand[i]/(monthly_production[i] + epsilon ) for i in range(len(monthly_energy_demand)) ]
+        monthly_normalized_demand = [ monthly_heat_demand[i]/(monthly_production[i] + epsilon ) for i in range(len(monthly_heat_demand)) ]
         total_normalized_demand = sum(monthly_normalized_demand)
         
         def mse_result( coeff_list ):
             
-            temp_to_factor = self.define_temp_to_factor_func( coeff_list[0] )
+            temp_to_factor = DemandProfile.define_temp_to_factor_func( coeff_list[0] )
             daily_factors = [ temp_to_factor(Tamb_profile[i]) for i in range(len(Tamb_profile)) ]
             sum_daily_factors = sum(daily_factors)
             assert sum_daily_factors > 0
@@ -1605,13 +1654,13 @@ class DemandProfile:
                 break
         
         if not solving_success:
-            raise ValueError("DemandProfile.determine_Tamb_dependence: It was not possible to solve the minimization problem.")
+            raise ValueError("DemandProfile.compute_Tamb_dependence: It was not possible to solve the minimization problem.")
             
         dependence_coeff = float (minimize_result['x'][0])
         
-        self._Tamb_dependence = dependence_coeff
+        return dependence_coeff
     
-    def compute_yearly_profiles(self):
+    def _compute_yearly_profiles(self):
         
         attributes_needed = [
             "monthly_T_set",
@@ -1626,11 +1675,12 @@ class DemandProfile:
         
         for attribute in attributes_needed:
             if self.get_attribute( attribute ) is None:
-                raise ValueError(f"DemandProfile.compute_yearly_profiles: Class instance does not have the needed attribute: {attribute}")
+                raise ValueError(f"DemandProfile._compute_yearly_profiles: Class instance does not have the needed attribute: {attribute}")
         
         monthly_Tset = self.get_attribute( "monthly_T_set"  )
         monthly_Tin = self.get_attribute( "monthly_T_in"  )
         monthly_heat_demand = self.get_attribute( "monthly_heat_demand"  )
+        monthly_production = self.get_attribute( "monthly_production" )
         weekly_demand_profile = self.get_attribute( "weekly_demand_profile"  )
         Tamb_dependence = self.get_attribute( "Tamb_dependence"  )
         Tamb_dependence_mode = self.get_attribute( "Tamb_dependence_mode" )
@@ -1659,7 +1709,13 @@ class DemandProfile:
                 Tamb_profile = Tamb_profile_smoothed
             
             if Tamb_dependence_mode == "auto":
-                self.determine_Tamb_dependence( Tamb_profile )
+                
+                self._Tamb_dependence = self.compute_Tamb_dependence(
+                    
+                    monthly_heat_demand,
+                    Tamb_profile,
+                    monthly_production = monthly_production )
+                
                 Tamb_dependence = self._Tamb_dependence
                 temp_to_factor = self.define_temp_to_factor_func(Tamb_dependence)
         
@@ -1924,11 +1980,7 @@ class DemandProfile:
                 "flowrate": flowrate_list,
                 "demanded_power": demanded_power_list,
                 "T_in": T_in_list,
-                "T_set": T_set_list,
-                
-                }
-                
-            )
+                "T_set": T_set_list, } )
             
             return df
         

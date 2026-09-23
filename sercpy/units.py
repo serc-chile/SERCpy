@@ -197,10 +197,10 @@ unit_database = {
 
 unit_type_dict = {}
 for unit_type in unit_database:
-    for unit in unit_database[ unit_type ]:
-        if unit in unit_type_dict:
-            raise UnitsError(f"Repeated unit: {unit}")
-        unit_type_dict[ unit ] = unit_type
+    for _unit in unit_database[ unit_type ]:
+        if _unit in unit_type_dict:
+            raise UnitsError(f"Repeated unit: {_unit}")
+        unit_type_dict[ _unit ] = unit_type
         
 def _convert_to_C( input_value, original_units ):
     
@@ -240,11 +240,11 @@ def _isolate_units( unit_string ):
         unit_list.remove( '' )
     return set( unit_list )
 
-def get_unit_type( unit: str ) -> str:
+def get_unit_type( units: str ) -> str:
     """
-    Function that takes the unit of a physical quantity and identifies the type of quantity involved.
+    Function that takes the units of a physical quantity and identifies the type of quantity involved.
     
-    When the type of the unit cannot be identified, the function returns None.
+    When the type of the units provided cannot be identified, the function returns None.
     
     The possible unit types that can be identified are:
         
@@ -267,7 +267,7 @@ def get_unit_type( unit: str ) -> str:
 
     Parameters
     ----------
-    unit : str
+    units : str
         Unit to identify.
 
     Returns
@@ -277,9 +277,9 @@ def get_unit_type( unit: str ) -> str:
 
     """
     
-    if not '/' in unit:
+    if not '/' in units:
         try:
-            basic_unit_set = _isolate_units( unit )
+            basic_unit_set = _isolate_units( units )
             assert len( basic_unit_set ) == 1
             basic_unit = basic_unit_set.pop()
             assert basic_unit in unit_type_dict
@@ -287,7 +287,7 @@ def get_unit_type( unit: str ) -> str:
             return None
         return unit_type_dict[ basic_unit ]
     
-    units_numerator, units_denominator = _isolate_units( unit.split('/')[0] ), _isolate_units( unit.split('/')[1] )
+    units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
     
     try:
         unit_types_numerator = { unit_type_dict[ unit ] for unit in units_numerator }
@@ -392,6 +392,31 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         Quantity specified as `input_value`, in the new unit system. If the input is a list, so is the returned value.
 
     """
+    
+    try:
+        input_value = float( input_value )
+    except TypeError:
+        try:
+            input_value = [ float( value ) for value in input_value ]
+        except:
+            raise UnitsError("Unit conversion error: input_value must be either a floating point value or a list of floating point values.")
+    try:
+        original_units = str( original_units )
+    except:
+        raise UnitsError("convert_units: Argument 'original_units' must be convertible to type str.")
+    try:
+        goal_units = str( goal_units )
+    except:
+        raise UnitsError("convert_units: Argument 'goal_units' must be convertible to type str.")
+    if density is not None:
+        try:
+            density = float( density )
+        except:
+            raise UnitsError("convert_units: Argument 'density' must be None or convertible to type float.")
+    try:
+        density_units = str( density_units )
+    except:
+        raise UnitsError("convert_units: Argument 'density_units' must be convertible to type str.")
     
     original_units = _pre_process_units( original_units )
     goal_units = _pre_process_units( goal_units )
@@ -513,15 +538,9 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
             
         conversion_function = lambda value: conversion_factor*value
     
-    try:
-        value = float( input_value )
-        return conversion_function( value )
-    except TypeError:
-        value_list = [ float( value ) for value in input_value ]
-        return [ conversion_function( value ) for value in value_list ]
-    except:
-        raise UnitsError("Unit conversion error: input_value must be either a floating point value or a list of floating point values.")
-    
+    if type( input_value ) is float:
+        return conversion_function( input_value )
+    return [ conversion_function( value ) for value in input_value ]
 
 if __name__ == "__main__":
     # Test
