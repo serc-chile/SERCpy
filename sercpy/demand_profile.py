@@ -33,14 +33,11 @@ from .core import (
 from .config import default_year
 from scipy.optimize import minimize, Bounds
 
+# Numbers to define the fuctions that convert temperature to demand factors
 demand_cluster_coefficients = { 0: {"m_h": -0.015442188, "b_h": 1.085192073, "m_w": -0.007095331, "b_w": 1.060986187, "T_hl": 2.9 },
                                 1: {"m_h": -0.05875924, "b_h": 1.469535126, "m_w": -0.013263421, "b_w": 0.677907865, "T_hl": 17.4 },
                                 2: {"m_h": -0.095984753, "b_h": 1.771938814, "m_w": -0.012756454, "b_w": 0.406994714, "T_hl": 16.4 },
                                 3: {"m_h": -0.17801625, "b_h": 2.540402509, "m_w": -0.0214766, "b_w": 0.521041029, "T_hl": 12.9 } }
-
-def compute_monthly_demand( **kwargs ):
-    
-    return
 
 def translate_utc(utc_based_tz):
     if type(utc_based_tz) is not str:
@@ -1336,7 +1333,7 @@ class DemandProfile:
     @staticmethod
     def open_profile_app():
         """
-        Static method to open the Profiles App of the class, developed on Python's GUI tool Tkinter.
+        Static method to open the Profile App of the class, developed on Python's GUI tool Tkinter.
         
         The method takes no arguments.
 
@@ -1820,7 +1817,7 @@ class DemandProfile:
         The standard way of obtaining the demand conditions for a single instant in time is by providing a `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instance as the only positional argument. See ****kwargs** for an alternative way.
         
         The conditions for a time period can be obtained either by providing two `datetime.datetime <https://docs.python.org/3/library/datetime.html#datetime-objects>`_ instances, or a single `pandas.DatetimeIndex <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.html>`_, as positional arguments.
-        In the former case, a `pandas.DatetimeIndex` instance is generated internally with minutal frequency, both ends included, and no time zone. See ****kwargs** to customize these conditions.
+        In the former case, a `pandas.DatetimeIndex` instance is generated internally using the first datetime as start and the second datetime as end. See ****kwargs** to customize other details of the `DatetimeIndex` instance.
         
         If the conditions for a single instant are asked for, this method returns a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following keys:
             
@@ -1885,7 +1882,7 @@ class DemandProfile:
                     dt = SimpleNamespace( **dt )
                 
                 if not all([ hasattr( dt, attribute ) for attribute in [ "month", "day", "hour", "minute" ] ] ):
-                    raise ValueError("DemandProfile.get_demand_conditions: Unable to extract elements 'month', 'day', 'hour' and 'minute' from input.")
+                    raise ValueError("DemandProfile.get_demand_conditions: Unable to obtain attributes 'month', 'day', 'hour' and 'minute' from input.")
                 month = int(dt.month)
                 day = int(dt.day)
                 hour = int(dt.hour)
