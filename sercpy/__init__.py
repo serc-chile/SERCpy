@@ -2,7 +2,7 @@
 """
 Created on Wed Aug 19 13:51:50 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 import sys

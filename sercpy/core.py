@@ -2,7 +2,7 @@
 """
 Created on Mon Aug 17 12:33:21 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 weekday_names = [ "Monday", "Tuesday", "Wednesday", "Thursay", "Friday", "Saturday", "Sunday" ]

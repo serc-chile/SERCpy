@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Jul 14 15:08:06 2023
+Created on Mon Aug 17 11:18:03 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 class UnitsError(Exception):

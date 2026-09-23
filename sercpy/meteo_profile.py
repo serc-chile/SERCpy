@@ -2,7 +2,7 @@
 """
 Created on Mon Aug 17 22:08:31 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 

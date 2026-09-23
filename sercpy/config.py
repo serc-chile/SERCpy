@@ -2,7 +2,7 @@
 """
 Created on Mon Aug 17 09:46:38 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 from pathlib import Path

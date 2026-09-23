@@ -2,7 +2,7 @@
 """
 Created on Mon Aug 17 11:18:03 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 from typing import Optional, Callable
@@ -103,7 +103,6 @@ DemandProfile_accepted_args = [
     
     ]
 
-
 class DemandProfile:
     
     """
@@ -136,11 +135,11 @@ class DemandProfile:
     T_in : float or list of float
         Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
         
-    T_units : str, optional
+    temp_units : str, optional
         Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
         
-    temp_units : str, optional
-        Alias for `T_units`.
+    T_units : str, optional
+        Alias for `temp_units`.
     
     monthly_heat_demand : list of float, optional
         List of values >= 0, representing the heat demand of the thermal load in each month of the year. Either this parameter or `monthly_consumption` must be provided.
@@ -256,8 +255,8 @@ class DemandProfile:
             
             T_set: float | list[float],
             T_in: float | list[float],
-            T_units: Optional[ str ] = None,
             temp_units: Optional[ str ] = None,
+            T_units: Optional[ str ] = None,
             
             monthly_heat_demand: Optional[ list[float] ] = None,
             heat_demand_units: Optional[ str ] = None,
@@ -311,12 +310,12 @@ class DemandProfile:
         if self._monthly_T_set is None or self._monthly_T_in is None:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
             
-        if T_units is not None:
-            self._monthly_T_set = convert_units( self._monthly_T_set, T_units, "C" )
-            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
-        elif temp_units is not None:
+        if temp_units is not None:
             self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, "C" )
             self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, "C" )
+        elif T_units is not None:
+            self._monthly_T_set = convert_units( self._monthly_T_set, T_units, "C" )
+            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
             
         if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
             raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
@@ -468,10 +467,10 @@ class DemandProfile:
         if self._Tamb_profile is not None:
             if Tamb_units is not None:
                 self._Tamb_profile = convert_units( self._Tamb_profile, Tamb_units, 'C' )
-            elif T_units is not None:
-                self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
             elif temp_units is not None:
                 self._Tamb_profile = convert_units( self._Tamb_profile, temp_units, 'C' )
+            elif T_units is not None:
+                self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
             
         if smooth_Tamb_profile is not None:
             self._smooth_Tamb_profile = self.validate_argument( "smooth_Tamb_profile", smooth_Tamb_profile )
