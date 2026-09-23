@@ -42,9 +42,9 @@ Available energy units are:
   - `"cal"`: **Small** calorie, equivalent to 4.184 J
   - `"kcal"`: Kilo-Calorie or **large** calorie, equivalent to 4184 J
   - `"Mcal"`: Mega-Calorie, equivalent to 1,000,000 small calories
-  - `"BTU"` or `"btu"`: British Thermal Unit
-  - `"kBTU"` or `"kbtu"`: Kilo-BTU
-  - `"MBTU"`: Mega-BTU
+  - `"BTU"` or `"Btu"` or `"btu"`: British Thermal Unit
+  - `"kBTU"` or `kBtu"` or `"kbtu"`: Kilo-BTU
+  - `"MBTU"` or `"MBtu"` or `"Mbtu"`: Mega-BTU
   - `"Wh"`: Watt-Hour
   - `"kWh"`': Kilowatt-Hour
   - `"MWh"`: Megawatt-Hour
