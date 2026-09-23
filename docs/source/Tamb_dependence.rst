@@ -37,4 +37,4 @@ To address the limitations just discussed, **SERCpy** expanded the discrete depe
 
 Although the algorithm for modeling of dependence on ambient temperature gets triggered automatically when initializing the `DemandProfile` instance, there are some class methods that could be useful for users that want to implement this algorithm for other purposes:
 
-   - 
+   - :meth:`DemandProfile.get_demand_conditions`
