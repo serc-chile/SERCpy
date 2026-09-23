@@ -234,10 +234,10 @@ class DemandProfile:
     
     Tamb_dependence : float or callable, optional
         Parameter to define the level of dependence of the thermal load on the ambient temperature. Using this parameter is generally discouraged since the class is meant to automatically determine it.
-        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`/T_amb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
+        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`Tamb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`/T_amb_dependence`. If not provided, it defaults to `True`.
+        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`Tamb_dependence`. If not provided, it defaults to `True`.
     
     **kwargs : dict, optional
         For compatibility only.
