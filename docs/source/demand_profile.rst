@@ -10,7 +10,7 @@ Another factor that can greatly impact the performance of a solar thermal system
 
 :doc:`DemandProfile <demand_profile_class>` is a class provided by **SERCpy** that seeks to address both of these issues. It offers the users several construction modes so that they can choose the one that best matches their case and the data they have access to.
 
-Follow the :doc:`DemandProfile_tutorial` to get familiarized with the different construction modes of the class and some of the most relevant construction parameters, and then see the :doc:`documentation of the class and its methods <demand_profile_class>` to delve deeper into the functionalities and the parameters.
+Follow the :doc:`examples/DemandProfile_tutorial` to get familiarized with the different construction modes of the class and some of the most relevant construction parameters, and then see the :doc:`documentation of the class and its methods <demand_profile_class>` to delve deeper into the functionalities and the parameters.
 
 Contents
 --------
