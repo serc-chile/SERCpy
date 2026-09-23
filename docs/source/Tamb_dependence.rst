@@ -35,6 +35,9 @@ Two limitations of the method just discussed are the following:
 
 To address the limitations just discussed, **SERCpy** expanded the discrete dependence levels to a continuum from 0 to 3; this means that intermediate dependence levels are now available. Moreover, an algorithm to determine the dependence level was introduced. In order for this algorithm to work, the user has to provide a yearly ambient temperature profile when initializing the `DemandProfile` instance. This is done through the argument `Tamb_profile`  (see :doc:`Class DemandProfile <demand_profile_class>`).
 
-Although the algorithm for modeling of dependence on ambient temperature gets triggered automatically when initializing the `DemandProfile` instance, there are some class methods that could be useful for users that want to implement this algorithm for other purposes:
+.. currentmodule:: sercpy.demand_profile
 
-   - :meth:`DemandProfile.get_demand_conditions`
+Although the algorithm for modeling the dependence on ambient temperature gets triggered automatically when initializing the `DemandProfile` instance, there are some class methods that could be useful for users that want to use this algorithm for other purposes:
+
+   - :meth:`DemandProfile.define_temp_to_factor_func` returns the function that takes daily demand temperature values and returns a scalar factor proportional to the daily thermal demand.
+   - :meth:`DemandProfile.compute_Tamb_dependence` determines the level of ambient temperature dependece of the user based on monthly energy demand a temperature data.
