@@ -34,3 +34,7 @@ Two limitations of the method just discussed are the following:
     The numbers associated with each dependence level (integers 0 to 3) have little mathematical meaning, other than "the larger the value, the steeper the increase in demand when temperature drops". Thus, this classification method has little applicability without a method to determine the level of dependence of each user.
 
 To address the limitations just discussed, **SERCpy** expanded the discrete dependence levels to a continuum from 0 to 3; this means that intermediate dependence levels are now available. Moreover, an algorithm to determine the dependence level was introduced. In order for this algorithm to work, the user has to provide a yearly ambient temperature profile when initializing the `DemandProfile` instance. This is done through the argument `Tamb_profile`  (see :doc:`Class DemandProfile <demand_profile_class>`).
+
+Although the algorithm for modeling of dependence on ambient temperature gets triggered automatically when initializing the `DemandProfile` instance, there are some class methods that could be useful for users that want to implement this algorithm for other purposes:
+
+   - 
