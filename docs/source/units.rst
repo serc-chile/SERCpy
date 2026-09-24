@@ -71,7 +71,8 @@ Available area units are:
 
   - `"m2"`: Square meter
   - `"cm2"`: Square centimeter
-  - `"hm2"`: Square hectometer, equivalent to 10,000 square meters
+  - `"hm2"`: Square hectometer
+  . `"km2"`: Square kilometer
   - `"in2"`: Square inch
   - `"ft2"`: Square foot
   - `"ha"` or `"Ha"` or `"HA"`: Hectare, equivalent to 1 square hectometer
@@ -137,6 +138,7 @@ Quantities that can be constructed in this way are:
   - Density units: `"M/V"`
   - Specific heat capacity units: `"E/M T"`
   - Specific energy units (e.g heating value of fuels): `"E/M"`
+  - Irradiance or irradiation units: `"P/A"` or `"E/t A"`
 
 where:
 
@@ -145,6 +147,8 @@ where:
   - `E` stands for any energy unit
   - `T` stands for any temperature unit
   - `t` stands for any time unit
+  - `P` stands for any power unit
+  - `A` stands for any area unit
 
 Converting units
 ----------------
