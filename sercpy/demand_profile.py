@@ -226,7 +226,7 @@ class DemandProfile:
         Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
     
     Tamb_units : str, optional
-        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `T_units`/`temp_units`. See :doc:`units`.
+        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `temp_units`/`T_units`. See :doc:`units`.
     
     monthly_production : list of float, optional
         List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with the ambient temperature.

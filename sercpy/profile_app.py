@@ -2,7 +2,7 @@
 """
 Created on Mon Aug 31 14:38:54 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 from pathlib import Path
@@ -10,6 +10,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font as tkfont
+import warnings
 
 # tkinter's own clipboard (clipboard_append) hands text to the OS only
 # lazily -- another program has to actually request a paste (or the window
@@ -22,8 +23,8 @@ try:
     import pyperclip
 except ImportError:
     pyperclip = None
-    print(
-        'Note: the "pyperclip" package is not installed, so copied text '
+    warnings.warn(
+        'Profile App: The "pyperclip" package is not installed, so copied text '
         'may not survive after this app is closed. Install it with: '
         "pip install pyperclip"
     )

@@ -70,6 +70,8 @@ unit_database = {
         'ATM': 101325,
         'mmHg': 133.322,
         'mmhg': 133.322,
+        'inHg': 133.322*25.4,
+        'inhg': 133.322*25.4,
         'psi': 6894.76,
         'PSI': 6894.76,
         
@@ -114,6 +116,7 @@ unit_database = {
         'm2': 1,
         'cm2': 1e-4,
         'hm2': 1e4,
+        'km2': 1e6,
         'in2': 0.00064516,
         'ha': 1e4,
         'HA': 1e4,
@@ -268,6 +271,7 @@ def get_unit_type( units: str ) -> str:
         - specific_energy_mass
         - specific_energy_volume
         - specific_heat_capacity
+        - irradiance
 
     Parameters
     ----------
@@ -319,6 +323,10 @@ def get_unit_type( units: str ) -> str:
     
     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
         return 'specific_heat_capacity'
+    
+    if ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'area'} or 
+         unit_types_numerator == {'power'} and unit_types_denominator == {'area'} ):
+        return 'irradiance'
     
     return None
     
@@ -658,6 +666,10 @@ if __name__ == "__main__":
     # Convert heating value of a fuel
     # Convert 4000 kJ/kg to kcal/lb
     print( f"4000 kJ/kg to kcal/lb: { convert_units( 4000, 'kJ/kg', 'kcal/lb' ) }" )
+    
+    # Convert irradiance
+    # Convert 850 W/m2 to BTU/km2 day
+    print( f"850 W/m2 to BTU/km2 day: { convert_units( 850, 'W/m2', 'BTU/km2 day' ) }" )
     
     
     
