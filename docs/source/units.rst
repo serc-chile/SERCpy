@@ -62,6 +62,7 @@ Available pressure units are:
   - `"mbar"`: Milibar
   - `"atm"` or `"ATM"`: Atmosphere
   - `"mmHg"` or `"mmhg"`: Milimeter of mercury
+  - `"inHg"` or `"inhg"`: Inch of mercury
   - `"psi"` or `"PSI"`: Pounds per square inch 
 
 Area
