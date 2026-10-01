@@ -5,6 +5,8 @@ Created on Mon Aug 17 11:18:03 2026
 @author: Adrian Riebel Brummer
 """
 
+from math import pi
+
 class UnitsError(Exception):
     pass
 
@@ -192,7 +194,18 @@ unit_database = {
         'HP': 745.7,
         'Hp': 745.7,
         
-        }
+        },
+    
+    'angle': {
+        
+        'rad': 1,
+        '°': pi/180,
+        'deg': pi/180,
+        'degree': pi/180,
+        'gon': pi/200,
+        'grad': pi/200,
+        
+        },
 
 }
 
