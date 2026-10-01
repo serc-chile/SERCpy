@@ -118,6 +118,15 @@ Power is a special type of quantity because the units can be created from the en
   - `"MW"` or `"Mw"`: Megawatt
   - `"HP"` or `"hp"` or `"Hp"`: Horsepower
 
+Angles
+~~~~~~
+
+Available angle units are:
+
+  - `"rad"` or `"radian"`
+  - `"°"` or `"deg"` or `"degree"`
+  - `"grad"` or `"gon"` or `"gradian"`
+
 .. _compound_units:
 
 Compound units
