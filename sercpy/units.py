@@ -199,11 +199,13 @@ unit_database = {
     'angle': {
         
         'rad': 1,
+        'radian': 1,
         '°': pi/180,
         'deg': pi/180,
         'degree': pi/180,
         'gon': pi/200,
         'grad': pi/200,
+        'gradian': pi/200,
         
         },
 
