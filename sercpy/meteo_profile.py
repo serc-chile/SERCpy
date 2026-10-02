@@ -1760,6 +1760,24 @@ class MeteoProfile:
             T_units = None,
             angle_units = None ):
         
+        """
+        
+        Get the meteorological conditions.
+        
+        Parameters
+        ----------
+        
+        include_right : bool, optional
+            sdflsdfsdfasdf
+            
+        returns
+        -------
+        
+        
+        
+        
+        """
+        
         if not len( args ) in [ 0, 1, 2 ]:
             raise ValueError("MeteoProfile.get_conditions: Number of positional arguments must be either 0, 1, or 2.")
             
