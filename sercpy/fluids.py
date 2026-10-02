@@ -14,6 +14,12 @@ class Fluid:
             self,
             
             fluid_name,
+            pressure,
+            pressure_units,
+            pressure_type,
+            T_sat,
+            T_sat_units,
             
-            
-            )
+            ):
+        
+        

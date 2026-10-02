@@ -5,7 +5,9 @@ Created on Mon Aug 17 22:08:31 2026
 @author: Adrian Riebel Brummer
 """
 
-from math import sin, cos, tan, arctan, pi
+from .core import month_days
+from math import pi
+from numpy import arctan, tan, sin, cos
 from typing import Optional
 from pathlib import Path
 import requests
@@ -18,7 +20,9 @@ from pvlib.atmosphere import get_relative_airmass
 from pvlib.irradiance import get_extra_radiation, perez
 from scipy.integrate import quad, nquad
 from scipy.interpolate import interp1d
-from .config import api_key as _api_key
+from .config import get_api_key
+from .config import coordinates_tolerance
+from .units import convert_units
 from timezonefinder import timezone_at
 from .solar_field import SolarField
 import warnings
@@ -39,6 +43,8 @@ class FileFormatError(Exception):
 class LocationNeeded(Exception):
     pass
 
+
+
 MeteoProfile_valid_args = [
     
     "location",
@@ -47,19 +53,47 @@ MeteoProfile_valid_args = [
     
     "ground_albedo",
     
+    "api_key",
+    
     "tmy_file_path",
     "ghi_col_name",
     "dni_col_name",
     "dhi_col_name",
     "Tamb_col_name",
+    "tmy_utc_offset",
+    "sep",
+    "delimiter",
+    "skiprows",
+    
+    "irradiance_units",
+    "temp_units",
+    
+    "elevation",
+    "elevation_units",
     
     "solar_field",
     
     "tz",
+    "time_zone",
     
     ]
+
+
     
 class MeteoProfile:
+    """
+    Class that imports, computes and stores the meteorological conditions during an entire year, on a certain location.
+    
+    It is optimized to generate meteorological data within the Chilean territory.
+    
+    It can load data for any location on the planet. Moreover, it automatically sets the time zone based on the location; this includes eventual time changes due do daylight saving time.
+    
+    Parameters
+    ----------
+    
+    
+    
+    """
     
     def __init__(
             
@@ -69,6 +103,8 @@ class MeteoProfile:
             location: Optional[ tuple ] = None,
             latitude: Optional[ float ] = None,
             longitude: Optional[ float ] = None,
+            
+            ground_albedo: Optional[ float ] = None,
             
             api_key: Optional[ str ] = None,
             
@@ -85,11 +121,24 @@ class MeteoProfile:
             irradiance_units: Optional[ str ] = None,
             temp_units: Optional[ str ] = None,
             
+            elevation: Optional[ float ] = None,
+            elevation_units: Optional[ str ] = None,
+            
             solar_field: Optional[ SolarField ] = None,
             
             tz: Optional[ str ] = 'auto',
+            time_zone: Optional[ str ] = 'auto',
             
             **kwargs):
+        
+        self.irradiance_columns = [ 
+            
+            'GHI', 'DNI', 'DHI',
+            'irradiance_first_row', 'irradiance_shadeable_rows' ]
+        
+        self.temp_columns = [ 'Tamb', 'Tmains' ]
+        
+        self.angle_columns = [ 'azimuth', 'zenith', 'apparent_zenith' ]
         
         # If location is provided
         if location is not None:
@@ -115,25 +164,61 @@ class MeteoProfile:
             self._latitude = None
             self._longitude = None
             
-        self.import_meteo_data(
-            
-            self._latitude,
-            self._longitude,
-            
-            api_key,
-            
-            tmy_file_path,
-            ghi_col_name,
-            dni_col_name,
-            dhi_col_name,
-            Tamb_col_name,
-            tmy_utc_offset,
-            sep,
-            delimiter,
-            skiprows,
-            
-            
-            )
+        self._ground_albedo = self.validate_argument("ground_albedo", ground_albedo)
+        if self._ground_albedo is None:
+            self._ground_albedo = 0.2
+        
+        self._api_key = self.validate_argument("api_key", api_key)
+        
+        self._tmy_file_path = self.validate_argument("tmy_file_path", tmy_file_path)
+        
+        self._ghi_col_name = self.validate_argument("ghi_col_name", ghi_col_name)
+        self._dni_col_name = self.validate_argument("dni_col_name", dni_col_name)
+        self._dhi_col_name = self.validate_argument("dhi_col_name", dhi_col_name)
+        self._Tamb_col_name = self.validate_argument("Tamb_col_name", Tamb_col_name)
+        
+        self._tmy_utc_offset = self.validate_argument("tmy_utc_offset", tmy_utc_offset)
+        
+        if sep is None and delimiter is not None:
+            self._sep = self.validate_argument("sep", delimiter)
+        else:
+            self._sep = self.validate_argument( "sep", sep )
+        
+        self._skiprows = self.validate_argument( "skiprows", skiprows )
+        
+        self._irradiance_units = self.validate_argument( "irradiance_units", irradiance_units )
+        self._temp_units = self.validate_argument( "temp_units", temp_units )
+        
+        elevation = self.validate_argument( "elevation", elevation )
+        elevation_units = self.validate_argument( "elevation_units", elevation_units )
+        
+        if elevation is not None and elevation_units is not None:
+            self._elevation = convert_units( elevation, elevation_units, 'm' )
+        else:
+            self._elevation = elevation
+        
+        self._solar_field = self.validate_argument( "solar_field", solar_field )
+        
+        if tz != "auto" and time_zone != "auto":
+            raise ValueError("MeteoProfile: Argument 'time_zone' is an alternative name for 'tz'. Both arguments cannot be provided together.")
+        elif tz != "auto":
+            self._tz = self.validate_argument( "tz", tz )
+        elif time_zone != "auto":
+            self._tz = self.validate_argument( "tz", time_zone )
+        else:
+            self._tz = "auto"
+        
+        if ( tz is None or tz == 'auto' ) and time_zone is not None:
+            self._tz = self.validate_argument( "tz", time_zone )
+        else:
+            self._tz = self.validate_argument( "tz", tz )
+        
+        self._import_meteo_data()
+        
+        self.compute_T_mains_Profile()
+        
+        if self._solar_field is not None:
+            self.compute_poa_irradiance( solar_field )
     
     @staticmethod
     def import_solar_explorer_file( tmy_file_path ):
@@ -164,9 +249,9 @@ class MeteoProfile:
                     if not line_list[0] == 'ALTURA':
                         raise FileFormatError("MeteoProfile.import_solar_explorer_file: 'ALTURA' not encountered in line 14 of the file.")
                     try:
-                        altitude = float( line_list[1] )
+                        elevation = float( line_list[1] )
                     except:
-                        raise FileFormatError("MeteoProfile.import_solar_explorer_file: altitude could not be read in line 14 of the file.")
+                        raise FileFormatError("MeteoProfile.import_solar_explorer_file: elevation could not be read in line 14 of the file.")
                     break
             
         df = pd.read_csv( tmy_file_path, skiprows = 41 )
@@ -189,7 +274,7 @@ class MeteoProfile:
             
         utc_offset = -4
         
-        return latitude, longitude, utc_offset, df
+        return latitude, longitude, elevation, utc_offset, df
         
     @staticmethod
     def import_SAM_file( tmy_file_path ):
@@ -203,12 +288,12 @@ class MeteoProfile:
                     continue
                 line_list = line.rstrip("\n").split(',')
                 try:
-                    latitude, longitude, utc_offset, altitude = float( line_list[ 5 ] ), float( line_list[ 6 ] ), float( line_list[ 7 ] ), float( line_list[ 8 ] )
+                    latitude, longitude, utc_offset, elevation = float( line_list[ 5 ] ), float( line_list[ 6 ] ), float( line_list[ 7 ] ), float( line_list[ 8 ] )
                 except:
-                    raise FileFormatError("MeteoProfile.import_SAM_file: Metadata could not be extracted from file (latitude, longitude, utc_offset, altitude).")
+                    raise FileFormatError("MeteoProfile.import_SAM_file: Metadata could not be extracted from file (latitude, longitude, utc_offset, elevation).")
                 break
             
-        df = pd.read_csv( tmy_file_path, skiprows = 1 )
+        df = pd.read_csv( tmy_file_path, skiprows = 2 )
         
         try:
             df = df.filter( [ 'GHI','DNI','DHI','Tdry' ] )
@@ -216,7 +301,7 @@ class MeteoProfile:
         except:
             raise FileFormatError("MeteoProfile.import_SAM_file: SAM-formatted file could not be processed.")
             
-        return latitude, longitude, utc_offset, df
+        return latitude, longitude, elevation, utc_offset, df
     
     @staticmethod
     def data_length_to_datetimes(
@@ -304,56 +389,45 @@ class MeteoProfile:
         return 'UTC' + utc_sign + '0'*( h < 10 ) + str( h ) + ':' + '0'*( m < 10 ) + str( m )
     
     @staticmethod
-    def get_utc_offset( latitude, longitude ):
+    def get_utc_offset( timezone = None, latitude = None, longitude = None, month = None ):
         
-        timezone = timezone_at(lng = longitude, lat = latitude)
+        if timezone is None:
+            if latitude is None or longitude is None:
+                raise ValueError("MeteoProfile.get_utc_offset: Latitude and longitude must be provided if no timezone is provided.")
+            timezone = timezone_at(lng = longitude, lat = latitude)
         
-        if latitude >= 0:
-            month = 1
-        else:
-            month = 7
+        if month is None:
+            if latitude >= 0:
+                month = 1
+            else:
+                month = 7
         
         dt = datetime( year = 2025, month = month, day = 1, hour = 0, minute = 0, second = 0, tzinfo = ZoneInfo(timezone) )
         
-        offset_hours = int( dt.utcoffset().total_seconds() )/3600
+        offset_seconds = int( dt.utcoffset().total_seconds() )
+        
+        if offset_seconds%3600 == 0:
+            offset_hours = offset_seconds//3600
+        else:
+            offset_hours = offset_seconds/3600
         
         return offset_hours
     
-    @staticmethod
-    def complete_irradiance_data(
-            
-            df: pd.DataFrame,
-            latitude: Optional[ float ] = None,
-            longitude: Optional[ float ] = None,
-            *,
-            ghi_col_name: Optional[ str ] = None,
-            dni_col_name: Optional[ str ] = None,
-            dhi_col_name: Optional[ str ] = None,
-            utc_offset: Optional[ str ] = None,
-            ):
+    def _complete_irradiance_data( self ):
         
-        if ghi_col_name is not None:
-            df = df.rename( columns = { ghi_col_name: 'GHI' } )
-        if dni_col_name is not None:
-            df = df.rename( columns = { dni_col_name: 'DNI' } )
-        if dhi_col_name is not None:
-            df = df.rename( columns = { dhi_col_name: 'DHI' } )
+        df = self.get_attribute( "df_tmy" )
+        latitude = self.get_attribute( "latitude" )
+        longitude = self.get_attribute( "longitude" )
+        utc_offset  = self.get_attribute( "tmy_utc_offset" )
         
         columns = df.columns.tolist()
         
         if 'GHI' in columns and 'DNI' in columns and 'DHI' in columns:
             
-            if ghi_col_name is not None:
-                df = df.rename( columns = { 'GHI': ghi_col_name } )
-            if dni_col_name is not None:
-                df = df.rename( columns = { 'DNI': dni_col_name } )
-            if dhi_col_name is not None:
-                df = df.rename( columns = { 'DHI': dhi_col_name } )
-            
             return df
         
         if latitude is None or longitude is None:
-            raise LocationNeeded("MeteoProfile.complete_irradiance_data: Latitude and longitude are needed when one of the irradiance columns is missing (GHI, DNI, DHI).")
+            raise LocationNeeded("MeteoProfile._complete_irradiance_data: Latitude and longitude are needed when one of the irradiance columns is missing (GHI, DNI, DHI).")
         
         if not any( [
                 
@@ -363,18 +437,14 @@ class MeteoProfile:
                 
                 ] ):
             
-            raise ValueError("MeteoProfile.complete_irradiance_data: At least two irradiance columns have to be present in the DataFrame from the three: GHI, DNI, DHI.")
+            raise ValueError("MeteoProfile._complete_irradiance_data: At least two irradiance columns have to be present in the DataFrame from the three: GHI, DNI, DHI.")
         
-        if utc_offset is None:
-            warnings.warn("MeteoProfile: Missing irradiance column will be calculated without information about the UTC offset of the data. The UTC offset will be inferred from the location introduced. This can lead to large errors if the assumption is incorrect.")
-            tz = MeteoProfile.utc_offset_num_to_str( MeteoProfile.get_utc_offset(latitude, longitude) )
-        
-        else:
-            tz = MeteoProfile.utc_offset_num_to_str( utc_offset )
+        tz = MeteoProfile.utc_offset_num_to_str( utc_offset )
         
         date_times = MeteoProfile.data_length_to_datetimes( len( df ), tz = tz )
         
         zenith_list = get_solarposition(date_times, latitude, longitude)[ 'apparent_zenith' ].astype(float).tolist()
+        zenith_list_rad = ( (pi/180)*np.array(zenith_list) ).astype( float ).tolist()
         
         assert len( zenith_list ) == len( df )
         
@@ -388,7 +458,7 @@ class MeteoProfile:
                 if zenith_list[i] > 90:
                     DHI_list.append( GHI_list[i] )
                 else:
-                    DHI_list.append( max( [ GHI_list[i] - DNI_list[i]*cos( zenith_list[i] ) , 0 ] ) )
+                    DHI_list.append( max( [ GHI_list[i] - DNI_list[i]*cos( zenith_list_rad[i] ) , 0 ] ) )
                     
             df[ 'DHI' ] = DHI_list
             
@@ -401,7 +471,7 @@ class MeteoProfile:
                 if zenith_list[i] > 90:
                     GHI_list.append( DHI_list[i] )
                 else:
-                    GHI_list.append( DNI_list[i]*cos( zenith_list[i] ) + DHI_list[i] )
+                    GHI_list.append( DNI_list[i]*cos( zenith_list_rad[i] ) + DHI_list[i] )
                     
             df[ 'GHI' ] = GHI_list
                     
@@ -414,25 +484,18 @@ class MeteoProfile:
                 if zenith_list[i] > 85:
                     DNI_list.append( 0 )
                 else:
-                    DNI_list.append( max( [ GHI_list[i] - DHI_list[i] , 0 ] )/cos( zenith_list[i] ) )
+                    DNI_list.append( max( [ GHI_list[i] - DHI_list[i] , 0 ] )/cos( zenith_list_rad[i]) )
                     
             df[ 'DNI' ] = DNI_list
             
         else:
             
-            raise Exception("MeteoProfile.complete_irradiance_data: Unknown error.")
-            
-        if ghi_col_name is not None:
-            df = df.rename( columns = { 'GHI': ghi_col_name } )
-        if dni_col_name is not None:
-            df = df.rename( columns = { 'DNI': dni_col_name } )
-        if dhi_col_name is not None:
-            df = df.rename( columns = { 'DHI': dhi_col_name } )
+            raise Exception("MeteoProfile._complete_irradiance_data: Unable to complete missing irradiance columns.")
         
         return df
     
     @staticmethod
-    def import_custom_file(
+    def _import_custom_file(
             
             tmy_file_path: str | Path,
             latitude: Optional[ float ] = None,
@@ -441,16 +504,11 @@ class MeteoProfile:
             ghi_col_name: Optional[ str ] = None,
             dni_col_name: Optional[ str ] = None,
             dhi_col_name: Optional[ str ] = None,
-            Tamb_col_name: str,
-            utc_offset: Optional[ float ] = None,
+            Tamb_col_name: Optional[ str ] = None,
             sep: Optional[ str ] = None,
-            delimiter: Optional[ str ] = None,
             skiprows: Optional[ int ] = None,
             
             ):
-        
-        if sep is None and delimiter is not None:
-            sep = delimiter
         
         try:
             
@@ -461,65 +519,56 @@ class MeteoProfile:
                 skiprows = skiprows
                 
                 )
-            columns_to_rename = { Tamb_col_name: 'Tamb' }
-            columns_to_keep = 'Tamb'
-            if ghi_col_name is not None:
-                columns_to_rename[ ghi_col_name ] = 'GHI'
-                columns_to_keep.append( 'GHI' )
-            if dni_col_name is not None:
-                columns_to_rename[ dni_col_name ] = 'DNI'
-                columns_to_keep.append( 'DNI' )
-            if dhi_col_name is not None:
-                columns_to_rename[ dhi_col_name ] = 'DHI'
-                columns_to_keep.append( 'DHI' )
+            
+            columns = df.columns.tolist()
+            
+            columns_to_rename = {}
+            columns_to_keep = []
+            
+            if Tamb_col_name is not None:
+                columns_to_rename[ Tamb_col_name ] = 'Tamb'
+            elif not 'Tamb' in columns:
+                raise FileFormatError("MeteoProfile._import_custom_file: Ambient temperature column must be present in the csv file. If the name of the column is not 'Tamb', it must be provided through the argument 'Tamb_col_name'.")
+            columns_to_keep.append( 'Tamb' )
+            
+            irradiance_custom_names = [ ghi_col_name, dni_col_name, dhi_col_name ]
+            irradiance_standard_names = [ 'GHI', 'DNI', 'DHI' ]
+            
+            for i in range( 3 ):
+                if irradiance_custom_names[ i ] is not None:
+                    columns_to_rename[ irradiance_custom_names[ i ] ] = irradiance_standard_names[ i ]
+                    columns_to_keep.append( irradiance_standard_names[ i ] )
+                elif irradiance_standard_names[ i ] in columns:
+                    columns_to_keep.append( irradiance_standard_names[ i ] )
+                    
+            if len( columns_to_keep ) < 3:
+                raise FileFormatError("MeteoProfile._import_custom_file: At least two of three irradiance components must be present in the csv file (GHI, DNI, DHI). If the name of the data columns in file are not as mentioned, they must be provided through the arguments 'ghi_col_name','dni_col_name','dhi_col_name'.")
             
             df = df.rename( columns = columns_to_rename )
             df = df.filter( columns_to_keep )
         
         except:
-            raise FileFormatError("MeteoProfile.import_custom_file: File could not be imported.")
-            
-        df = MeteoProfile.complete_irradiance_data( df, latitude, longitude, utc_offset = utc_offset )
+            raise FileFormatError("MeteoProfile._import_custom_file: File could not be imported.")
         
         return df
     
-    def import_meteo_data(
-            
-            self,
-            
-            latitude: Optional[ float ] = None,
-            longitude: Optional[ float ] = None,
-            
-            ground_albedo: Optional[ float ] = 0.2,
-            
-            api_key: Optional[ str ] = None,
-            
-            tmy_file_path: Optional[ str | Path ] = None,
-            ghi_col_name: Optional[ str ] = None,
-            dni_col_name: Optional[ str ] = None,
-            dhi_col_name: Optional[ str ] = None,
-            Tamb_col_name: Optional[ str ] = None,
-            utc_offset: Optional[ float ] = None,
-            sep: Optional[ str ] = None,
-            delimiter: Optional[ str ] = None,
-            skiprows: Optional[ int ] = None,
-            
-            ):
+    def _import_meteo_data( self ):
         
-        if latitude is not None:
-            try:
-                latitude = float( latitude )
-            except:
-                ValueError("MeteoPorfile.import_meteo_data: latitude must be convertible to type 'float'.")
-        if longitude is not None:
-            try:
-                longitude = float( longitude )
-            except:
-                ValueError("MeteoPorfile.import_meteo_data: longitude must be convertible to type 'float'.")
-                
-        if latitude is not None or longitude is not None:
-            if latitude is None or longitude is None:
-                raise ValueError("MeteoProfile.import_meteo_data: latitude and longitude must be provided together.")
+        latitude = self.get_attribute( "latitude" )
+        longitude = self.get_attribute( "longitude" )
+        
+        api_key = self.get_attribute( "api_key" )
+        
+        tmy_file_path = self.get_attribute( "tmy_file_path" )
+        ghi_col_name = self.get_attribute( "ghi_col_name" )
+        dni_col_name = self.get_attribute( "dni_col_name" )
+        dhi_col_name = self.get_attribute( "dhi_col_name" )
+        Tamb_col_name = self.get_attribute( "Tamb_col_name" )
+        irradiance_units = self.get_attribute( "irradiance_units" )
+        temp_units = self.get_attribute( "temp_units" )
+        sep = self.get_attribute( "sep" )
+        skiprows = self.get_attribute( "skiprows" )
+        utc_offset = self.get_attribute( "tmy_utc_offset" )
         
         if tmy_file_path is None:
             
@@ -527,56 +576,165 @@ class MeteoProfile:
                 raise ValueError("MeteoProfile.import_meteo_data: latitude and longitude must be provided if no data file is provided.")
             
             try:
-                df_tmy = MeteoProfile.download_TMY(latitude, longitude, api_key)
+                self._df_tmy, self._elevation = MeteoProfile.download_TMY(latitude, longitude, api_key)
             except OutOfChileError:
                 raise ValueError("MeteoProfile.import_meteo_data: The location provided is not within the Chilean territory. A meteorological data file must be provided.")
-            utc_offset = -4
-                
-        elif ghi_col_name is None and dni_col_name is None and dhi_col_name is None:
+            self._tmy_utc_offset = -4
             
-            file_format = MeteoProfile._get_file_format( tmy_file_path )
+            self._df_tmy = self._df_tmy.filter( [ 'GHI', 'DNI', 'DHI', 'Tamb' ] )
             
-            coordinates_tolerance = 0.01
-            if file_format == "Solar_Explorer":
-                latitude_file, longitude_file, utc_offset, df_tmy = MeteoProfile.import_solar_explorer_file( tmy_file_path )
-                
-            elif file_format == "SAM":
-                latitude_file, longitude_file, utc_offset, df_tmy = MeteoProfile.import_SAM_file( tmy_file_path )
-                
-            else:
-                raise FileFormatError("MeteoProfile.import_meteo_data: The format of the data file could not be recognized. For custom files, the names of relevant columns must be specified.")
-                
-            if latitude is not None or longitude is not None:
-                if abs( latitude - latitude_file ) > coordinates_tolerance:
-                    warnings.warn("MeteoProfile.import_meteo_data: latitude value provided to the function does not match the latitude contained in the data file.")
-                if abs( longitude - longitude_file ) > coordinates_tolerance:
-                    warnings.warn("MeteoProfile.import_meteo_data: longitude value provided to the function does not match the longitude contained in the data file.")
-            else:
-                latitude = latitude_file
-                longitude = longitude_file
-                
         else:
             
-            if latitude is None or longitude is None:
-                raise ValueError("MeteoProfile.import_meteo_data: latitude and longitude must be provided along with custom-format data files.")
-            
-            df_tmy = MeteoProfile.import_custom_file(
+            file_format = MeteoProfile._get_file_format( tmy_file_path )
+                    
+            if file_format in [ "Solar_Explorer", "SAM" ]:
                 
-                tmy_file_path,
-                latitude,
-                longitude,
-                ghi_col_name = ghi_col_name,
-                dni_col_name = dni_col_name,
-                dhi_col_name = dhi_col_name,
-                Tamb_col_name = Tamb_col_name,
-                utc_offset = utc_offset,
-                sep = sep,
-                delimiter = delimiter,
-                skiprows = skiprows
+                if file_format == "Solar_Explorer":
+                    self._latitude, self._longitude, self._elevation, self._tmy_utc_offset, self._df_tmy = MeteoProfile.import_solar_explorer_file( tmy_file_path )
+                    
+                elif file_format == "SAM":
+                    self._latitude, self._longitude, self._elevation, self._tmy_utc_offset, self._df_tmy = MeteoProfile.import_SAM_file( tmy_file_path )
+                    
+            else:
                 
-                )
+                assert file_format is None
+                
+                if latitude is None or longitude is None:
+                    raise ValueError("MeteoProfile.import_meteo_data: Custom-format data file detected. Latitude and longitude must be provided along with custom-format data files.")
+                
+                if utc_offset is None:
+                    utc_offset = self.get_utc_offset(latitude = latitude, longitude = longitude)
+                    self._tmy_utc_offset = utc_offset
+                    warnings.warn(f"MeteoProfile: UTC offset of the data was not provided. The value {utc_offset} was inferred from the location. This can be a cause for errors. It is recommended to specify this parameter through the argument 'tmy_utc_offset'.")
+                
+                self._df_tmy = MeteoProfile._import_custom_file(
+                    
+                    tmy_file_path,
+                    latitude,
+                    longitude,
+                    ghi_col_name = ghi_col_name,
+                    dni_col_name = dni_col_name,
+                    dhi_col_name = dhi_col_name,
+                    Tamb_col_name = Tamb_col_name,
+                    sep = sep,
+                    skiprows = skiprows )
+                
+                self._df_tmy = self.to_minutal( self._df_tmy )
+                
+                self._df_tmy = self._complete_irradiance_data()
+                
+                if irradiance_units is not None:
+                    self._df_tmy[ 'GHI' ] = convert_units( self._df_tmy[ 'GHI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
+                    self._df_tmy[ 'DNI' ] = convert_units( self._df_tmy[ 'DNI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
+                    self._df_tmy[ 'DHI' ] = convert_units( self._df_tmy[ 'DHI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
+                    
+                if temp_units is not None:
+                    self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), self.get_attribute( "temp_units" ), "°C" )
+        
+        if self._elevation is not None:
+            self._atmospheric_pressure = self.altitude_to_pressure( self._elevation )
+        
+        for column in self._df_tmy.columns.tolist():
+            self._df_tmy[ column ] = pd.to_numeric( self._df_tmy[ column ] )
+                
+        self._df_tmy = self.to_minutal( self._df_tmy )
+        
+        self._df_tmy = self._match_january_first()
+        
+        assert len( self._df_tmy ) == 8760*60
+        
+        date_times = pd.date_range(
             
-        self.data_df = df_tmy
+            datetime( year = 2025, month = 1, day = 1, hour = 0, minute = 0, second = 0 ),
+            datetime( year = 2025, month = 12, day = 31, hour = 23, minute = 59, second = 0 ),
+            freq = 'min', inclusive = 'both', tz = self._tz )
+        
+        self._df_tmy[ 'timestamp' ] = date_times
+        
+        solar_position = get_solarposition(date_times, self._latitude, self._longitude)
+        
+        self._df_tmy[ 'azimuth' ] = solar_position[ 'azimuth' ].values
+        self._df_tmy[ 'apparent_zenith' ] = solar_position[ 'apparent_zenith' ].values
+        self._df_tmy[ 'zenith' ] = solar_position[ 'zenith' ].values
+        
+        self._df_tmy = self._df_tmy[ [ 'timestamp', 'GHI', 'DNI', 'DHI', 'Tamb', 'azimuth', 'zenith', 'apparent_zenith' ] ]
+        
+    def _match_january_first( self ):
+        
+        df_tmy = self.get_attribute( "df_tmy" )
+        latitude = self.get_attribute( "latitude" )
+        longitude = self.get_attribute( "longitude" )
+        tz = self.get_attribute("tz")
+        utc_offset = self.get_attribute( "tmy_utc_offset" )
+        
+        if tz == "auto":
+            self._tz = self.get_timezone(latitude, longitude)
+        elif tz is None:
+            raise ValueError("MeteoProfile: Time zone cannot be None.")
+            
+        utc_offset_1st_January = self.get_utc_offset( timezone = self._tz , month = 1 ) #-3
+            
+        assert len( df_tmy ) == 8760*60
+        
+        mismatch_minutes = int( np.round( (utc_offset_1st_January - utc_offset)*60 ) ) # In Chile: -3 - (-4) = 1 -> *60 = 60
+        
+        if mismatch_minutes == 0:
+            return df_tmy.copy()
+        
+        columns = df_tmy.columns.tolist()
+        new_df = pd.DataFrame()
+        
+        if mismatch_minutes > 0:
+            for column in columns:
+                values_list = df_tmy[ column ].values.astype( float ).tolist()
+                last_section = values_list[ -mismatch_minutes: ]
+                values_list = last_section + values_list
+                values_list = values_list[ : 8760*60 ]
+                new_df[ column ] = values_list
+        
+        else:
+            for column in columns:
+                values_list = df_tmy[ column ].values.astype( float ).tolist()
+                first_section = values_list[ : mismatch_minutes ]
+                values_list = values_list + first_section
+                values_list = values_list[ - 8760*60: ]
+                new_df[ column ] = values_list
+                
+        return new_df
+    
+    @staticmethod
+    def to_minutal( data ):
+        
+        if type( data ) is not pd.DataFrame:
+            
+            try:
+                data = [ float( value ) for value in data ]
+            except TypeError:
+                raise TypeError("MeteoProfile.to_minutal: data must be either pd.DataFrame or list of float.")
+            
+        if len( data ) == 8760*60:
+            return data.copy()
+            
+        minutes_per_sample = 8760*60/len( data )
+        first_sample_time = minutes_per_sample/2
+        
+        original_time_axis = [ first_sample_time + minutes_per_sample*i for i in range( len( data ) ) ]
+        
+        goal_time_axis = list( range( 8760*60 ) )
+        
+        if type( data ) is list:
+            return ( np.interp( goal_time_axis, original_time_axis, data ) ).astype( float ).tolist()
+        
+        else:
+            assert type( data ) is pd.DataFrame
+            new_df = pd.DataFrame()
+            columns = data.columns.tolist()
+            for column in columns:
+                try:
+                    new_df[ column ] = np.interp( goal_time_axis, original_time_axis, data[ column ].values )
+                except:
+                    raise Exception(f"MeteoProfile.to_minutal: column '{column}' could not be interpolated.")
+            return new_df
     
     @staticmethod
     def _get_file_format( file_path ):
@@ -588,6 +746,13 @@ class MeteoProfile:
             if first_line == "Source,Location ID,City,State,Country,Latitude,Longitude,Time Zone,Elevation":
                 return "SAM"
             return None
+        
+    def get_attribute( self, attribute_name ):
+        
+        if type( attribute_name ) is not str:
+            raise ValueError( "MeteoProfile.get_attribute: attribute_name must be a string." )
+        
+        return getattr(self, '_' + attribute_name, None)
         
     @staticmethod
     def validate_argument( argument_name, value ):
@@ -611,12 +776,103 @@ class MeteoProfile:
                 value = float( value )
             except:
                 raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
-        
+                
+        if argument_name == "ground_albedo":
+            try:
+                value = float( value )
+            except:
+                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
+                
+            if not value >= 0 and value < 1:
+                raise ValueError( "Class MeteoProfile: Argument 'ground_albedo' must be >= 0 and < 1." )
+            
+                
+        if argument_name == "api_key":
+            try:
+                value = str( value )
+            except: 
+                ValueError( "Class MeteoProfile: Argument 'api_key' must be convertible type 'str'." )
+                
         if argument_name == "tmy_file_path":
             try:
                 value = Path( value )
             except:
                 raise ValueError( "Class MeteoProfile: Argument 'tmy_file_path' must be convertible to type pathlib.Path." )
+                
+        if argument_name in [
+                
+                "ghi_col_name",
+                "dni_col_name",
+                "dhi_col_name",
+                "Tamb_col_name",
+                
+                ]:
+            
+            try:
+                value = str( value )
+            except: 
+                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                
+        if argument_name == "tmy_utc_offset":
+            
+            try:
+                value = float( value )
+            except:
+                raise ValueError( "Class MeteoProfile: Argument 'tmy_utc_offset' must be convertible type 'float'." )
+                
+        if argument_name in [
+                
+                "sep",
+                "delimiter",
+                
+                ]:
+            
+            try:
+                value = str( value )
+            except: 
+                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                
+        if argument_name in [
+                
+                "irradiance_units",
+                "temp_units",
+                "elevation_units",
+                
+                ]:
+            
+            try:
+                value = str( value )
+            except: 
+                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                
+        if argument_name == "elevation":
+            
+            try:
+                value = float( value )
+            except:
+                raise ValueError( "Class MeteoProfile: Argument 'elevation' must be convertible type 'float'." )
+                
+        if argument_name == "solar_field":
+            
+            if not isinstance( value, SolarField ):
+                raise ValueError( "Class MeteoProfile: Argument 'solar_field' must be a SolarField instance." )
+                
+        if argument_name in [
+                
+                "tz",
+                "time_zone",
+                
+                ]:
+            
+            try:
+                value_2 = float( value )
+                value_2 = MeteoProfile.utc_offset_num_to_str( value_2 )
+                value = value_2
+            except:
+                try:
+                    value = str( value )
+                except:
+                    raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be either str (time zone name) or int/float (utc offset)." )
         
         return value
     
@@ -675,8 +931,8 @@ class MeteoProfile:
             Latitude of the location (degree).
         longitude : float
             Longitude of the location (degree).
-        api_key : str
-            API key for the 'API Energias Renovables' website.
+        api_key : str, optional
+            API key for the 'API Energias Renovables' website. If no value is provided to this function, it is expected that this key was previously saved by the user with the function 'config.set_api_key'.
     
         Raises
         ------
@@ -684,18 +940,16 @@ class MeteoProfile:
         
             - Errors such as connection error, timeout error, incorrect API key, etc. Also raised when the latitude or longitude provided cannot be interpreted as floating point values.
             
-            - If the site 'API Energias Renovables' is not able to produce the data requested because the location porvided is out of the allowed range.
+            - If the site 'API Energias Renovables' is not able to produce the data requested because the location provided is out of the allowed range.
     
         Returns
         -------
         df : pandas.DataFrame
             DataFrame containing the the data of a typical meteorological year (TMY) with the components: GHI, DNI, DHI, and ambient temperature. It has 8760 rows, one for each hour of a year. Irradiances are expressed in W/m2. Temperature is expressed in °C.
-        altitude : float
-            Altitude of the specified location (in meters).
+        elevation : float
+            Elevation of the specified location (in meters).
     
         """
-        
-        global _api_key
         
         try:
             latitude = float(latitude)
@@ -703,15 +957,16 @@ class MeteoProfile:
         except:
             raise TMY_Error("Function download_TMY: Parameters 'latitude' and 'longitude' must be convertible to type 'float'.")
         
-        if api_key is None and _api_key is None:
-            from .config import api_key as _api_key
-            if _api_key is None:
-                raise TMY_Error("MeteoProfile.download_TMY: No API key available. This key must either be provided as parameter to the function (argument 'api_key') or be saved with the function config.set_api_key.")
-        elif api_key is None and _api_key is not None:
-            api_key = _api_key
-        
+        if api_key is None:
+            api_key = get_api_key()
+            if api_key is None:
+                raise TMY_Error("MeteoProfile.download_TMY: No API key available. This key must either be provided as a parameter to the function (argument 'api_key') or be saved with the function config.set_api_key.")
+            
         if type( api_key ) is not str:
             raise TMY_Error( "MeteoProfile.download_TMY: api_key must be a string." )
+            
+        if api_key == "":
+            raise TMY_Error("MeteoProfile.download_TMY: Empty API key.")
             
         if not MeteoProfile.is_Chile( latitude, longitude ):
             raise OutOfChileError("MeteoProfile.download_TMY: Location provided is not located within the Chilean territory.")
@@ -824,14 +1079,14 @@ class MeteoProfile:
                     variable_list = ['Date'] + [ payload['variables'][i]['options']['label'] for i in range(len(payload['variables'])) ]
                     data = { variable_list[i]: [] for i in range(len(variable_list)) } 
                     data_start = False
-                    extract_altitude = False
+                    extract_elevation = False
                     for line in lines:
-                        if extract_altitude:
+                        if extract_elevation:
                             line_list = line.split(',')
-                            altitude = float(line_list[-1])
-                            extract_altitude = False
+                            elevation = float(line_list[-1])
+                            extract_elevation = False
                         if line.startswith('Nombre,Longitud,Latitud,Altura Terreno (m)'):
-                            extract_altitude = True
+                            extract_elevation = True
                         if line.startswith('FECHA'):
                             data_start = True
                         elif data_start and line.strip():
@@ -845,7 +1100,7 @@ class MeteoProfile:
                     
                     df = pd.DataFrame.from_dict(data)
                     
-                    return df, altitude
+                    return df, elevation
                 
         # Manage errors
                 
@@ -866,9 +1121,6 @@ class MeteoProfile:
             
         except requests.exceptions.RequestException as e:
             raise TMY_Error("Function download_TMY: A requests/network error occurred:", e)
-            
-        except:
-            raise TMY_Error("Function download_TMY: An unknown exception occurred when contacting 'API Energias Renovables' (url: https://api.minenergia.cl/).")
     
     def set_time_step(self, time_step):
         if hasattr(self, "_time_step") and self._time_step == time_step:
@@ -981,6 +1233,59 @@ class MeteoProfile:
         
         return result
     
+    @staticmethod
+    def altitude_to_pressure(
+            
+            altitude: float,
+            altitude_units: Optional[ str ] = None,
+            pressure_units: Optional[ str ] = None ):
+        """
+        Static method to compute the atmospheric pressure at a certain altitude.
+
+        Parameters
+        ----------
+        altitude : float
+            Altitude where the pressure needs to be computed. Available range in meters: -500 to 10,000.
+        altitude_units : str, optional
+            Units with which the altitude is being provided. If not provided, it defaults to 'm'.
+        pressure_units : str, optional
+            Units with which the pressure is meant to be returned. If not provided, it defaults to 'Pa'.
+
+        Returns
+        -------
+        pressure : float
+            Pressure computed at the altitude introduced.
+
+        """
+        
+        try:
+            altitude = float( altitude )
+        except:
+            raise ValueError( "MeteoProfile.altitude_to_pressure: altitude must be convertible to type 'float'." )
+        
+        if altitude_units is not None:
+            altitude = convert_units(altitude, altitude_units, 'm')
+            
+        if not altitude >= -500 and altitude <= 10000:
+            raise ValueError( f"MeteoProfile.altitude_to_pressure: altitude must lie within the range: -500 m <= altitude <= 10,000 m. Altitude introduced: {altitude} m." )
+        
+        Pb = 101325 # Reference pressure, Pa
+        Tref = 273.15 + 15 # Reference temperature, K
+        R = 8.31432 # Gas constant, J/(mol·K)
+        M = 0.0289644 # Air molar mas, kg/mol
+        g = 9.80665 # Gravity acceleration, m/s2
+        temp_gradient = -6.5e-3 # Temperature gradient, K/m
+        
+        base = Tref/( Tref + temp_gradient*altitude )
+        exponent = g*M/( R * temp_gradient )
+        
+        pressure = Pb*base**exponent
+        
+        if pressure_units is not None:
+            pressure = convert_units( pressure, 'Pa', pressure_units )
+        
+        return pressure
+    
     def compute_poa_irradiance( self, solar_field ):
         
         coll_tilt_deg = solar_field.get_attribute( "coll_tilt" )
@@ -991,6 +1296,8 @@ class MeteoProfile:
         
         coll_tilt_rad = coll_tilt_deg*pi/180
         coll_azimuth_rad = coll_azimuth_deg*pi/180
+        
+        ground_albedo = self.get_attribute( "ground_albedo" )
         
         
         # assert coll_tilt_deg >= 0 and coll_tilt_deg <= 90
@@ -1123,43 +1430,21 @@ class MeteoProfile:
                                                   [ -sin( coll_tilt_rad ),                          0,                       cos( coll_tilt_rad )         ] ] ) )
         
         def incidence_angles(solar_zenith, solar_azimuth):
-            if solar_zenith == 0:
-                solar_N = 0
-                solar_E = 0
-                solar_Z = 1
-            elif solar_zenith == 180:
-                solar_N = 0
-                solar_E = 0
-                solar_Z = -1
-            else:
-                solar_N = cos(solar_azimuth*pi/180)*sin(solar_zenith*pi/180)
-                solar_E = sin(solar_azimuth*pi/180)*sin(solar_zenith*pi/180)
-                solar_Z = cos(solar_zenith*pi/180)
+            solar_N = cos(solar_azimuth*pi/180)*sin(solar_zenith*pi/180)
+            solar_E = sin(solar_azimuth*pi/180)*sin(solar_zenith*pi/180)
+            solar_Z = cos(solar_zenith*pi/180)
             coll_coordinates = np.dot(rotation_matrix, np.array([[solar_N],
-                                                                  [solar_E],
-                                                                  [solar_Z]]))
+                                                                 [solar_E],
+                                                                 [solar_Z]]))
             coll_N = coll_coordinates[0][0]
             coll_E = coll_coordinates[1][0]
             coll_Z = coll_coordinates[2][0]
             if coll_Z <= 0:
                 return None, None, None
-            if coll_E == 0 and coll_N == 0:
-                trans = 0
-                longi = 0
-                aoi = 0
-            elif coll_E == 0:
-                trans = 0
-                longi = arctan(abs(coll_N)/coll_Z)
-                aoi = longi
-            elif coll_N == 0:
-                trans = arctan(abs(coll_E)/coll_Z)
-                longi = 0
-                aoi = trans
-            else:
-                trans = arctan(abs(coll_E)/coll_Z)
-                longi = arctan(abs(coll_N)/coll_Z)
-                tg2_aoi = (tan(trans))**2 + (tan(longi))**2
-                aoi = arctan(tg2_aoi**(1/2))
+            trans = arctan(abs(coll_E)/coll_Z)
+            longi = arctan(abs(coll_N)/coll_Z)
+            tg2_aoi = (tan(trans))**2 + (tan(longi))**2
+            aoi = arctan(tg2_aoi**(1/2))
             if longi > pi/2 - coll_tilt_rad and coll_N > 0:
                 longi = pi/2 - coll_tilt_rad
                 tg2_aoi = (tan(trans))**2 + (tan(longi))**2
@@ -1167,6 +1452,46 @@ class MeteoProfile:
             if coll_N > 0:
                 longi = -longi
             return float(aoi), float(longi), float(trans)
+        
+        def incidence_angles_series(solar_zenith_series, solar_azimuth_series):
+            
+            solar_N = cos( (pi/180)*solar_azimuth_series )*sin( (pi/180)*solar_zenith_series )
+            
+            solar_E = sin( (pi/180)*solar_azimuth_series )*sin( (pi/180)*solar_zenith_series )
+            
+            solar_Z = cos( (pi/180)*solar_zenith_series )
+            
+            vectors = np.stack([solar_N, solar_E, solar_Z], axis = 1)[:, :, np.newaxis]
+            
+            coll_coordinates = np.matmul(rotation_matrix, vectors)
+            
+            aoi_array = []
+            longi_array = []
+            trans_array = []
+            
+            for vector in coll_coordinates:
+                coll_N = vector[0][0]
+                coll_E = vector[1][0]
+                coll_Z = vector[2][0]
+                if coll_Z <= 0:
+                    aoi_array.append( None )
+                    longi_array.append( None )
+                    trans_array.append( None )
+                    continue
+                trans = arctan(abs(coll_E)/coll_Z)
+                longi = arctan(abs(coll_N)/coll_Z)
+                tg2_aoi = (tan(trans))**2 + (tan(longi))**2
+                aoi = arctan(tg2_aoi**(1/2))
+                if longi > pi/2 - coll_tilt_rad and coll_N > 0:
+                    longi = pi/2 - coll_tilt_rad
+                    tg2_aoi = (tan(trans))**2 + (tan(longi))**2
+                    aoi = arctan(tg2_aoi**(1/2))
+                if coll_N > 0:
+                    longi = -longi
+                aoi_array.append( aoi )
+                longi_array.append( longi )
+                trans_array.append( trans )
+            return aoi_array, longi_array, trans_array
         
         if type(coll_IAM) == dict:
             assert 'b0' in coll_IAM or 'Kl' in coll_IAM or all([ (type(key) == int or type(key) == float) for key in coll_IAM])
@@ -1249,44 +1574,99 @@ class MeteoProfile:
         First_Row_IAM_Profile = []
         Shadeable_Rows_IAM_Profile = []
         
-        assert len( self.DHI_Profile ) == len( self.DNI_Profile ) and len( self.DHI_Profile ) == len( self.GHI_Profile )
+        ### DEBUG
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
         
-        for time_step in range( len( self.DNI_Profile ) ):
+        # zenith_array = self._df_tmy[ 'apparent_zenith' ].values
+        # azimuth_array = self._df_tmy[ 'azimuth' ].values
+        
+        
+        
+        
+        
+        # aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
+        
+        
+        
+        
+        
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        ### END DEBUG
+        
+        
+        
+        
+        ### ORIGINAL
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        
+        date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ].values )
+        GHI_array = np.max( [ self._df_tmy[ 'GHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
+        DNI_array = np.max( [ self._df_tmy[ 'DNI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
+        DHI_array = np.max( [ self._df_tmy[ 'DHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
+        
+        zenith_array = self._df_tmy[ 'apparent_zenith' ].values
+        azimuth_array = self._df_tmy[ 'azimuth' ].values
+        
+        relative_airmass_array = get_relative_airmass( zenith_array  )
+        dni_extra_array = get_extra_radiation( date_times )
+        
+        diff_irradiance = perez( coll_tilt_deg,
+                                 coll_azimuth_deg,
+                                 DHI_array,
+                                 DNI_array,
+                                 dni_extra_array,
+                                 zenith_array,
+                                 azimuth_array,
+                                 relative_airmass_array,
+                                 return_components = True )
+        
+        isotropic_irradiance_array = diff_irradiance[ 'isotropic' ].values
+        circumsolar_irradiance_array = diff_irradiance['circumsolar'].values
+        horizon_irradiance_array = diff_irradiance[ 'horizon' ].values
+        
+        aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
+        
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        #######################################################################
+        ### END ORIGINAL
+        
+        for time_step in range( len( self._df_tmy ) ):
             
-            if self.DHI_Profile[time_step] <= 0 and self.DNI_Profile[time_step] <= 0:
+            
+            GHI = GHI_array[time_step]
+            DNI = DNI_array[time_step]
+            DHI = DHI_array[time_step]
+            
+            if DHI <= 0 and DNI <= 0:
                 
                 First_Row_Irradiance_Profile.append( 0 )
                 Shadeable_Rows_Irradiance_Profile.append( 0 )
                 First_Row_IAM_Profile.append( 0 )
                 Shadeable_Rows_IAM_Profile.append( 0 )
-                
                 continue
             
-            aoi, longi, trans = incidence_angles( self.Zenith_Profile[time_step], self.Azimuth_Profile[time_step] )
+            aoi = aoi_array[ time_step ]
+            longi = longi_array[ time_step ]
+            trans = trans_array[ time_step ]
             
-            if doy_list is None:
-                doy = int(time_step/self.time_steps_per_day) + 1
-            else:
-                doy = doy_list[ time_step ]
-            relative_airmass = get_relative_airmass(self.Zenith_Profile[time_step], model = 'young1994')
-            dni_extra = get_extra_radiation(doy)
-            diff_irradiance = perez( coll_tilt_deg,
-                                     coll_azimuth_deg,
-                                     max([self.DHI_Profile[time_step], 0]),
-                                     max([self.DNI_Profile[time_step], 0]),
-                                     dni_extra,
-                                     self.Zenith_Profile[time_step],
-                                     self.Azimuth_Profile[time_step],
-                                     relative_airmass,
-                                     return_components = True )
-            
-            isotropic_irradiance_first_row = float( diff_irradiance['isotropic'] )
+            isotropic_irradiance_first_row = float( isotropic_irradiance_array[ time_step ] )
             isotropic_irradiance_shadeable_rows = isotropic_irradiance_first_row*diffuse_irradiance_fraction_shadeable_rows/diffuse_irradiance_fraction_non_shadeable_rows
-            circumsolar_irradiance = float( diff_irradiance['circumsolar'] )
-            horizon_irradiance = float( diff_irradiance['horizon'] )
-            ref_irradiance = reflected_irradiance_fraction*ground_albedo*max([self.GHI_Profile[time_step], 0] )
+            circumsolar_irradiance = float( circumsolar_irradiance_array[ time_step ] )
+            horizon_irradiance = float( horizon_irradiance_array[ time_step ] )
+            ref_irradiance = reflected_irradiance_fraction*ground_albedo*max([GHI, 0] )
             
-            if aoi == None:
+            if aoi is None:
                 
                 beam_irradiance = 0
                 beam_IAM = 0
@@ -1294,7 +1674,7 @@ class MeteoProfile:
                 
             else:
                 
-                beam_irradiance = max( [ self.DNI_Profile[time_step]*cos(aoi), 0 ] ) + max( [ circumsolar_irradiance, 0 ] )
+                beam_irradiance = max( [ DNI*cos(aoi), 0 ] ) + max( [ circumsolar_irradiance, 0 ] )
                 beam_IAM = compute_beam_IAM(aoi, abs(longi), trans)
                 
                 if longi < 0 and abs(longi) >= pi/2 - coll_tilt_rad:
@@ -1324,14 +1704,260 @@ class MeteoProfile:
             Shadeable_Rows_Irradiance_Profile.append( shadeable_rows_irradiance )
             First_Row_IAM_Profile.append( first_row_IAM )
             Shadeable_Rows_IAM_Profile.append( shadeable_rows_IAM )
+        
+        aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
+        
+        self._df_tmy[ 'aoi' ] = aoi_array
+        self._df_tmy[ 'aoi_l' ] = longi_array
+        self._df_tmy[ 'aoi_t' ] = trans_array
+        
+        self._df_tmy[ 'irradiance_first_row' ] = First_Row_Irradiance_Profile
+        self._df_tmy[ 'irradiance_shadeable_rows' ] = Shadeable_Rows_Irradiance_Profile
+        self._df_tmy[ 'IAM_first_row' ] = First_Row_IAM_Profile
+        self._df_tmy[ 'IAM_shadeable_rows' ] = Shadeable_Rows_IAM_Profile
+        
+    def instant_to_index( self, month, day, hour, minute ):
+        
+        if month == 2 and day == 29:
+            day = 28
+            raise ValueError("Class MeteoProfile.instant_to_index: Data for February 29 was requested. Leap years are not supported.")
             
-        self.First_Row_Irradiance_Profile = First_Row_Irradiance_Profile
-        self.Shadeable_Rows_Irradiance_Profile = Shadeable_Rows_Irradiance_Profile
-        self.First_Row_IAM_Profile = First_Row_IAM_Profile
-        self.Shadeable_Rows_IAM_Profile = Shadeable_Rows_IAM_Profile
+        if month < 1 or month > 12:
+            raise ValueError("Class MeteoProfile.instant_to_index: Month number not valid.")
+            
+        if day < 1 or day > month_days[ month - 1 ]:
+            raise ValueError("Class MeteoProfile.instant_to_index: Day number not valid.")
+            
+        if hour < 0 or hour > 23:
+            raise ValueError("Class MeteoProfile.instant_to_index: Hour number not valid.")
+            
+        if minute < 0 or minute > 59:
+            raise ValueError("Class MeteoProfile.instant_to_index: Minute number not valid.")
         
-        self.Output_Profiles[ 'irradiance_first_row' ] = { 'output_type': 'irradiance', 'Profile': self.First_Row_Irradiance_Profile }
-        self.Output_Profiles[ 'irradiance_shadeable_rows' ] = { 'output_type': 'irradiance', 'Profile': self.Shadeable_Rows_Irradiance_Profile }
-        self.Output_Profiles[ 'IAM_first_row' ] = { 'output_type': 'ratio', 'Profile': self.First_Row_IAM_Profile }
-        self.Output_Profiles[ 'IAM_shadeable_rows' ] = { 'output_type': 'ratio', 'Profile': self.Shadeable_Rows_IAM_Profile }
+        mask = (
+            
+            ( self._df_tmy[ "timestamp" ].dt.month == month ) &
+            ( self._df_tmy[ "timestamp" ].dt.day == day     ) &
+            ( self._df_tmy[ "timestamp" ].dt.hour == hour   ) &
+            ( self._df_tmy[ "timestamp" ].dt.minute == minute )
+            
+            )
         
+        idx = self._df_tmy.index[ mask ].tolist()
+        
+        return idx
+        
+    def get_conditions(
+            self,
+            *args,
+            include_right = True,
+            month = None,
+            day = None,
+            hour = None,
+            minute = None,
+            irradiance_units = None,
+            temp_units = None,
+            T_units = None,
+            angle_units = None ):
+        
+        if not len( args ) in [ 0, 1, 2 ]:
+            raise ValueError("MeteoProfile.get_conditions: Number of positional arguments must be either 0, 1, or 2.")
+            
+        result = self._df_tmy.copy()
+        
+        if len( args ) == 2:
+            
+            try:
+                
+                dt1 = args[0]
+                dt2 = args[1]
+                
+                
+                month_1 = int( dt1.month )
+                day_1 = int( dt1.day )
+                hour_1 = int( dt1.hour )
+                minute_1 = int( dt1.minute )
+                
+                month_2 = int( dt2.month )
+                day_2 = int( dt2.day )
+                hour_2 = int( dt2.hour )
+                minute_2 = int( dt2.minute )
+                
+            except:
+                
+                raise ValueError("MeteoProfile.get_conditions: Both positional arguments must have attributes named 'year', 'month', 'day', 'hour' and 'minute', convertible to type 'int'.")
+            
+            if month_2 == 1 and day_2 == 1 and hour_2 == 0 and minute_2 == 0 and not include_right:
+                month_2 = 12
+                day_2 = 31
+                hour_2 = 23
+                minute_2 = 59
+                include_right = True
+            
+            index_1 = self.instant_to_index( month_1, day_1, hour_1, minute_1 )
+            index_2 = self.instant_to_index( month_2, day_2, hour_2, minute_2 )
+            
+            if len( index_1 ) == 0:
+                raise ValueError("MeteoProfile.get_conditions: Initial instant introduced was not found in the yearly DataFrame. This could be due to a transition to daylight saving time.")
+            if len( index_2 ) == 0:
+                raise ValueError("MeteoProfile.get_conditions: Final instant introduced was not found in the yearly DataFrame. This could be due to a transition to daylight saving time.")
+            
+            index_1 = index_1[ 0 ]
+            index_2 = index_2[ 0 ]
+            
+            if include_right:
+                index_2 = index_2 + 1
+            
+            if not index_2 > index_1:
+                raise ValueError("MeteoProfile.get_conditions: Instants provided as positional arguments are not ordered in time.")
+            
+            result = result[ index_1 : index_2 ]
+        
+        elif len( args ) == 1:
+            
+            try:
+                
+                dt = args[ 0 ]
+                
+                month = int( dt.month )
+                day = int( dt.day )
+                hour = int( dt.hour )
+                minute = int( dt.minute )
+                
+            except:
+                
+                raise ValueError("MeteoProfile.get_conditions: Positional argument must have attributes named 'month', 'day', 'hour' and 'minute', convertible to type 'int'.")
+                
+            index = self.instant_to_index( month, day, hour, minute )
+            
+            if len( index ) == 0:
+                raise ValueError("MeteoProfile.get_conditions: Instant introduced was not found in the yearly DataFrame. This could be due to a transition to daylight saving time.")
+                
+            index = index[0]
+            
+            result_dict = {}
+            
+            for column in result.columns.tolist():
+                
+                if column == "timestamp":
+                    continue
+                
+                result_dict[ column ] = float( result[ column ].values[ index ] )
+                
+            result = result_dict
+            
+        else:
+            
+            try:
+                
+                if month is not None:
+                    month = int( month )
+                if day is not None:
+                    day = int( day )
+                if hour is not None:
+                    hour = int( hour )
+                if minute is not None:
+                    minute = int( minute )
+                    
+            except:
+                raise ValueError("MeteoProfile.get_conditions: Arguments 'month', 'day', 'hour', and 'minute' must be either None or convertible to type 'int'.")
+                
+            if month is not None:
+                
+                result = result[ result[ "timestamp" ].dt.month == month ]
+                
+                if day is not None:
+                    
+                    result = result[ result[ "timestamp" ].dt.day == day ]
+                    
+                    if hour is not None:
+                        
+                        result = result[ result[ "timestamp" ].dt.hour == hour ]
+                        
+                        if len( result ) > 60:
+                            result = result.head( 60 )
+                        
+                        if minute is not None:
+                            result = result[ result[ "timestamp" ].dt.minute == minute ]
+                            
+                        if len( result ) == 0:
+                            raise ValueError("MeteoProfile.get_conditions: Time span introduced was not found in the yearly DataFrame. This could be due to a transition to daylight saving time.")
+        
+        assert type( result ) in [ dict, pd.DataFrame ]
+            
+        if type( result ) is pd.DataFrame:
+            
+            result = result.reset_index( drop = True )
+            
+            result_columns = result.columns.tolist()
+            
+            if irradiance_units is not None:
+                for column_name in self.irradiance_columns:
+                    if column_name in result_columns:
+                        result[ column_name ] = convert_units( result[ column_name ].values.tolist(), 'W/m2', irradiance_units )
+            
+            if temp_units is not None or T_units is not None:
+                if temp_units is None and T_units is not None:
+                    temp_units = T_units
+                for column_name in self.temp_columns:
+                    if column_name in result_columns:
+                        result[ column_name ] = convert_units( result[ column_name ].values.tolist(), '°C', temp_units )
+            
+            if angle_units is not None:
+                for column_name in self.angle_columns:
+                    if column_name in result_columns:
+                        result[ column_name ] = convert_units( result[ column_name ].values.tolist(), 'deg', angle_units )
+                        
+        else:
+            
+            result_keys = list( result.keys() )
+            
+            if irradiance_units is not None:
+                for column_name in self.irradiance_columns:
+                    if column_name in result_keys:
+                        result[ column_name ] = convert_units( result[ column_name ], 'W/m2', irradiance_units )
+            
+            if temp_units is not None or T_units is not None:
+                if temp_units is None and T_units is not None:
+                    temp_units = T_units
+                for column_name in self.temp_columns:
+                    if column_name in result_keys:
+                        result[ column_name ] = convert_units( result[ column_name ], '°C', temp_units )
+            
+            if angle_units is not None:
+                for column_name in self.angle_columns:
+                    if column_name in result_keys:
+                        result[ column_name ] = convert_units( result[ column_name ], 'deg', angle_units )
+            
+        return result
+                
+    def compute_T_mains_Profile( self ):
+        
+        month_start_idx_list = [ 0 ]
+        for month in range(2, 13):
+            month_start_idx = self.instant_to_index( month, 1, 0, 0 )
+            if len( month_start_idx ) == 0:
+                month_start_idx = self.instant_to_index( month, 1, 1, 0 )
+                assert len( month_start_idx ) > 0
+            month_start_idx_list.append( month_start_idx[ 0 ] )
+        month_start_idx_list.append( len( self._df_tmy ) )
+        
+        Monthly_Mean_T_amb_List = [  np.mean( self._df_tmy[ "Tamb" ].values[ month_start_idx_list[ month_index ] : month_start_idx_list[ month_index + 1 ] ] )  for month_index in range(12) ]
+        
+        T_amb_ann =  np.mean( self._df_tmy[ "Tamb" ].values ) 
+        delta_T_amb = ( max(Monthly_Mean_T_amb_List) - min(Monthly_Mean_T_amb_List) )/2
+        delta_T_offset = 3.3333333
+        T_ref = 6.6666667
+        K1 = 0.4
+        K2 = 0.018
+        K3 = 35*pi/180
+        K4 = -3.1416e-4
+        delta_T_mains = (K1 + K2*(T_amb_ann - T_ref))*delta_T_amb
+        phi_lag = K3 + K4*(T_amb_ann - T_ref)
+        phi_amb = (104.8 + 180)*pi/180
+        T_mains_avg = T_amb_ann + delta_T_offset
+        def T_mains_func(t):
+            return T_mains_avg + delta_T_mains*sin(2*pi*t/8760 - phi_lag - phi_amb)
+        t_list = np.linspace( 0, 8760 - 1/60, 8760*60 )
+        
+        self._df_tmy[ "Tmains" ] = [ T_mains_func(t)  for t in t_list ]

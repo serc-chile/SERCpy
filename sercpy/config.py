@@ -80,13 +80,23 @@ kwargs_list = [
 
 this_folder = Path(__file__).parent.resolve()
 
-if Path.is_file( this_folder / 'API_Key.txt' ):
-    with open( this_folder / 'API_Key.txt' ) as api_key_file:
-        api_key = api_key_file.read()
-else:
-    api_key = None
-    
 def set_api_key( api_key ):
     assert type(api_key) is str
     with open( this_folder / 'API_Key.txt', 'w' ) as api_key_file:
         api_key_file.write(api_key)
+        
+def get_api_key():
+    
+    if Path.is_file( this_folder / 'API_Key.txt' ):
+        with open( this_folder / 'API_Key.txt' ) as api_key_file:
+            api_key = api_key_file.read()
+    else:
+        api_key = None
+    
+    return api_key
+        
+        
+# Tolerance to compare latitude and longitude provided by the user
+# to the class meteo_profile.MeteoProfile
+# and the values extracted from a data file (only when possible) 
+coordinates_tolerance = 0.01
