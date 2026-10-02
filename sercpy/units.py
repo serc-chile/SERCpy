@@ -277,6 +277,7 @@ def get_unit_type( units: str ) -> str:
         - area
         - volume
         - mass
+        - angle
         - temperature
         - power
         - density
