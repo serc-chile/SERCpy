@@ -15,5 +15,6 @@ Contents
    :titlesonly:
 
    usage
+   meteo_profile
    demand_profile
    units
