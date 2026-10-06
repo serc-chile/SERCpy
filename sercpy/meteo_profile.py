@@ -86,7 +86,7 @@ class MeteoProfile:
     
     The class is meant to work with TMY (typical meteorological year) data. Time resolutions accepted for user-provided data range from 1 minute (maximal resolution) to 1 hour (minimal resolution).
     
-    For simulations within the Chilean territory, the class is able to automatically download TMY data, provided that the user owns an API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_.
+    For simulations within the Chilean territory, the class is able to automatically download TMY data, provided that the user owns an API key for `Ministry of Energy's 'Renewable Energies API' <https://api.minenergia.cl/>`_.
     
     The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
     
@@ -94,7 +94,7 @@ class MeteoProfile:
     ----------
     
     location : tuple of two float, optional
-        Tuple with the form `(latitude, longitude)` defining the place where the simualtion will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_.
+        Tuple with the form `(latitude, longitude)` defining the place where the simualtion will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's 'Renewable Energies API' <https://api.minenergia.cl/>`_.
     latitude : float, optional
         If provided along with `longitude`, it is a substitute for the argument `location`.
     longitude : float, optional
@@ -102,10 +102,10 @@ class MeteoProfile:
     ground_albedo : float, optional
         Irradiance fraction refelcted by the ground. If not provided, it defaults to 0.2.
     api_key : str, optional
-        User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
+        User's API key for `Ministry of Energy's 'Renewable Energies API' <https://api.minenergia.cl/>`_. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
     tmy_file_path : str, optional
         Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class <examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
-        In the next arguments, the term 'custom-format' refers to any csv file that does not have the `SAM <https://sam.nlr.gov/>`_ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`_ form.
+        In the next arguments, the terms 'custom format' and 'custom file' refers to any csv file that does not have the `SAM <https://sam.nlr.gov/>`_ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`_ form.
     ghi_col_name : str, optional
         Name of the GHI (global horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'GHI'.
     dni_col_name : str, optional
@@ -117,11 +117,11 @@ class MeteoProfile:
     tmy_utc_offset : str, optional
         UTC offset of the data in the csv file provided by the user. Only needed for custom files. If not provided, this parameter will be inferred from the location; however, this can lead to large errors.
     sep : str, optional
-        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`. Only considered when a custom csv file is provided by the user.
+        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`_. Only considered when a custom csv file is provided by the user.
     delimiter : str, optional
         Alias for `sep`.
     skiprows : int, optional
-        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`. Only considered when a custom csv file is provided by the user.
+        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`_. Only considered when a custom csv file is provided by the user.
     irradiance_units : str, optional
         Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user.
     temp_units : 
