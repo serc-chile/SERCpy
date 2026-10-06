@@ -394,7 +394,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
     
     It also allows the conversion of mass to volume (and viceversa) and of mass flowrate to volumetric flowrate (and viceversa).
     
-    If several values need be converted from the same original units to the same goal units, it is recommendable to provide all the values in a list, so that the conversion factor is computed only once. This is much faster than applying this function separately to every value of a list.
+    If several values need to be converted from the same original units to the same goal units, it is recommendable to provide all the values in a list, so that the conversion factor is computed only once. This is much faster than applying this function separately to every value of a list.
 
     Parameters
     ----------

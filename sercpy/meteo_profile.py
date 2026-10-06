@@ -67,6 +67,7 @@ MeteoProfile_valid_args = [
     
     "irradiance_units",
     "temp_units",
+    "T_units",
     
     "elevation",
     "elevation_units",
@@ -123,13 +124,15 @@ class MeteoProfile:
     skiprows : int, optional
         Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user.
     irradiance_units : str, optional
-        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user.
-    temp_units : 
-        
-    elevation : 
-        
-    elevation_units : 
-        
+        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, 'W/m2' is assumed.
+    temp_units : str, optional
+        Units in which ambient temperature is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, '°C' is assumed.
+    T_units : str, optional
+        Alias for temp_units.
+    elevation : float, optional
+        Terrain elevation of the place where the TMY is taken from. It is used to compute the atmospheric pressure in that location. If not provided, the value 0 is assumed.
+    elevation_units : str, optional
+        Units in which elevation is being provided. If not provided, 'm' is assumed.
     tz : 
         
     time_zone : 
@@ -164,6 +167,7 @@ class MeteoProfile:
             
             irradiance_units: Optional[ str ] = None,
             temp_units: Optional[ str ] = None,
+            T_units: Optional[ str ] = None,
             
             elevation: Optional[ float ] = None,
             elevation_units: Optional[ str ] = None,
@@ -225,22 +229,27 @@ class MeteoProfile:
         self._tmy_utc_offset = self.validate_argument("tmy_utc_offset", tmy_utc_offset)
         
         if sep is None and delimiter is not None:
-            self._sep = self.validate_argument("sep", delimiter)
+            self._sep = self.validate_argument("delimiter", delimiter)
         else:
             self._sep = self.validate_argument( "sep", sep )
         
         self._skiprows = self.validate_argument( "skiprows", skiprows )
         
         self._irradiance_units = self.validate_argument( "irradiance_units", irradiance_units )
-        self._temp_units = self.validate_argument( "temp_units", temp_units )
+        if temp_units is None and T_units is not None:
+            self._temp_units = self.validate_argument( "T_units", T_units )
+        else:
+            self._temp_units = self.validate_argument( "temp_units", temp_units )
         
         elevation = self.validate_argument( "elevation", elevation )
         elevation_units = self.validate_argument( "elevation_units", elevation_units )
         
         if elevation is not None and elevation_units is not None:
             self._elevation = convert_units( elevation, elevation_units, 'm' )
-        else:
+        elif elevation is not None:
             self._elevation = elevation
+        else:
+            self._elevation = 0
         
         self._solar_field = self.validate_argument( "solar_field", solar_field )
         
@@ -249,14 +258,9 @@ class MeteoProfile:
         elif tz != "auto":
             self._tz = self.validate_argument( "tz", tz )
         elif time_zone != "auto":
-            self._tz = self.validate_argument( "tz", time_zone )
+            self._tz = self.validate_argument( "time_zone", time_zone )
         else:
             self._tz = "auto"
-        
-        if ( tz is None or tz == 'auto' ) and time_zone is not None:
-            self._tz = self.validate_argument( "tz", time_zone )
-        else:
-            self._tz = self.validate_argument( "tz", tz )
         
         self._import_meteo_data()
         
@@ -677,8 +681,7 @@ class MeteoProfile:
                 if temp_units is not None:
                     self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), self.get_attribute( "temp_units" ), "°C" )
         
-        if self._elevation is not None:
-            self._atmospheric_pressure = self.altitude_to_pressure( self._elevation )
+        self._atmospheric_pressure = self.altitude_to_pressure( self._elevation )
         
         for column in self._df_tmy.columns.tolist():
             self._df_tmy[ column ] = pd.to_numeric( self._df_tmy[ column ] )
@@ -882,6 +885,7 @@ class MeteoProfile:
                 
                 "irradiance_units",
                 "temp_units",
+                "T_units",
                 "elevation_units",
                 
                 ]:
