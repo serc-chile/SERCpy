@@ -110,7 +110,9 @@ class DemandProfile:
 
     It allows the user to introduce custom daily demand profiles with time resolutions as small as 30 minutes.
     
-    Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default dehavior is to automatically determine the level of dependence based on the monthly heat demand and ambient temperature provided by the user.
+    Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default behavior is to automatically determine the level of dependence based on the monthly heat demand and ambient temperature provided by the user.
+    
+    It is strongly recommended to follow the :doc:`tutorial on the use of this class <examples/DemandProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
 
     Parameters
     ----------

@@ -79,8 +79,11 @@ MeteoProfile_valid_args = [
     
     ]
 
+# time zone/tz
+# elevation
+# atmospheric_pressure
+# tmy_utc_offset
 
-    
 class MeteoProfile:
     """
     Class that imports, computes and stores the meteorological conditions during an entire year, on a certain location.
@@ -91,22 +94,24 @@ class MeteoProfile:
     
     The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
     
+    It is strongly recommended to follow the :doc:`tutorial on the use of this class <examples/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
+    
     Parameters
     ----------
     
     location : tuple of two float, optional
-        Tuple with the form `(latitude, longitude)` defining the place where the simualtion will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+        Tuple with the form `(latitude, longitude)` defining the place where the simulation will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
     latitude : float, optional
         If provided along with `longitude`, it is a substitute for the argument `location`.
     longitude : float, optional
         If provided along with `latitude`, it is a substitute for the argument `location`.
     ground_albedo : float, optional
-        Irradiance fraction refelcted by the ground. If not provided, it defaults to 0.2.
+        Irradiance fraction reflected by the ground. If not provided, it defaults to 0.2.
     api_key : str, optional
         User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
     tmy_file_path : str, optional
         Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class <examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
-        In the next arguments, the terms 'custom format' and 'custom file' refers to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
+        In the next arguments, the terms 'custom format' and 'custom file' refer to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
     ghi_col_name : str, optional
         Name of the GHI (global horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'GHI'.
     dni_col_name : str, optional
@@ -133,12 +138,12 @@ class MeteoProfile:
         Terrain elevation of the place where the TMY is taken from. It is used to compute the atmospheric pressure in that location. If not provided, the value 0 is assumed.
     elevation_units : str, optional
         Units in which elevation is being provided. If not provided, 'm' is assumed.
-    tz : 
-        
+    tz : str, optional
+        Name of the time zone corresponding to the location; e.g. 'America/New_York' or 'America/Santiago'.
     time_zone : 
-        
-    solar_field : 
-        
+        Alias for tz.
+    solar_field : solar_field.Solar_Field instance
+        Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
     """
     
