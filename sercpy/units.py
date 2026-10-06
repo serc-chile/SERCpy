@@ -311,6 +311,9 @@ def get_unit_type( units: str ) -> str:
             return None
         return unit_type_dict[ basic_unit ]
     
+    if units.count( '/' ) > 1:
+        raise UnitsError( "Units provided must have at most one division operator (/)." )
+    
     units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
     
     try:
@@ -357,6 +360,9 @@ def _conversion_factor_to_basic_units( units ):
         except:
             raise UnitsError(f"Variable type could not be identified from units: {units}")
         return unit_database[ unit_type_dict[ basic_unit ] ][ basic_unit ]
+    
+    if units.count( '/' ) > 1:
+        raise UnitsError( "Units provided must have at most one division operator (/)." )
     
     units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
     
