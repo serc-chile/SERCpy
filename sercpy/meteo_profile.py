@@ -84,15 +84,59 @@ class MeteoProfile:
     """
     Class that imports, computes and stores the meteorological conditions during an entire year, on a certain location.
     
-    It is optimized to generate meteorological data within the Chilean territory.
+    The class is meant to work with TMY (typical meteorological year) data. Time resolutions accepted for user-provided data range from 1 minute (maximal resolution) to 1 hour (minimal resolution).
     
-    It can load data for any location on the planet. Moreover, it automatically sets the time zone based on the location; this includes eventual time changes due do daylight saving time.
+    For simulations within the Chilean territory, the class is able to automatically download TMY data, provided that the user owns an API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_.
+    
+    The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
     
     Parameters
     ----------
     
-    
-    
+    location : tuple of two float, optional
+        Tuple with the form `(latitude, longitude)` defining the place where the simualtion will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_.
+    latitude : float, optional
+        If provided along with `longitude`, it is a substitute for the argument `location`.
+    longitude : float, optional
+        If provided along with `latitude`, it is a substitute for the argument `location`.
+    ground_albedo : float, optional
+        Irradiance fraction refelcted by the ground. If not provided, it defaults to 0.2.
+    api_key : str, optional
+        User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`_. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
+    tmy_file_path : str, optional
+        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class <examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
+        In the next arguments, the term 'custom-format' refers to any csv file that does not have the `SAM <https://sam.nlr.gov/>`_ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`_ form.
+    ghi_col_name : str, optional
+        Name of the GHI (global horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'GHI'.
+    dni_col_name : str, optional
+        Name of the DNI (direct normal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DNI'.
+    dhi_col_name : str, optional
+        Name of the DHI (diffuse horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DHI'.
+    Tamb_col_name : str, optional
+        Name of the ambient temperature column of the csv file. Only needed for custom files, in which the name of this column is different from 'Tamb'.
+    tmy_utc_offset : str, optional
+        UTC offset of the data in the csv file provided by the user. Only needed for custom files. If not provided, this parameter will be inferred from the location; however, this can lead to large errors.
+    sep : str, optional
+        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`. Only considered when a custom csv file is provided by the user.
+    delimiter : str, optional
+        Alias for `sep`.
+    skiprows : int, optional
+        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`. Only considered when a custom csv file is provided by the user.
+    irradiance_units : str, optional
+        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user.
+    temp_units : 
+        
+    elevation : 
+        
+    elevation_units : 
+        
+    tz : 
+        
+    time_zone : 
+        
+    solar_field : 
+        
+        
     """
     
     def __init__(
@@ -138,7 +182,8 @@ class MeteoProfile:
         
         self.temp_columns = [ 'Tamb', 'Tmains' ]
         
-        self.angle_columns = [ 'azimuth', 'zenith', 'apparent_zenith' ]
+        self.angle_columns = [ 'azimuth', 'zenith', 'apparent_zenith',
+                               'aoi', 'aoi_l', 'aoi_t' ]
         
         # If location is provided
         if location is not None:
@@ -568,7 +613,6 @@ class MeteoProfile:
         temp_units = self.get_attribute( "temp_units" )
         sep = self.get_attribute( "sep" )
         skiprows = self.get_attribute( "skiprows" )
-        utc_offset = self.get_attribute( "tmy_utc_offset" )
         
         if tmy_file_path is None:
             
@@ -602,12 +646,14 @@ class MeteoProfile:
                 if latitude is None or longitude is None:
                     raise ValueError("MeteoProfile.import_meteo_data: Custom-format data file detected. Latitude and longitude must be provided along with custom-format data files.")
                 
+                utc_offset = self.get_attribute( "tmy_utc_offset" )
+                
                 if utc_offset is None:
                     utc_offset = self.get_utc_offset(latitude = latitude, longitude = longitude)
                     self._tmy_utc_offset = utc_offset
                     warnings.warn(f"MeteoProfile: UTC offset of the data was not provided. The value {utc_offset} was inferred from the location. This can be a cause for errors. It is recommended to specify this parameter through the argument 'tmy_utc_offset'.")
                 
-                self._df_tmy = MeteoProfile._import_custom_file(
+                self._df_tmy = self._import_custom_file(
                     
                     tmy_file_path,
                     latitude,
@@ -1122,117 +1168,6 @@ class MeteoProfile:
         except requests.exceptions.RequestException as e:
             raise TMY_Error("Function download_TMY: A requests/network error occurred:", e)
     
-    def set_time_step(self, time_step):
-        if hasattr(self, "_time_step") and self._time_step == time_step:
-            return
-        try:
-            assert type(time_step) is int and time_step in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]
-        except:
-            raise ValueError("DemandProfile.set_time_step: time_step (in minutes) must be an integer within the possible values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60")
-        self._time_step = time_step
-        self._time_steps_per_year = 8760*60//time_step
-        self.update_effective_profiles()
-        
-    def update_effective_profiles(self):
-        
-        self.update_effective_solar_position_profiles()
-    
-    def update_effective_solar_position_profiles(self):
-        
-        for attribute_name in [
-                
-                "_zenith_profile_minutal",
-                "_azimuth_profile_minutal",
-                "_time_step",
-                "_time_steps_per_year",
-                
-                ]:
-            
-            if not hasattr(self, attribute_name):
-                return
-        
-        self._zenith_profile = [ float(np.mean( self._zenith_profile_minutal[ initial_minute : initial_minute + self._time_step ] ) ) for initial_minute in range(0, self._time_steps_per_year, self._time_step ) ]
-        self._azimuth_profile = [ MeteoProfile.average_azimuth( self._azimuth_profile_minutal[ initial_minute : initial_minute + self._time_step ] ) for initial_minute in range(0, self._time_steps_per_year, self._time_step ) ]
-    
-    def update_minutal_solar_position_profiles(self):
-        
-        for attribute_name in [
-                
-                "_latitude",
-                "_longitude",
-                "_UTC" ]:
-            
-            if not hasattr(self, attribute_name):
-                return
-            
-        if self._UTC == 0:
-            tz_string = 'Etc/GMT'
-        elif self._UTC < 0:
-            tz_string = f'Etc/GMT+{abs(self._UTC)}'
-        else:
-            tz_string = f'Etc/GMT-{self._UTC}'
-        
-        times = pd.date_range(start = '2022-01-01 00:00:00', end = '2023-01-01 00:00:00', freq = 'min', inclusive = 'left', tz = tz_string)
-        solPos = get_solarposition(times, self.latitude, self.longitude)
-        self._zenith_profile_minutal = solPos[ 'apparent_zenith' ].astype(float).tolist()
-        self._azimuth_profile_minutal = solPos[ 'azimuth' ].astype(float).tolist()
-        self.update_effective_solar_position_profiles()
-        
-    
-    @staticmethod
-    def average_azimuth(azimuth_list):
-        """
-        Function that averages a list of azimuthal solar position values. 
-        
-        The function corrects potential bugs that could be produced at solar midday in the southern hemisphere, due to the fact that the sun 
-    
-        Parameters
-        ----------
-        azimuth_list : TYPE
-            DESCRIPTION.
-    
-        Raises
-        ------
-        SHIPcalError
-            DESCRIPTION.
-    
-        Returns
-        -------
-        result : TYPE
-            DESCRIPTION.
-    
-        """
-        midday_found = False
-        correction_type = None
-        corrected_list = []
-        for i in range(len(azimuth_list)):
-            if i == 0:
-                corrected_list.append( azimuth_list[i] )
-                continue
-            if abs( azimuth_list[i] - azimuth_list[i - 1] ) > 180:
-                if midday_found:
-                    raise ValueError("Function average_azimuth: midday found two times in a list.")
-                if azimuth_list[i - 1] > azimuth_list[i]:
-                    correction_type = 'above_360'
-                else:
-                    correction_type = 'below_0'
-                midday_found = True
-            if correction_type is None:
-                corrected_list.append( azimuth_list[i] )
-                continue
-            if correction_type == 'below_0':
-                corrected_list.append( azimuth_list[i] - 360 )
-                continue
-            corrected_list.append( 360 + azimuth_list[i] )
-        
-        result = float(np.mean(corrected_list))
-        if result < 0:
-            result = 360 + result
-        elif result > 360:
-            result = result - 360
-        
-        return result
-    
     @staticmethod
     def altitude_to_pressure(
             
@@ -1474,9 +1409,9 @@ class MeteoProfile:
                 coll_E = vector[1][0]
                 coll_Z = vector[2][0]
                 if coll_Z <= 0:
-                    aoi_array.append( None )
-                    longi_array.append( None )
-                    trans_array.append( None )
+                    aoi_array.append( np.nan )
+                    longi_array.append( np.nan )
+                    trans_array.append( np.nan )
                     continue
                 trans = arctan(abs(coll_E)/coll_Z)
                 longi = arctan(abs(coll_N)/coll_Z)
@@ -1491,7 +1426,7 @@ class MeteoProfile:
                 aoi_array.append( aoi )
                 longi_array.append( longi )
                 trans_array.append( trans )
-            return aoi_array, longi_array, trans_array
+            return np.array( aoi_array ), np.array( longi_array ), np.array( trans_array )
         
         if type(coll_IAM) == dict:
             assert 'b0' in coll_IAM or 'Kl' in coll_IAM or all([ (type(key) == int or type(key) == float) for key in coll_IAM])
@@ -1574,41 +1509,8 @@ class MeteoProfile:
         First_Row_IAM_Profile = []
         Shadeable_Rows_IAM_Profile = []
         
-        ### DEBUG
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
         
-        # zenith_array = self._df_tmy[ 'apparent_zenith' ].values
-        # azimuth_array = self._df_tmy[ 'azimuth' ].values
-        
-        
-        
-        
-        
-        # aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
-        
-        
-        
-        
-        
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        ### END DEBUG
-        
-        
-        
-        
-        ### ORIGINAL
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        
-        date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ].values )
+        date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ] )
         GHI_array = np.max( [ self._df_tmy[ 'GHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
         DNI_array = np.max( [ self._df_tmy[ 'DNI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
         DHI_array = np.max( [ self._df_tmy[ 'DHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
@@ -1635,14 +1537,7 @@ class MeteoProfile:
         
         aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
         
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        #######################################################################
-        ### END ORIGINAL
-        
         for time_step in range( len( self._df_tmy ) ):
-            
             
             GHI = GHI_array[time_step]
             DNI = DNI_array[time_step]
@@ -1666,7 +1561,7 @@ class MeteoProfile:
             horizon_irradiance = float( horizon_irradiance_array[ time_step ] )
             ref_irradiance = reflected_irradiance_fraction*ground_albedo*max([GHI, 0] )
             
-            if aoi is None:
+            if np.isnan(aoi):
                 
                 beam_irradiance = 0
                 beam_IAM = 0
@@ -1704,8 +1599,10 @@ class MeteoProfile:
             Shadeable_Rows_Irradiance_Profile.append( shadeable_rows_irradiance )
             First_Row_IAM_Profile.append( first_row_IAM )
             Shadeable_Rows_IAM_Profile.append( shadeable_rows_IAM )
-        
-        aoi_array, longi_array, trans_array = incidence_angles_series(zenith_array, azimuth_array)
+            
+        aoi_array = (180/pi)*aoi_array
+        longi_array = (180/pi)*longi_array
+        trans_array = (180/pi)*trans_array
         
         self._df_tmy[ 'aoi' ] = aoi_array
         self._df_tmy[ 'aoi_l' ] = longi_array
