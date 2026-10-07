@@ -28,7 +28,7 @@ from .solar_field import SolarField
 import warnings
 from zoneinfo import ZoneInfo
 
-class TMY_Error(Exception):
+class TMYError(Exception):
     pass
 
 class TimeZoneError(Exception):
@@ -1234,7 +1234,10 @@ class MeteoProfile:
         return timezone
     
     @staticmethod
-    def download_tmy(latitude, longitude, api_key = None):
+    def download_tmy(
+            latitude: float,
+            longitude: float,
+            api_key: Optional[ str ] = None):
         """
         Download a TMY profile within the Chilean territory.
         
@@ -1255,11 +1258,16 @@ class MeteoProfile:
     
         Raises
         ------
-        TMY_Error
         
-            - Errors such as connection error, timeout error, incorrect API key, etc. Also raised when the latitude or longitude provided cannot be interpreted as floating point values.
-            - If the site 'API Energias Renovables' is not able to produce the data requested because the location provided is out of the allowed range.
-    
+        TypeError
+            If the arguments do not match the expected types
+        
+        TMYError
+            Errors such as connection error, timeout error, incorrect API key, etc.
+            
+        OutOfChileError
+            If the location provided is not within the Chilean territory
+            
         Returns
         -------
         df : pandas.DataFrame
@@ -1273,18 +1281,18 @@ class MeteoProfile:
             latitude = float(latitude)
             longitude = float(longitude)
         except:
-            raise TMY_Error("MeteoProfile.download_tmy Parameters 'latitude' and 'longitude' must be convertible to type 'float'.")
+            raise TypeError("MeteoProfile.download_tmy Parameters 'latitude' and 'longitude' must be convertible to type 'float'.")
         
         if api_key is None:
             api_key = get_api_key()
             if api_key is None:
-                raise TMY_Error("MeteoProfile.download_tmy: No API key available. This key must either be provided as a parameter to the function (argument 'api_key') or be saved with the function config.set_api_key.")
+                raise TMYError("MeteoProfile.download_tmy: No API key available. This key must either be provided as a parameter to the function (argument 'api_key') or be saved with the function config.set_api_key.")
             
         if type( api_key ) is not str:
-            raise TMY_Error( "MeteoProfile.download_tmy: api_key must be a string." )
+            raise TypeError( "MeteoProfile.download_tmy: api_key must be a string." )
             
         if api_key == "":
-            raise TMY_Error("MeteoProfile.download_tmy: Empty API key.")
+            raise TMYError("MeteoProfile.download_tmy: Empty API key.")
             
         if not MeteoProfile.is_Chile( latitude, longitude ):
             raise OutOfChileError("MeteoProfile.download_tmy: Location provided is not located within the Chilean territory.")
@@ -1385,7 +1393,7 @@ class MeteoProfile:
                 csv_url = response_data.get('url')
                 
                 if not csv_url:
-                    raise TMY_Error("MeteoProfile.download_tmy: No url was received from 'API Energias Renovables' (url: https://api.minenergia.cl/). Probably, the location provided is outside the accepted range.")
+                    raise TMYError("MeteoProfile.download_tmy: No url was received from 'API Energias Renovables' (url: https://api.minenergia.cl/). Probably, the location provided is outside the accepted range.")
                     
                 # Download CSV content
                 csv_response = requests.get(csv_url)
@@ -1423,22 +1431,22 @@ class MeteoProfile:
         # Manage errors
                 
                 else:
-                    raise TMY_Error("MeteoProfile.download_tmy: The data could not be downloaded from the url provided by 'API Energias Renovables' (url: https://api.minenergia.cl/). Check your internet connection and try again later.")
+                    raise TMYError("MeteoProfile.download_tmy: The data could not be downloaded from the url provided by 'API Energias Renovables' (url: https://api.minenergia.cl/). Check your internet connection and try again later.")
                     
             else:
                 if response.status_code == 403:
-                    raise TMY_Error("MeteoProfile.download_tmy: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: 403 (non-valid API Key)")
+                    raise TMYError("MeteoProfile.download_tmy: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: 403 (non-valid API Key)")
                 else:
-                    raise TMY_Error(f"MeteoProfile.download_tmy: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: {response.status_code}")
+                    raise TMYError(f"MeteoProfile.download_tmy: The data could not be downloaded from 'API Energias Renovables' (url: https://api.minenergia.cl/). Response status code: {response.status_code}")
             
         except requests.exceptions.ConnectionError:
-            raise TMY_Error("MeteoProfile.download_tmy: Could not connect to the server. Check your internet connection and try again later.")
+            raise TMYError("MeteoProfile.download_tmy: Could not connect to the server. Check your internet connection and try again later.")
             
         except requests.exceptions.Timeout:
-            raise TMY_Error("MeteoProfile.download_tmy: The server took too long to respond.")
+            raise TMYError("MeteoProfile.download_tmy: The server took too long to respond.")
             
         except requests.exceptions.RequestException as e:
-            raise TMY_Error("MeteoProfile.download_tmy: A requests/network error occurred:", e)
+            raise TMYError("MeteoProfile.download_tmy: A requests/network error occurred:", e)
     
     @staticmethod
     def altitude_to_pressure(
@@ -1480,7 +1488,7 @@ class MeteoProfile:
         
         Pb = 101325 # Reference pressure, Pa
         Tref = 273.15 + 15 # Reference temperature, K
-        R = 8.31432 # Gas constant, J/(mol·K)
+        R = 8.31432 # Gas constant, J/mol K
         M = 0.0289644 # Air molar mas, kg/mol
         g = 9.80665 # Gravity acceleration, m/s2
         temp_gradient = -6.5e-3 # Temperature gradient, K/m
@@ -1497,7 +1505,7 @@ class MeteoProfile:
     
     def compute_poa_irradiance( self, solar_field ):
         """
-        Method to compute the conditions relative to a specific solar field.
+        Compute the conditions relative to a specific solar field.
         
         The results computed by this method are:
             
@@ -1961,7 +1969,7 @@ class MeteoProfile:
         Calling this method without any extra arguments, besides the `MeteoProfile` instance, yields the whole dataset stored by that object. This dataset consists of a `pandas.DataFrame`, with minutal resolution, where the data starts on January 1st at 00:00, and ends at December 31st at 23:59.
         
         The columns of the `DataFrame` are:
-
+            
             - `"timestamp"`: Column of `pandas.Timestamp` instances defining the moment each sample corresponds to.
             - `"GHI"`: Global horizontal irradiance
             - `"DNI"`: Direct normal irradiance
@@ -1971,19 +1979,61 @@ class MeteoProfile:
             - `"apparent_zenith"`: Apparent zenithal angle of the solar position. See `get_solarposition by pvlib <https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html>`_.
             - `"Tamb"`: Ambient temperature.
             - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `study by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
+            
+        Only if a `solar_field.SolarField` has been used to compute the results relative to that solar field, either by providing the solar field when construction the `MeteoProfile` instance, or by calling the method `MeteoProfile.compute_poa_irradiance`, the following columns are also included in the `DataFrame`:
+            
+            - `"aoi"`: Angle of incidence on the solar field array. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"aoi_t"`: Angle of incidence in the longitudinal plane. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"irradiance_first_row"`: Irradiance inciding on the first row of collectors/panels (not subject to self-shading).
+            - `"irradiance_shadeable_rows"`: Irradiance inciding on the collector rows that are subject to self-shading.
+            - `"IAM_first_row"`: Incidence angle modifier factor for the first collector row (not subject to self-shading).
+            - `"IAM_shadeable_rows"`: Incidence angle modifier factor for the collector rows that are subject to self-shading.
+            
+        The keyword arguments `month`, `day`, and `hour` can be used to retrieve time periods in the following way:
+            
+            - If the argument `month` is specified, with allowed values `1` to `12`, only the data corresponding to that month will be returned.
+            - If the argument `day` is provided along with the argument `month` (with allowed values `1` to the number of days of the corresponding month), only the data of that date is returned. 
+            - If the argument `hour` is provided along with the arguments `month` and `day` (with allowed values `0` to `23`), only the data of that hour is returned.
+            
+        If the user needs to retrieve a time period different from a single month, day, or hour, this can be achieved by providing two `datetime.datetime` instances, ordered in time, as positional arguments.
+        
+        There are two possible ways of getting a single instant in time:
+        
+            - Specifying the arguments `month`, `day`, `hour`, and `minute` as keyword arguments. As the user may notice, this is an extension of the method discussed above to get the data corresponding to a certain month, hour, or day.  
+            - Providing a `datetime.datetime` instance as the only positional argument.
+        
+        A difference between getting a sinlge instant and a time period is that, when a single instant is asked for, the object returned is a dictionary, with the keys having the same names as the `DataFrame` columns listed above, except for `"timestamp"`.
         
         Parameters
         ----------
         
+        *args : tuple, optional
+            Either one datetime.datetime instance (in this case, a single instant in time is returned) or two datetime.datetime instances (in this case, the time period between the first and the second positional argument is returned. See also the argument `include_right`).
         include_right : bool, optional
-            sdflsdfsdfasdf
+            Whether to include the instant given by the second datetime.datetime instance provided as positional argument within the DataFrame returned. If set to False, the minute just before the second datetime.datetime instance provided will be the last minute included in the `DataFrame` If not provided, it defaults to True.
+        month : int, optional
+            If provided, only data within the specified month is returned (not compatible with positional arguments). Integers from 1 to 12 are valid.
+        day : int, optional
+            If provided along with `month`, only data within the specified day of the specified month is returned (not compatible with positional arguments). Integers from 1 to to the number of days of the corresponding month are valid.
+        hour : int, optional
+            If provided along with `month` and `day`, only data within the specified hour of the specified day of the specified month is returned (not compatible with positional arguments). Integers from 1 to 23 are valid.
+        minute : int, optional
+            If provided along with `month`, `day`, and `minute`, the instant given by those arguments is returned. In this case, the type returned is `dict`. 
+        irradiance_units : str, optional
+            Units in which the irradiance values should be returned. If not specified, it defaults to "W/m2".
+        temp_unit : str, optional
+            Units in which the temperature values should be returned. If not specified, it defaults to "°C".
+        T_units : str, optional
+            Alias for `temp_units`.
+        angle_units : str, optional
+            Units in which the angle values should be returned. If not specified, it defaults to "°" (degrees).
             
         returns
         -------
-        
-        
-        
-        
+        pd.DataFrame or dict
+            DataFrames are returned when a time period is asked for. A dictionary is returned when a single instant in time is asked for.
+            
         """
         
         if not len( args ) in [ 0, 1, 2 ]:
