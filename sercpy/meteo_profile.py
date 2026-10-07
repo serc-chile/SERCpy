@@ -1153,9 +1153,9 @@ class MeteoProfile:
     @staticmethod
     def is_Chile( latitude, longitude ):
         """
-        Static method to determine whether a certain location lies within the Chilean territory.
+        Determine whether a certain location lies within the Chilean territory.
         
-        It works for continental as well as insular Chilean territories.
+        This static method works for continental as well as insular Chilean territories.
         
         In Antarctica, this method does not return True for the whole territory claimed by Chile; however, it does return True for the most renowned Chilean settlements in Antarctica.
         
@@ -1196,7 +1196,9 @@ class MeteoProfile:
     @staticmethod
     def get_timezone( latitude, longitude ):
         """
-        Static method to determine the time zone to which a location corresponds.
+        Determine the time zone to which a location corresponds.
+        
+        Static method.
         
         Parameters
         ----------
@@ -1256,7 +1258,6 @@ class MeteoProfile:
         TMY_Error
         
             - Errors such as connection error, timeout error, incorrect API key, etc. Also raised when the latitude or longitude provided cannot be interpreted as floating point values.
-            
             - If the site 'API Energias Renovables' is not able to produce the data requested because the location provided is out of the allowed range.
     
         Returns
@@ -1967,9 +1968,9 @@ class MeteoProfile:
             - `"DHI"`: Diffuse horizontal irradiance
             - `"azimuth"`: Azimuthal angle of the solar position. North corresponds to zero, and the value increases towards east (i.e., clockwise).
             - `"zenith"`: Zenithal angle of the solar position.
-            - `"apparent_zenith"`: Apparent zenithal angle of the solar position. See [get_solarposition by pvlib](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html).
+            - `"apparent_zenith"`: Apparent zenithal angle of the solar position. See `get_solarposition by pvlib <https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html>`_.
             - `"Tamb"`: Ambient temperature.
-            - `"Tmains"`: Mains water temperature, computed with the algorithm described in the [study by Burch and Christensen](https://www.osti.gov/biblio/981988).
+            - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `study by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
         
         Parameters
         ----------
