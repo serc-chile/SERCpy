@@ -4,7 +4,13 @@ Meteorological Profiles
 Introduction
 ------------
 
-Solar energy is ....
+The first and most fundamental step for achieving an accurate simulation of a solar thermal energy system is to have precise data of the solar resource in the place where the simulation is carried out. SERCpy works with a kind of meteorological data known as "typical meteorological year" (TMY).
+
+
+
+Another factor that can greatly influence the performance of a solar energy system, and contribute to determine the scale of the storage device needed, is how power demand by the thermal load and availability of solar irradiance are sinchronized in time. In addition to the features of the class :doc:`DemandProfile <demand_profile_class>`, which allow the user to establish highly detailed demand profiles, the class `MeteoProfile` automatically establishes the time zone to which the location corresponds; this includes the eventual use of daylight saving time. Why is this important? Not considering this factor would cause that, in practice, energy demand gets displaced in time by one hour during approximately half of the year.
+
+Explain TMY
 
 Another factor that can greatly impact the performance....
 
