@@ -142,7 +142,7 @@ class MeteoProfile:
         Name of the time zone corresponding to the location; e.g. 'America/New_York' or 'America/Santiago'. This argument is most likely unncesessary since the time zone is automatically determined from the location, unless it is provided.
     time_zone : str, optional
         Alias for tz.
-    solar_field : solar_field.SolarField instance
+    solar_field : solar_field.SolarField instance, optional
         Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
     """
