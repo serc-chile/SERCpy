@@ -2009,7 +2009,7 @@ class MeteoProfile:
         ----------
         
         *args : tuple, optional
-            Either one `datetime.datetime` instance (in this case, a single instant in time is returned) or two `datetime.datetime` instances (in this case, the time period between the first and the second positional argument is returned. See also the argument `include_right`).
+            Positional arguments. They can be either one or two `datetime.datetime` instances. In the former case, a single instant in time, defined by the `datetime.datetime` instance provided, is returned. In the latter case, the time period between the first and the second positional argument is returned. See also the argument `include_right`.
         include_right : bool, optional
             Whether to include the instant given by the second `datetime.datetime` instance provided as positional argument within the `DataFrame` returned. If set to `False`, the minute just before the second `datetime.datetime` instance provided will be the last minute included in the `DataFrame`. If not provided, it defaults to `True`.
         month : int, optional
