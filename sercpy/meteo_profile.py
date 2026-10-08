@@ -1971,16 +1971,16 @@ class MeteoProfile:
         The columns of the `DataFrame` are:
             
             - `"timestamp"`: Column of `pandas.Timestamp <https://pandas.pydata.org/docs/reference/api/pandas.Timestamp.html>`_ instances defining the moment each sample corresponds to.
-            - `"GHI"`: Global horizontal irradiance
-            - `"DNI"`: Direct normal irradiance
-            - `"DHI"`: Diffuse horizontal irradiance
-            - `"azimuth"`: Azimuthal angle of the solar position. North corresponds to zero, and the value increases towards east (i.e., clockwise).
+            - `"GHI"`: Global horizontal irradiance.
+            - `"DNI"`: Direct normal irradiance.
+            - `"DHI"`: Diffuse horizontal irradiance.
+            - `"azimuth"`: Azimuthal angle of the solar position. North corresponds to zero, and the value increases towards east (i.e., clockwise). The value varies from 0° to 360° (360° not included as it is equivalent to 0°); thus, there is a discontinuity at the northern direction.
             - `"zenith"`: Zenithal angle of the solar position.
             - `"apparent_zenith"`: Apparent zenithal angle of the solar position. See `get_solarposition by pvlib <https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.get_solarposition.html>`_.
             - `"Tamb"`: Ambient temperature.
-            - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `study by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
+            - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `paper by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
             
-        Only if a `solar_field.SolarField` has been used to compute the results relative to that solar field, either by providing the solar field when construction the `MeteoProfile` instance, or by calling the method `MeteoProfile.compute_poa_irradiance`, the following columns are also included in the `DataFrame`:
+        Only if a `solar_field.SolarField` has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
             
             - `"aoi"`: Angle of incidence on the solar field array. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
             - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
