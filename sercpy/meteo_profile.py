@@ -1966,11 +1966,11 @@ class MeteoProfile:
         """
         Get the meteorological conditions for a certain instant or time period.
         
-        Calling this method without any extra arguments, besides the `MeteoProfile` instance, yields the whole dataset stored by that object. This dataset consists of a `pandas.DataFrame`, with minutal resolution, where the data starts on January 1st at 00:00, and ends at December 31st at 23:59.
+        Calling this method without any extra arguments, besides the `MeteoProfile` instance, yields the whole dataset stored by that object. This dataset consists of a `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_, with minutal resolution, where the data starts on January 1st at 00:00, and ends at December 31st at 23:59.
         
         The columns of the `DataFrame` are:
             
-            - `"timestamp"`: Column of `pandas.Timestamp` instances defining the moment each sample corresponds to.
+            - `"timestamp"`: Column of `pandas.Timestamp <https://pandas.pydata.org/docs/reference/api/pandas.Timestamp.html>`_ instances defining the moment each sample corresponds to.
             - `"GHI"`: Global horizontal irradiance
             - `"DNI"`: Direct normal irradiance
             - `"DHI"`: Diffuse horizontal irradiance
@@ -2003,23 +2003,23 @@ class MeteoProfile:
             - Specifying the arguments `month`, `day`, `hour`, and `minute` as keyword arguments. As the user may notice, this is an extension of the method discussed above to get the data corresponding to a certain month, hour, or day.  
             - Providing a `datetime.datetime` instance as the only positional argument.
         
-        A difference between getting a sinlge instant and a time period is that, when a single instant is asked for, the object returned is a dictionary, with the keys having the same names as the `DataFrame` columns listed above, except for `"timestamp"`.
+        A difference between getting a sinlge instant and a time period is that, when a single instant is asked for, the object returned is a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_, with the keys having the same names as the `DataFrame` columns listed above, except for `"timestamp"`.
         
         Parameters
         ----------
         
         *args : tuple, optional
-            Either one datetime.datetime instance (in this case, a single instant in time is returned) or two datetime.datetime instances (in this case, the time period between the first and the second positional argument is returned. See also the argument `include_right`).
+            Either one `datetime.datetime` instance (in this case, a single instant in time is returned) or two `datetime.datetime` instances (in this case, the time period between the first and the second positional argument is returned. See also the argument `include_right`).
         include_right : bool, optional
-            Whether to include the instant given by the second datetime.datetime instance provided as positional argument within the DataFrame returned. If set to False, the minute just before the second datetime.datetime instance provided will be the last minute included in the `DataFrame` If not provided, it defaults to True.
+            Whether to include the instant given by the second `datetime.datetime` instance provided as positional argument within the `DataFrame` returned. If set to `False`, the minute just before the second `datetime.datetime` instance provided will be the last minute included in the `DataFrame`. If not provided, it defaults to `True`.
         month : int, optional
-            If provided, only data within the specified month is returned (not compatible with positional arguments). Integers from 1 to 12 are valid.
+            If provided, only data within the specified month is returned (not compatible with positional arguments). Integers from `1` to `12` are valid.
         day : int, optional
-            If provided along with `month`, only data within the specified day of the specified month is returned (not compatible with positional arguments). Integers from 1 to to the number of days of the corresponding month are valid.
+            If provided along with `month`, only data within the specified day of the specified month is returned (not compatible with positional arguments). Integers from `1` to to the number of days of the corresponding month are valid.
         hour : int, optional
-            If provided along with `month` and `day`, only data within the specified hour of the specified day of the specified month is returned (not compatible with positional arguments). Integers from 1 to 23 are valid.
+            If provided along with `month` and `day`, only data within the specified hour of the specified day of the specified month is returned (not compatible with positional arguments). Integers from `1` to `23` are valid.
         minute : int, optional
-            If provided along with `month`, `day`, and `minute`, the instant given by those arguments is returned. In this case, the type returned is `dict`. 
+            If provided along with `month`, `day`, and `minute`, the instant given by those arguments is returned. Integers from `0` to `59` are valid. In this case, the type returned is `dict`. 
         irradiance_units : str, optional
             Units in which the irradiance values should be returned. If not specified, it defaults to "W/m2".
         temp_unit : str, optional
@@ -2027,12 +2027,12 @@ class MeteoProfile:
         T_units : str, optional
             Alias for `temp_units`.
         angle_units : str, optional
-            Units in which the angle values should be returned. If not specified, it defaults to "°" (degrees).
+            Units in which the angle values should be returned. If not specified, it defaults to `"°"` (degrees).
             
         returns
         -------
         pd.DataFrame or dict
-            DataFrames are returned when a time period is asked for. A dictionary is returned when a single instant in time is asked for.
+            A `DataFrame` instance is returned when a time period is asked for. A `dict` is returned when a single instant in time is asked for.
             
         """
         
