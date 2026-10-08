@@ -30,7 +30,7 @@ You can then check whether the API key was saved successfully:
    >>> print( get_api_key() )
    your_API_Key_as_a_string
 
-After doing this, meteorological data files will be downloaded automatically from the aforementioned site when initializing simulations within the Chilean territory.
+After storing the key, meteorological data files will be downloaded automatically when initializing simulations within the Chilean territory.
 
 Running a simulation in 3 steps
 -------------------------------
