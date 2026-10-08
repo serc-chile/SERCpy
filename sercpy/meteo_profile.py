@@ -1157,7 +1157,7 @@ class MeteoProfile:
         
         This static method works for continental as well as insular Chilean territories.
         
-        In Antarctica, this method does not return True for the whole territory claimed by Chile; however, it does return True for the most renowned Chilean settlements in Antarctica.
+        In Antarctica, this method does not return `True` for the whole territory claimed by Chile; however, it does return `True` for the most renowned Chilean settlements in Antarctica.
         
         Parameters
         ----------
@@ -1980,11 +1980,11 @@ class MeteoProfile:
             - `"Tamb"`: Ambient temperature.
             - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `paper by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
             
-        Only if a `solar_field.SolarField` has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
+        Only if a `solar_field.SolarField` instance has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
             
-            - `"aoi"`: Angle of incidence on the solar field array. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
-            - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
-            - `"aoi_t"`: Angle of incidence in the longitudinal plane. The value is `None` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"aoi"`: Angle of incidence on the solar field array. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
+            - `"aoi_t"`: Angle of incidence in the longitudinal plane. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
             - `"irradiance_first_row"`: Irradiance inciding on the first row of collectors/panels (not subject to self-shading).
             - `"irradiance_shadeable_rows"`: Irradiance inciding on the collector rows that are subject to self-shading.
             - `"IAM_first_row"`: Incidence angle modifier factor for the first collector row (not subject to self-shading).
@@ -2022,7 +2022,7 @@ class MeteoProfile:
             If provided along with `month`, `day`, and `minute`, the instant given by those arguments is returned. Integers from `0` to `59` are valid. In this case, the type returned is `dict`. 
         irradiance_units : str, optional
             Units in which the irradiance values should be returned. If not specified, it defaults to "W/m2".
-        temp_unit : str, optional
+        temp_units : str, optional
             Units in which the temperature values should be returned. If not specified, it defaults to "°C".
         T_units : str, optional
             Alias for `temp_units`.
@@ -2208,6 +2208,16 @@ class MeteoProfile:
         return result
                 
     def _compute_T_mains_Profile( self ):
+        """
+        Private method to compute the mains water temperature throughout the year.
+        
+        The function uses the `algorithm proposed by Burch and Christensen <https://www.osti.gov/biblio/981988>`_, which considers the yearly ambient temperature profile.
+        
+        Returns
+        -------
+        None
+        
+        """
         
         month_start_idx_list = [ 0 ]
         for month in range(2, 13):
