@@ -1578,6 +1578,8 @@ class DemandProfile:
             Tamb_profile,
             temp_units = None,
             monthly_production = None,
+            monthly_T_in = None,
+            monthly_T_set = None,
             epsilon_fraction = None ):
         
         """
@@ -1591,12 +1593,22 @@ class DemandProfile:
         ----------
         monthly_heat_demand : list of float
             List of 12 values representing the monthly heat demand, from January to December. The units of the values of the list are not relevant, as long as they are energy units.
+        
         Tamb_profile : list of float
             List of at least 365 values defining the yearly ambient temperature profile. The length can also be a multiple of 365; in that case, it is assumed that the profile has a time resolution higher than one value per day; hence, the values are averaged to get a daily resolution.
+        
         monthly_production : list of float, optional
             List of 12 values representing the monthly production, from January to December. The units of the values of the list are not relevant. The default is None.
+        
+        monthly_T_in : list of float, optional
+            List of 12 values representing the monthly temperature of heat transfer fluid entering the heating system. This argument is only considered if `monthly_T_set` is specified as well.
+            
+        monthly_T_set : list of float, optional
+            List of 12 values representing the monthly setpoint temperature of the heating system. This argument is only considered if `monthly_T_in` is specified as well.
+        
         temp_units : str, optional
             Units of the values in `Tamb_profile`. If not provided, °C is assumed.
+        
         epsilon_fraction : float, optional
             Value that will be multiplied by the average production value and then added to the monthly production values. This is done in order to avoid divergence when the heat demand values are divided by the monthly production values. If not provided, it defaults to 0.1.
 
@@ -1635,7 +1647,20 @@ class DemandProfile:
                 assert epsilon_fraction >= 0
             except:
                 raise ValueError( "DemandProfile.compute_Tamb_dependence: 'epsilon_fraction' must be convertible to float. Its value must be >= 0." )
-
+        
+        if monthly_T_in is not None and monthly_T_set is not None:
+            try:
+                monthly_T_in = [ float( value ) for value in monthly_T_in ]
+                monthly_T_set = [ float( value ) for value in monthly_T_set ]
+                assert len( monthly_T_in ) == 12 and len( monthly_T_set ) == 12
+            except:
+                raise ValueError( "DemandProfile.compute_Tamb_dependence: Arguments 'monthly_T_in' and 'monthly_T_set' must be lists of 12 numeric values.")
+            if not all( [ monthly_T_in[i] <  monthly_T_set[i] for i in range( 12 ) ] ):
+                raise ValueError("DemandProfile.compute_Tamb_dependence: The values of 'monthly_T_in' must be smaller than the values of 'monthly_T_set'.")
+        else:
+            monthly_T_in = [ 0 ]*12
+            monthly_T_set = [ 1 ]*12
+        
         if monthly_production is None:
             monthly_production = month_days
             epsilon_fraction = 0
@@ -1651,6 +1676,7 @@ class DemandProfile:
         epsilon = epsilon_fraction*float(np.mean(monthly_production))
             
         monthly_normalized_demand = [ monthly_heat_demand[i]/(monthly_production[i] + epsilon ) for i in range(len(monthly_heat_demand)) ]
+        monthly_normalized_demand = [ monthly_normalized_demand[i]/( monthly_T_set[ i ] - monthly_T_in[ i ] ) for i in range( len( monthly_T_set ) ) ]
         total_normalized_demand = sum(monthly_normalized_demand)
         
         def mse_result( coeff_list ):
@@ -1766,7 +1792,9 @@ class DemandProfile:
                     
                     monthly_heat_demand,
                     Tamb_profile,
-                    monthly_production = monthly_production )
+                    monthly_production = monthly_production,
+                    monthly_T_in = self._monthly_T_in,
+                    monthly_T_set = self._monthly_T_set )
                 
                 Tamb_dependence = self._Tamb_dependence
                 temp_to_factor = self.define_temp_to_factor_func(Tamb_dependence)

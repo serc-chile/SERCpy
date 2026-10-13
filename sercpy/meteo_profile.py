@@ -101,47 +101,68 @@ class MeteoProfile:
     
     location : tuple of two float, optional
         Tuple with the form `(latitude, longitude)` defining the place where the simulation will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+    
     latitude : float, optional
         If provided along with `longitude`, it is a substitute for the argument `location`.
+    
     longitude : float, optional
         If provided along with `latitude`, it is a substitute for the argument `location`.
+    
     ground_albedo : float, optional
         Irradiance fraction reflected by the ground. If not provided, it defaults to 0.2.
+    
     api_key : str, optional
         User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
+    
     tmy_file_path : str, optional
         Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class <examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
         In the next arguments, the terms 'custom format' and 'custom file' refer to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
+    
     ghi_col_name : str, optional
         Name of the GHI (global horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'GHI'.
+    
     dni_col_name : str, optional
         Name of the DNI (direct normal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DNI'.
+    
     dhi_col_name : str, optional
         Name of the DHI (diffuse horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DHI'.
+    
     Tamb_col_name : str, optional
         Name of the ambient temperature column of the csv file. Only needed for custom files, in which the name of this column is different from 'Tamb'.
+    
     tmy_utc_offset : str, optional
         UTC offset of the data in the csv file provided by the user. Only needed for custom files. If not provided, this parameter will be inferred from the location; however, this can lead to large errors.
+    
     sep : str, optional
         Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user. If not provided, it defaults to `","`.
+    
     delimiter : str, optional
         Alias for `sep`.
+    
     skiprows : int, optional
         Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user.
+    
     irradiance_units : str, optional
         Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, 'W/m2' is assumed.
+    
     temp_units : str, optional
         Units in which ambient temperature is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, '°C' is assumed.
+    
     T_units : str, optional
         Alias for temp_units.
+    
     elevation : float, optional
         Terrain elevation of the place where the TMY is taken from. It is used to compute the atmospheric pressure in that location. If not provided, the value 0 is assumed.
+    
     elevation_units : str, optional
         Units in which elevation is being provided. If not provided, 'm' is assumed.
+    
     tz : str, optional
         Name of the time zone corresponding to the location; e.g. 'America/New_York' or 'America/Santiago'. This argument is most likely unncesessary since the time zone is automatically determined from the location, unless it is provided.
+    
     time_zone : str, optional
         Alias for tz.
+    
     solar_field : solar_field.SolarField instance, optional
         Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
