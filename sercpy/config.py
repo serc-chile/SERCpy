@@ -100,3 +100,6 @@ def get_api_key():
 # to the class meteo_profile.MeteoProfile
 # and the values extracted from a data file (only when possible) 
 coordinates_tolerance = 0.01
+
+demand_Tset_limits = [ 25, 150 ]
+demand_Tin_limits = [ 2, 130 ]

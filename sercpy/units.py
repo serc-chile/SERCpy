@@ -109,7 +109,10 @@ unit_database = {
         'decimeters': 1e-1,
         'decimetres': 1e-1,
         'hm': 1e2,
-        'mile': 1609.34,
+        'in': 0.0254,
+        'ft': 0.3048,
+        'yd': 0.9144,
+        'mile': 1609.344,
         
         },
     

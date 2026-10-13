@@ -123,7 +123,7 @@ class MeteoProfile:
     tmy_utc_offset : str, optional
         UTC offset of the data in the csv file provided by the user. Only needed for custom files. If not provided, this parameter will be inferred from the location; however, this can lead to large errors.
     sep : str, optional
-        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user.
+        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user. If not provided, it defaults to `","`.
     delimiter : str, optional
         Alias for `sep`.
     skiprows : int, optional
@@ -701,6 +701,9 @@ class MeteoProfile:
         Tamb_col_name = self.get_attribute( "Tamb_col_name" )
         sep = self.get_attribute( "sep" )
         skiprows = self.get_attribute( "skiprows" )
+        
+        if sep is None:
+            sep = ','
         
         try:
             
@@ -2243,9 +2246,14 @@ class MeteoProfile:
         delta_T_mains = (K1 + K2*(T_amb_ann - T_ref))*delta_T_amb
         phi_lag = K3 + K4*(T_amb_ann - T_ref)
         phi_amb = (104.8 + 180)*pi/180
+        # phi_lat: Correct phase if the latitude corresponds to the northern hemisphere
+        if self._latitude >= 0:
+            phi_lat = pi
+        else:
+            phi_lat = 0
         T_mains_avg = T_amb_ann + delta_T_offset
         def T_mains_func(t):
-            return T_mains_avg + delta_T_mains*sin(2*pi*t/8760 - phi_lag - phi_amb)
+            return T_mains_avg + delta_T_mains*sin(2*pi*t/8760 - phi_lag - phi_amb + phi_lat)
         t_list = np.linspace( 0, 8760 - 1/60, 8760*60 )
         
         self._df_tmy[ "Tmains" ] = [ T_mains_func(t)  for t in t_list ]

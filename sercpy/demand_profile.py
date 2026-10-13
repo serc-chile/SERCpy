@@ -5,6 +5,7 @@ Created on Mon Aug 17 11:18:03 2026
 @author: Adrian Riebel Brummer
 """
 
+from .meteo_profile import MeteoProfile
 from typing import Optional, Callable
 import pandas as pd
 import warnings
@@ -30,7 +31,13 @@ from .core import (
     Energy_Sources_Database,
     
     )
-from .config import default_year
+from .config import (
+    
+    default_year,
+    demand_Tin_limits,
+    demand_Tset_limits,
+    
+    )
 from scipy.optimize import minimize, Bounds
 
 # Numbers to define the fuctions that convert temperature to demand factors
@@ -101,6 +108,8 @@ DemandProfile_accepted_args = [
     
     "smooth_Tamb_profile",
     
+    "meteo_profile",
+    
     ]
 
 class DemandProfile:
@@ -134,9 +143,9 @@ class DemandProfile:
     T_set : float or list of float
         Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
     
-    T_in : float or list of float
-        Setpoint of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 2 <= `T_in` <= 130.
-        
+    T_in : float, list of float, or str
+        Temperature of the water entering the heating system. In the case of closed loops, it represents the temperature of the water coming back from the thermal load. It can be a floating point value or a list of 12 values (one per month). Range: 2 °C <= `T_in` <= 130 °C. Another valid value for this argument is the string `"mains"`, which implies that the water enters the heating system from the water distribution network. In this case, it is mandatory to provide the argument `meteo_profile` described below.
+    
     temp_units : str, optional
         Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
         
@@ -229,6 +238,9 @@ class DemandProfile:
     
     Tamb_units : str, optional
         Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `temp_units`/`T_units`. See :doc:`units`.
+        
+    meteo_profile : sercpy.meteo_profile.MeteoProfile instance
+        A `MeteoProfile` instance can be used to replace the argument `Tamb_profile`. If that argument is not provided and `meteo_profile` is provided instead, the ambient temperature profile will be extracted from that object. Specifying the argument `meteo_profile` is mandatory if the value of the argument `T_in` is the string `"mains"`.
     
     monthly_production : list of float, optional
         List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with the ambient temperature.
@@ -256,7 +268,7 @@ class DemandProfile:
             fluid_density_units: Optional[ str ] = None,
             
             T_set: float | list[float],
-            T_in: float | list[float],
+            T_in: float | list[float] | str,
             temp_units: Optional[ str ] = None,
             T_units: Optional[ str ] = None,
             
@@ -298,6 +310,8 @@ class DemandProfile:
             
             Tamb_profile: Optional[ list[float] ] = None,
             Tamb_units: Optional[ str ] = None,
+            meteo_profile: Optional[ MeteoProfile ] = None,
+            
             Tamb_dependence: Optional[ float ] = None,
             
             
@@ -307,17 +321,33 @@ class DemandProfile:
             
             ):
         
-        self._monthly_T_set = self.validate_argument("T_set", T_set)
-        self._monthly_T_in = self.validate_argument("T_in", T_in)
-        if self._monthly_T_set is None or self._monthly_T_in is None:
+        if T_set is None or T_in is None:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
-            
+        
+        self._monthly_T_set = self.validate_argument("T_set", T_set)
         if temp_units is not None:
             self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, "C" )
-            self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, "C" )
         elif T_units is not None:
             self._monthly_T_set = convert_units( self._monthly_T_set, T_units, "C" )
-            self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
+            
+        if not all( [ T >= demand_Tset_limits[0] and T <= demand_Tset_limits[1] for T in self._monthly_T_set ] ):
+            raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tset_limits[0]} °C <= T_set <= {demand_Tset_limits[1]} °C.")        
+        
+        T_in = self.validate_argument("T_in", T_in)
+        
+        if T_in == 'mains':
+            if meteo_profile is None:
+                raise ValueError("Class DemandProfile: The argument 'meteo_profile' must be provided if the value of 'T_in' is the string 'mains'.")
+            meteo_profile = self.validate_argument("meteo_profile", meteo_profile)
+            self._monthly_T_in = self._Tin_from_meteo_profile( meteo_profile )
+        else:
+            self._monthly_T_in = T_in
+            if temp_units is not None:
+                self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, "C" )
+            elif T_units is not None:
+                self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
+            if not all( [ T >= demand_Tin_limits[0] and T <= demand_Tin_limits[1] for T in self._monthly_T_in ] ):
+                raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tin_limits[0]} °C <= T_set <= {demand_Tin_limits[0]} °C.")
             
         if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
             raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
@@ -464,15 +494,21 @@ class DemandProfile:
             self._Tamb_dependence_mode = "auto"
                 
         self._monthly_production = self.validate_argument("monthly_production", monthly_production)
-        self._Tamb_profile = self.validate_argument("Tamb_profile", Tamb_profile)
         
-        if self._Tamb_profile is not None:
-            if Tamb_units is not None:
-                self._Tamb_profile = convert_units( self._Tamb_profile, Tamb_units, 'C' )
-            elif temp_units is not None:
-                self._Tamb_profile = convert_units( self._Tamb_profile, temp_units, 'C' )
-            elif T_units is not None:
-                self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
+        if Tamb_profile is None and meteo_profile is not None:
+            meteo_profile = self.validate_argument("meteo_profile", meteo_profile)
+            meteo_df = meteo_profile.get_conditions()
+            self._Tamb_profile = meteo_df[ "Tamb" ].values.astype(float).tolist()
+        else:
+            self._Tamb_profile = self.validate_argument("Tamb_profile", Tamb_profile)
+            
+            if self._Tamb_profile is not None:
+                if Tamb_units is not None:
+                    self._Tamb_profile = convert_units( self._Tamb_profile, Tamb_units, 'C' )
+                elif temp_units is not None:
+                    self._Tamb_profile = convert_units( self._Tamb_profile, temp_units, 'C' )
+                elif T_units is not None:
+                    self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
             
         if smooth_Tamb_profile is not None:
             self._smooth_Tamb_profile = self.validate_argument( "smooth_Tamb_profile", smooth_Tamb_profile )
@@ -1185,8 +1221,8 @@ class DemandProfile:
             except:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a list of values convertible to type 'float', all of which must be >= 0. At least one of them must be > 0.")
                 
-        if argument_name in [ "T_set", "T_in" ]:
-            temp_limits = [ [ 25, 150 ], [ 2,130 ] ][ [ "T_set", "T_in" ].index( argument_name ) ]
+        if argument_name  == "T_set":
+            temp_limits = [ 25, 150 ]
             try:
                 value = float(value)
                 assert value >= temp_limits[0] and value <= temp_limits[1]
@@ -1200,7 +1236,36 @@ class DemandProfile:
                     raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
             except AssertionError:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
-                
+        
+        if argument_name == "T_in":
+            temp_limits = [ 2, 130 ]
+            
+            try:
+                value_2 = float( value )
+                value_2 = [ value_2 ]*12
+                value = value_2
+            except:
+                try:
+                    value_2 = [ float( v ) for v in value ]
+                    value = value_2
+                except:
+                    try:
+                        value_2 =  str( value )
+                        if value_2 != 'mains':
+                            raise ValueError(f"Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+                        value = value_2
+                    except:
+                        raise ValueError(f"Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+            
+            if type( value ) is list:
+                if len( value ) != 12:
+                    raise ValueError(f"Class DemandProfile: Argument 'T_in' must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+                if not all( [ v >= temp_limits[0] and v <= temp_limits[1] for v in value ] ):
+                    raise ValueError(f"Class DemandProfile: The value of T_in must be in the range 2 °C <= T_in <= 130 °C")
+            else:
+                assert type( value ) is str
+                assert value == 'mains'
+        
         if argument_name == "Tamb_dependence":
             if ( not callable(value) ) or value is None or value == "auto":
                 try:
@@ -1218,7 +1283,6 @@ class DemandProfile:
         
         if argument_name == "Tamb_profile":
             try:
-                value = list(value)
                 value = [ float(v) for v in value ]
                 assert all([ v >= -50 and v <= 60 for v in value ])
                 assert len( value ) == 365 or len( value )%365 == 0
@@ -1300,6 +1364,11 @@ class DemandProfile:
             if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
                 raise ValueError("Class DemandProfile: Argument 'condensation_boiler' must be boolean.")
             value = bool( value )
+            
+        if argument_name == "meteo_profile":
+            
+            if not isinstance( value, MeteoProfile ):
+                raise TypeError("Class DemandProfile: Argument 'meteo_profile' must be a meteo_profile.MeteoProfile instance.")
         
         return value
         
@@ -1759,6 +1828,33 @@ class DemandProfile:
         self._demanded_power_profile = [ demanded_power_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( demanded_power_profile ), minutes_per_day ) ]
         self._T_in_profile = [ T_in_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( T_in_profile ), minutes_per_day ) ]
         self._T_set_profile = [ T_set_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( T_set_profile ), minutes_per_day ) ]
+    
+    @staticmethod
+    def _Tin_from_meteo_profile( meteo_profile ):
+        """
+        Private method that takes a meteo_profile.MeteoProfile instance and creates a list of 12 monthly values for mains water temperature.
+        
+        This is done when the user specifies that the heated water enters the heating system from the distribution network.
+
+        Parameters
+        ----------
+        meteo_profile : meteo_profile.MeteoProfile instance
+            Object from which the mains water temperature profile is extracted.
+
+        Returns
+        -------
+        result : list
+            List of 12 monthly values, computed by averaging the values of the profile extracted from meteo_profile.
+
+        """
+        
+        result = []
+        
+        for month in range( 1, 13 ):
+            month_df = meteo_profile.get_conditions( month = month )
+            result.append( float( np.mean( month_df[ "Tmains" ].values ) ) )
+            
+        return result
     
     def _return_single_instant(self, month, day, hour, minute ):
         """
