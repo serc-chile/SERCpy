@@ -154,13 +154,13 @@ class FluidState:
     def quality(self):
         return self.Q
     
-def _define_polyfit( max_index, x_axis, y_axis ):
+def _define_polyfit( max_degree, x_axis, y_axis ):
     
-    for index in range( 1, max_index + 1 ):
-        poly_func = np.poly1d( np.polyfit( x_axis, y_axis, index ) )
+    for degree in range( 1, max_degree + 1 ):
+        poly_func = np.poly1d( np.polyfit( x_axis, y_axis, degree ) )
         estimated_y_axis = [ poly_func( x ) for x in x_axis ]
         error = float( np.max( np.abs( np.array( estimated_y_axis ) - np.array( y_axis ) ) ) )
-        if index == 1:
+        if degree == 1:
             best_result = error
             best_poly_func = poly_func
             continue
@@ -228,16 +228,16 @@ class Fluid:
         
     Methods
     -------
-    h_to_T( h: float ) -> float
+    h_to_T( h: float or array-like ) -> float or np.array
         Convert specific enthalpy (J/kg) to temperature (°C).
     
-    T_to_h( T: float ) -> float
+    T_to_h( T: float or array-like ) -> float or np.array
         Convert temperature (°C) to specific enthalpy (J/kg). This method fails only when the temperature provided is too close to saturation.
     
-    h_to_Q( h: float ) -> float
+    h_to_Q( h: float or array-like ) -> float or np.array
         Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Outside saaturation, this method returns 0 for liquids and 1 for gases.
     
-    h_to_D( h: float ) -> float
+    h_to_D( h: float or array-like ) -> float or np.array
         Get density (kg/m3) from specific enthalpy (J/kg). 
     
     state( **kwargs: float ) -> float
@@ -397,8 +397,20 @@ class Fluid:
         if not self._ref_conditions:
             raise FluidError("Fluid.k_ref: Reference temperature must be provided at initialization.")
         return self._k_ref
+    
+    def _process_array( self, method, array ):
+        return np.array( [ method( v ) for v in array ] )
             
     def h_to_T( self, h ):
+        
+        try:
+            h = float( h )
+        except TypeError:
+            try:
+                h = list( h )
+                return self._process_array(self.h_to_T, h)
+            except TypeError:
+                raise TypeError( "Fluid.h_to_T: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
             warnings.warn(f"Fluid.h_to_T: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Minimum temperature value ({self._T_min} °C) is returned.")
@@ -416,6 +428,15 @@ class Fluid:
         return self._T_sat
     
     def T_to_h( self, T ):
+        
+        try:
+            T = float( T )
+        except TypeError:
+            try:
+                T = list( T )
+                return self._process_array(self.T_to_h, T)
+            except TypeError:
+                raise TypeError( "Fluid.T_to_h: Value 'T' must be numeric or array-like." )
         
         if T < self._T_min:
             warnings.warn(f"Fluid.T_to_h: A temperature value below the minimum available ({self._T_min} °C) was provided. Minimum enthalpy value ({self._h_min} J/kg) is returned.")
@@ -437,6 +458,15 @@ class Fluid:
         
     def h_to_Q( self, h ):
         
+        try:
+            h = float( h )
+        except TypeError:
+            try:
+                h = list( h )
+                return self._process_array(self.h_to_Q, h)
+            except TypeError:
+                raise TypeError( "Fluid.h_to_Q: Value 'h' must be numeric or array-like." )
+        
         if h <= self._h_sat_liq:
             return 0
         if h >= self._h_sat_vap:
@@ -444,6 +474,15 @@ class Fluid:
         return float( ( h - self._h_sat_liq )/( self._h_sat_vap - self._h_sat_liq ) )
     
     def h_to_D( self, h ):
+        
+        try:
+            h = float( h )
+        except TypeError:
+            try:
+                h = list( h )
+                return self._process_array(self.h_to_D, h)
+            except TypeError:
+                raise TypeError( "Fluid.h_to_D: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
             warnings.warn(f"Fluid.h_to_T: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Density for minimum enthalpy available is returned ({self._D_min} kg/m3).")
