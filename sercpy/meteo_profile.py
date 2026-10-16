@@ -1507,7 +1507,7 @@ class MeteoProfile:
         if altitude_units is not None:
             altitude = convert_units(altitude, altitude_units, 'm')
             
-        if not altitude >= -500 and altitude <= 10000:
+        if not ( altitude >= -500 and altitude <= 10000 ):
             raise ValueError( f"MeteoProfile.altitude_to_pressure: altitude must lie within the range: -500 m <= altitude <= 10,000 m. Altitude introduced: {altitude} m." )
         
         Pb = 101325 # Reference pressure, Pa
@@ -2273,8 +2273,7 @@ class MeteoProfile:
         else:
             phi_lat = 0
         T_mains_avg = T_amb_ann + delta_T_offset
-        def T_mains_func(t):
-            return T_mains_avg + delta_T_mains*sin(2*pi*t/8760 - phi_lag - phi_amb + phi_lat)
-        t_list = np.linspace( 0, 8760 - 1/60, 8760*60 )
         
-        self._df_tmy[ "Tmains" ] = [ T_mains_func(t)  for t in t_list ]
+        t_array = np.linspace( 0, 8760 - 1/60, 8760*60 )
+        
+        self._df_tmy[ "Tmains" ] = T_mains_avg + delta_T_mains*sin( (2*pi/8760)*t_array - phi_lag - phi_amb + phi_lat )

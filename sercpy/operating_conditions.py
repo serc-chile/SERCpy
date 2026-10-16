@@ -122,17 +122,16 @@ class OperatingConditions:
     def get_conditions( self, time_step_number ):
         """
         
-
         Parameters
         ----------
         time_step_number : int
-            Time step number for which the conditions will be returned. The standard numbering goes from 0 to the number of time steps per year minus one. Nevertheless, values out of this range are valid as well, the values returned become cyclic.
-
+            Time step number for which the conditions will be returned. The standard numbering goes from 0 to the number of time steps per year minus one. Nevertheless, numbers out of this range are valid as well; in this case, the values returned become cyclic.
+        
         Returns
         -------
         dict
             Dictionary containing the values of the system's operating conditions. The keys within the dictionary have the same names as the data returned by the MeteoProfile and the DemandProfile instances.
-
+        
         """
         
         try:
