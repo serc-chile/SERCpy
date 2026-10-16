@@ -17,4 +17,5 @@ Contents
    usage
    meteo_profile
    demand_profile
+   fluids
    units
