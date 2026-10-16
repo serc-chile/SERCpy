@@ -182,7 +182,7 @@ class Fluid:
     Parameters
     ----------
     fluid_name : str
-        Only positional parameter. Valid values are: `water`, `air`, `therminol 66`. 
+        Only positional parameter. Valid values are: `"water"`, `"air"`, `"therminol 66"`. 
     
     p_abs_Pa : float, optional
         Absolute pressure in Pascal. Only needed for water and air.
@@ -224,6 +224,24 @@ class Fluid:
     
     k_ref : float
         Reference thermal conductivity (W/m °C). It is computed at the temperature given by the argument T_ref.
+        
+        
+    Methods
+    -------
+    h_to_T( h: float ) -> float
+        Convert specific enthalpy (J/kg) to temperature (°C).
+    
+    T_to_h( T: float ) -> float
+        Convert temperature (°C) to specific enthalpy (J/kg). This method fails only when the temperature provided is too close to saturation.
+    
+    h_to_Q( h: float ) -> float
+        Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Outside saaturation, this method returns 0 for liquids and 1 for gases.
+    
+    h_to_D( h: float ) -> float
+        Get density (kg/m3) from specific enthalpy (J/kg). 
+    
+    state( **kwargs: float ) -> float
+        This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`.
     
     """
     
