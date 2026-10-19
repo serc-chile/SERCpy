@@ -239,14 +239,12 @@ class Fluid:
     
     In the case of water, the instances of these class also store the saturation temperature and the vaporization enthalpy.
     
-    Class instances also store the density aas a function of temperature/enthalpy.
+    Class instances also store the density as a function of temperature/enthalpy.
 
     Parameters
     ----------
     fluid_name : str
-        String defining the name of the fluid. Upper-case and lower-case variations introduced by the user are ignored, as well as spaces, hyphens, and percentage signs. For water, accepted values are "w" and "water".
-        For water-glycol mixtures, the name must specify first the type of glycol, and then the percentage of glycol present in the mixture. Accepted glycol types are `"ethylene glycol"` or `"eg"` for ethylene glycol, and `"propylene glycol"` or `"pg"` for propylene glycol.
-        Examples of acceptable names in this context are: `"ethylene glycol 60%"`, `"EG 40"`, `"propylene glycol 30%"`, and `"pg20"`. **Note**: The number after the ethylene glycol type is **always** interpreted as a percentage, regardless of whether it has a percentage sign.
+        String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :doc:`document on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
     
     p_abs_Pa : float, optional
         Absolute pressure in Pascal. Only needed for water and air.
@@ -309,18 +307,24 @@ class Fluid:
     Methods
     -------
     h_to_T( h )
-        Convert specific enthalpy (J/kg) to temperature (°C).
+        Convert specific enthalpy (J/kg) to temperature (°C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
-    T_to_h( T ) -> float or np.array
-        Convert temperature (°C) to specific enthalpy (J/kg). This method fails only when the temperature provided is too close to saturation.
+    T_to_h( T )
+        Convert temperature (°C) to specific enthalpy (J/kg). Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
-    h_to_Q( h ) -> float or np.array
-        Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Outside saaturation, this method returns 0 for liquids and 1 for gases.
+    h_to_Q( h )
+        Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture. Outside saturation, this method returns 0 for liquids and 1 for gases. Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
-    h_to_D( h ) -> float or np.array
-        Get density (kg/m3) from specific enthalpy (J/kg). 
+    Q_to_h( Q )
+        Convert mixture quality to average specific enthalpy (J/kg). Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture, and must be a value in the range 0 - 1. Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
-    state( **kwargs ) -> float
+    T_to_D( T )
+        Get density (kg/m3) from temperature (°C). Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+    
+    h_to_D( h )
+        Get density (kg/m3) from specific enthalpy (J/kg). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+    
+    state( **kwargs )
         This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`.
     
     """
@@ -749,11 +753,11 @@ class Fluid:
                 raise TypeError( "Fluid.h_to_T: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
-            if abs( h - self.h_min ) > 0.005*(self._h_max - self.h_min):
+            if abs( h - self.h_min ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_T: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Minimum temperature value ({self._T_min} °C) is returned.")
             return self._T_min
         if h > self._h_max:
-            if abs( h - self._h_max ) > 0.005*(self._h_max - self.h_min):
+            if abs( h - self._h_max ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_T: An enthalpy value above the maximum available ({self._h_max} J/kg) was provided. Maximum temperature value ({self._T_max} °C) is returned.")
             return self._T_max
         
@@ -772,22 +776,22 @@ class Fluid:
     def T_to_h( self, T ):
         """
         Convert temperature to specific enthalpy.
-
+        
         Parameters
         ----------
         T : float or array-like
             Temperature value(s) in °C.
-
+        
         Raises
         ------
         TypeError
             If the argument cannot be interpreted as a number nor as a list.
-
+        
         Returns
         -------
         float or np.array
             Specific enthalpy value(s) in J/kg.
-
+        
         """
         
         try:
@@ -862,9 +866,111 @@ class Fluid:
             return 1
         return float( ( h - self._h_sat_liq )/( self._h_sat_vap - self._h_sat_liq ) )
     
+    def Q_to_h( self, Q ):
+        """
+        Convert mixture quality to average specific enthalpy (J/kg).
+        
+        Mixture quality is defined as the fraction of vapor in a saturated liquid-vapor mixture.
+        
+        Parameters
+        ----------
+        Q : float or array-like
+            Mixture quality value(s). Valid range: 0 to 1.
+        
+        Raises
+        ------
+        FluidError
+            If the fluid model does not support boiling.
+        TypeError
+            If the argument cannot be interpreted as a number nor as a list..
+        ValueError
+            If the argument is not within the expected range (0 - 1).
+        
+        Returns
+        -------
+        float or np.array
+            Average specific enthalpy of the mixture (single number or array) in J/kg.
+        
+        """
+        
+        if not self._can_boil:
+            raise FluidError("Fluid: Model for {self._fluid_name} does support boiling.")
+        
+        try:
+            Q = float( Q )
+        except TypeError:
+            try:
+                Q = list( Q )
+                return self._process_array(self.Q_to_h, Q)
+            except TypeError:
+                raise TypeError( "Fluid.Q_to_h: Value 'Q' must be numeric or array-like." )
+                
+        if not (Q >= 0 and Q <= 1 ):
+            raise ValueError("Fluid.Q_to_h: Value of 'Q' must be in the range 0 - 1.")
+        
+        if Q == 0:
+            return self._h_sat_liq
+        elif Q == 1:
+            return self._h_sat_vap
+        return self._h_sat_vap*Q + self._h_sat_liq*( 1 - Q )
+            
+        
+    def T_to_D( self, T ):
+        """
+        Convert temperature to density.
+
+        Parameters
+        ----------
+        T : float or array-like
+            Temperature value(s) in °C.
+
+        Raises
+        ------
+        TypeError
+            If the argument cannot be interpreted as a number nor as a list.
+        ValueError
+            If the temperature introduced is too close to saturation temperature (tolerance: 1e-8 °C).
+
+        Returns
+        -------
+        float or np.array
+            Density of the fluid (single number or array) in kg/m3.
+
+        """
+        
+        try:
+            T = float( T )
+        except TypeError:
+            try:
+                T = list( T )
+                return self._process_array(self.T_to_D, T)
+            except TypeError:
+                raise TypeError( "Fluid.T_to_D: Value 'T' must be numeric or array-like." )
+                
+        if self._can_boil and abs( T - self._T_sat ) < 1e-8:
+            raise ValueError(f"Fluid.T_to_D: Temperature provided ({T} °C) is less than 1e-8 °C from saturation temperature ({self._Tsat} °C).")
+        
+        if T < self._T_min:
+            if abs( T - self.T_min ) > 0.005*(self._T_max - self._T_min):
+                warnings.warn(f"Fluid.T_to_D: A temperature value below the minimum available ({self._T_min} J/kg) was provided. Density for minimum temperature available is returned ({self._D_min} kg/m3).")
+            return self._D_min
+        if T > self._T_max:
+            if abs( T - self._T_max ) > 0.005*(self._T_max - self._T_min):
+                warnings.warn(f"Fluid.T_to_D: A temperature value above the maximum available ({self._T_max} J/kg) was provided. Density for maximum temperature available is returned ({self._D_max} kg/m3).")
+            return self._D_max
+        
+        if self._can_boil:
+            
+            if T < self._T_sat:
+                return float( self._T_to_D_liq( T + 273.15 ) )
+            else:
+                return float( self._T_to_D_vap( T + 273.15 ) )
+            
+        return float( self._T_to_D_poly( T + 273.15 ) )
+    
     def h_to_D( self, h ):
         """
-        Convert specific enthalpy density.
+        Convert specific enthalpy to density.
 
         Parameters
         ----------
@@ -879,7 +985,7 @@ class Fluid:
         Returns
         -------
         float or np.array
-            Value(s) in the range 0 - 1 representing the vapor fraction of the mixture.
+            Density of the fluid (single number or array) in kg/m3.
 
         """
         
@@ -893,11 +999,11 @@ class Fluid:
                 raise TypeError( "Fluid.h_to_D: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
-            if abs( h - self.h_min ) > 0.005*(self._h_max - self.h_min):
+            if abs( h - self.h_min ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_D: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Density for minimum enthalpy available is returned ({self._D_min} kg/m3).")
             return self._D_min
         if h > self._h_max:
-            if abs( h - self._h_max ) > 0.005*(self._h_max - self.h_min):
+            if abs( h - self._h_max ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_D: An enthalpy value above the maximum available ({self._h_max} J/kg) was provided. Density for maximum enthalpy available is returned ({self._D_max} kg/m3).")
             return self._D_max
         
