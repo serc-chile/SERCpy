@@ -34,6 +34,8 @@ autodoc_typehints = "description"
 autodoc_default_options = {
     'exclude-members': '__init__, __new__',
 }
+napoleon_custom_sections = [('Attributes', 'params_style'),
+                            ('Methods', 'params_style')]
 
 # Prevent Notebooks from being executed
 nbsphinx_execute = 'never'
