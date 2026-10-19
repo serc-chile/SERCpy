@@ -259,7 +259,7 @@ class Fluid:
         Accepted values for mass-based percentages are `"m"`, `"m/m"`, `"mass"`, and `"mass-based"`.
         If not specified, this parameter defaults to `"m"`.
         **Warning:** For volumetric percentage values close the the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%. Therefore, in these cases, the mass-based percentage value is approximated to 60%, in order for the model to work.
-         In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.58% to 60%. A warning is thrown when this correction is carried out.
+        In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.58% to 60%. A warning is thrown when this correction is carried out.
     
     Attributes
     ----------
