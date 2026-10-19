@@ -1,7 +1,9 @@
 Fluid naming
 ============
 
-A general rule that applies to all fluid names is that upper- and lower cases are indistinguishable to the platform, so the user does not have to worry about this. Moreover, special characters such as spaces, hyphens, and percentage signs are also ignored.
+The only purpose of this section is to clarify how specify the fluid name to initialize an instance of the class :class:`Fluid <sercpy.fluids.Fluid>` (argument `fluid_name`).
+
+A general rule that applies to all fluid names is that upper- and lower cases are indistinguishable to the platform, so the user does not have to worry about this. Spaces and hyphens are also irrelevant.
 
 Water
 -----
@@ -19,12 +21,37 @@ Hence, some examples of valid mixtures are:
 - `"ethylene glycol 42%"`
 - `"EG50"`
 - `"propylene glycol 48%"`
+- `"propyleneglycol10%"`
 - `"PG5"`
 
-The maximum percentage value allowed is 60% for both glycol types. See "glycol_percentage" the :class:`documentation on the Fluids class <sercpy.fluids.Fluid>` for more details.
+The maximum percentage value allowed is 60% for both glycol types. See the argument `glycol_percentage` in the documentation of the class :class:`Fluid <sercpy.fluids.Fluid>` for more details.
 
+Commercial heat transfer fluids
+-------------------------------
 
-        String defining the name of the fluid. Upper-case and lower-case variations introduced by the user are ignored, as well as spaces, hyphens, and percentage signs. For pure **water**, accepted values are "w" and "water".
-        For **water-glycol mixtures**, the name must specify first the type of glycol, and then the percentage of glycol present in the mixture. Accepted glycol types are `"ethylene glycol"` or `"eg"` for ethylene glycol, and `"propylene glycol"` or `"pg"` for propylene glycol.
-        Examples of acceptable names in this context are: `"ethylene glycol 60%"`, `"EG 40"`, `"propylene glycol 30%"`, and `"pg20"`. **Note**: The number after the ethylene glycol type is **always** interpreted as a percentage, regardless of whether it has a percentage sign.
-        The maximum percentage allowed is 60%. For other **commercial heat transfer fluids** such as thermal oils, see the document on fluid naming.
+The commercial heat transfer fluids supported by **SERCpy** are:
+
+- Therminol 55
+- Therminol 66
+- Therminol 72
+- Therminol VP-1
+- Therminol D-12
+- Dowtherm A
+- Dowtherm J
+- Dowtherm Q
+- Dynalene HC10
+- Dynalene HC20
+- Dynalene HC30
+- Dynalene HC40
+- Dynalene HC50
+- Dynalene SF
+- Paratherm CR
+- Paratherm GLT
+- Paratherm HE
+- Paratherm HR
+- Paratherm LR
+- Paratherm MR
+- Paratherm NF
+- Syltherm 800
+- Syltherm XLT
+- Texatherm 22
