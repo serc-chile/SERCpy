@@ -244,18 +244,27 @@ class Fluid:
     Parameters
     ----------
     fluid_name : str
-        Only positional parameter. Valid values are: `"water"`, `"air"`, `"therminol 66"`. 
+        String defining the name of the fluid. Upper-case and lower-case variations introduced by the user are ignored, as well as spaces, hyphens, and percentage signs. For water, accepted values are "w" and "water".
+        For water-glycol mixtures, the name must specify first the type of glycol, and then the percentage of glycol present in the mixture. Accepted glycol types are `"ethylene glycol"` or `"eg"` for ethylene glycol, and `"propylene glycol"` or `"pg"` for propylene glycol.
+        Examples of acceptable names in this context are: `"ethylene glycol 60%"`, `"EG 40"`, `"propylene glycol 30%"`, and `"pg20"`. **Note**: The number after the ethylene glycol type is **always** interpreted as a percentage, regardless of whether it has a percentage sign.
     
     p_abs_Pa : float, optional
         Absolute pressure in Pascal. Only needed for water and air.
         
     T_ref : float, optional
-        Temperature at which to compute the reference density, thermal conductivity, and specific heat capacity. This is needed, in particular, for fluids that will be stored in storage tanks, for whose calculations constant fluid properties are assumed.
+        Temperature at which to compute the reference density, thermal conductivity, and specific heat capacity.
+        This is needed, in particular, for fluids that will be stored in storage tanks, for whose calculations constant fluid properties are assumed.
+    
+    mixture_type : str, optional
+        A string specifying whether the percentage introduced for a glycol mixture defines the mass-based or the volume-based percentage in the mixture.
+        Accepted values for volume-based percentages are `"v"`, `"volume"`, and `"volume-based"`.
+        Accepted values for mass-based percentages are `"m"`, `"mass"`, and `"mass-based"`.
+        If not specified, this parameter defaults to `"v"`.
     
     Attributes
     ----------
     fluid_name : str
-        Name identifying the fluid. Possible values are: `"water"`, `"air"`, `"therminol 66"`, 
+        Name identifying the fluid.
     
     h_sat_liq : float
         Specific enthalpy of liquid at saturation (J/kg).
@@ -299,19 +308,19 @@ class Fluid:
         
     Methods
     -------
-    h_to_T( h: float or array-like ) -> float or np.array
+    h_to_T( h )
         Convert specific enthalpy (J/kg) to temperature (°C).
     
-    T_to_h( T: float or array-like ) -> float or np.array
+    T_to_h( T ) -> float or np.array
         Convert temperature (°C) to specific enthalpy (J/kg). This method fails only when the temperature provided is too close to saturation.
     
-    h_to_Q( h: float or array-like ) -> float or np.array
+    h_to_Q( h ) -> float or np.array
         Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Outside saaturation, this method returns 0 for liquids and 1 for gases.
     
-    h_to_D( h: float or array-like ) -> float or np.array
+    h_to_D( h ) -> float or np.array
         Get density (kg/m3) from specific enthalpy (J/kg). 
     
-    state( **kwargs: float ) -> float
+    state( **kwargs ) -> float
         This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`.
     
     """
