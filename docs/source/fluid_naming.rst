@@ -21,7 +21,7 @@ Hence, some examples of valid mixtures are:
 - `"propylene glycol 48%"`
 - `"PG5"`
 
-The maximum percentage value allowed is 60% for both glycol types. See "glycol_percentage" the :class:`documentation on the Fluids class <sercpy.fluids.Fluid>`_ for more details.
+The maximum percentage value allowed is 60% for both glycol types. See "glycol_percentage" the :class:`documentation on the Fluids class <sercpy.fluids.Fluid>` for more details.
 
 
         String defining the name of the fluid. Upper-case and lower-case variations introduced by the user are ignored, as well as spaces, hyphens, and percentage signs. For pure **water**, accepted values are "w" and "water".
