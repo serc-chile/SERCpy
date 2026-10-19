@@ -237,7 +237,7 @@ class Fluid:
     
     The class can convert specific enthalpy to temperature, and it most cases, also viceversa (unless the saturation temperature is provided as argument).
     
-    In the case of water, the instances of these class also store the saturation temperature and the vaporization enthalpy.
+    In the case of water, the instances of this class also store the saturation temperature and the vaporization enthalpy, and the properties of vapor up to 350 °C.
     
     Class instances also store the density as a function of temperature/enthalpy.
 
@@ -254,10 +254,12 @@ class Fluid:
         This is needed, in particular, for fluids that will be stored in storage tanks, for whose calculations constant fluid properties are assumed.
     
     mixture_type : str, optional
-        A string specifying whether the percentage introduced for a glycol mixture defines the mass-based or the volume-based percentage in the mixture.
-        Accepted values for volume-based percentages are `"v"`, `"volume"`, and `"volume-based"`.
-        Accepted values for mass-based percentages are `"m"`, `"mass"`, and `"mass-based"`.
-        If not specified, this parameter defaults to `"v"`.
+        A string specifying whether the glycol percentage introduced for a water-glycol mixture defines the mass-based- or the volume-based percentage in the mixture.
+        Accepted values for volume-based percentages are `"v"`, `"v/v"`, `"volume"`, and `"volume-based"`.
+        Accepted values for mass-based percentages are `"m"`, `"m/m"`, `"mass"`, and `"mass-based"`.
+        If not specified, this parameter defaults to `"m"`.
+        **Warning:** For volumetric percentage values close the the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%. Therefore, in these cases, the mass-based percentage value is approximated to 60%, in order for the model to work.
+         In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.58% to 60%. A warning is thrown when this correction is carried out.
     
     Attributes
     ----------
@@ -337,12 +339,13 @@ class Fluid:
             *,
             p_abs_Pa = None,
             T_ref = None,
-            mixture_type = 'v',
+            mixture_type = 'm',
             
             ):
-        
+        # ' -_.,:;%'
         try:
-            fluid_name_corrected = str( fluid_name ).upper().translate(str.maketrans( '', '', ' -_.,:;%' ))
+            fluid_name_corrected = str( fluid_name ).upper().translate(str.maketrans( '', '', ' -_%' ) )
+            print( fluid_name_corrected )
         except:
             raise FluidError("Fluid: Argument 'fluid_name' must be convertible to string.")
         
@@ -520,10 +523,10 @@ class Fluid:
         
         mixture_type_corrected = str( mixture_type ).upper().translate(str.maketrans( '', '', ' -_.,:;%' ))
         
-        if not mixture_type_corrected in [ 'M', 'MASS', 'MASSBASED', 'V', 'VOLUME', 'VOLUMEBASED' ]:
+        if not mixture_type_corrected in [ 'M', 'M/M', 'MASS', 'MASSBASED', 'V', 'V/V', 'VOLUME', 'VOLUMEBASED' ]:
             raise FluidError("Fluid: Argument 'mixture_type' is not valid.")
             
-        if mixture_type_corrected in [ 'M', 'MASS', 'MASSBASED', ]:
+        if mixture_type_corrected in [ 'M', 'M/M', 'MASS', 'MASSBASED', ]:
             self._mixture_type = 'mass-based'
         else:
             self._mixture_type = 'volume-based'
@@ -690,7 +693,7 @@ class Fluid:
     @property
     def glycol_percentage(self):
         "Get glycol percentage of a water-glycol mixture."
-        if self.fluid_name in [ "Ethylene Glycol", "Propylene Glycol" ]:
+        if self.fluid_name.startswith( "Ethylene Glycol" ) or self.fluid_name.startswith( "Propylene Glycol" ):
             return self._glycol_percentage
         else:
             raise FluidError("Fluid is not a water-glycol mixture.")
