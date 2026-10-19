@@ -11,7 +11,7 @@ For pure water, acceptable names are `"w"` and `"water"`.
 Water-glycol mixtures
 ---------------------
 
-Water-glycol mixtures with both ethylene glycol and propylene glycol are supported. To specify a mixture, the string must contain both the glycol type involved and the glycol percentage, e.g. `"ethylene glycol 40%"`. For ethylene glycol, both `"ethylene glycol"` and `"eg"` are valid as names, whereas for propylene glycol, `"propylene glycol"` and `"pg"` are valid. The number after the glycol type is **always** interpreted as a percentage, without the need to add a percentage symbol (`"%"`). Moreover, **only integer percentage values are valid**. Since dots are ignored, a percentage value equal to `"25.8"` will be read as `"258"`; this will throw an error. On the other hand, a percentage equal to "`5.5`" will be read as 55; this will be accepted but will be interpreted as a different percentage from the one specified by the user.
+Water-glycol mixtures with both ethylene glycol and propylene glycol are supported. To specify a mixture, the string must contain both the glycol type involved and the glycol percentage, e.g. `"ethylene glycol 40%"`. For ethylene glycol, both `"ethylene glycol"` and `"eg"` are valid as names, whereas for propylene glycol, `"propylene glycol"` and `"pg"` are valid. The number after the glycol type is **always** interpreted as a percentage, without the need to add a percentage symbol (`"%"`). Moreover, **only integer percentage values are valid**; e.g. `"12"` is valid, while `"12.5"` is not.
 
 Hence, some examples of valid mixtures are:
 
@@ -20,6 +20,8 @@ Hence, some examples of valid mixtures are:
 - `"EG50"`
 - `"propylene glycol 48%"`
 - `"PG5"`
+
+The maximum percentage value allowed is 60% for both glycol types. See "glycol_percentage" the :class:`documentation on the Fluids class <sercpy.fluids.Fluid>`_ for more details.
 
 
         String defining the name of the fluid. Upper-case and lower-case variations introduced by the user are ignored, as well as spaces, hyphens, and percentage signs. For pure **water**, accepted values are "w" and "water".
