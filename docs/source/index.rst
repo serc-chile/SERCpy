@@ -18,5 +18,4 @@ Contents
    meteo_profile
    demand_profile
    fluids
-      fluid_naming
    units
