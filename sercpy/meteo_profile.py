@@ -1181,7 +1181,7 @@ class MeteoProfile:
         
         This static method works for continental as well as insular Chilean territories.
         
-        In Antarctica, this method does not return `True` for the whole territory claimed by Chile; however, it does return `True` for the most renowned Chilean settlements in Antarctica.
+        In Antarctica, this method does not return `True` for the whole territory claimed by Chile; however, it does return `True` for places close to the important Chilean settlements in Antarctica.
         
         Parameters
         ----------

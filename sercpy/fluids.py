@@ -247,8 +247,8 @@ class Fluid:
         String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :doc:`document on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
     
     p_abs_Pa : float, optional
-        Absolute pressure in Pascal. Only needed for water and air.
-        
+        Absolute pressure in Pascal. Only needed for water. Valid range: 20,000 to 4,000,000.
+    
     T_ref : float, optional
         Temperature at which to compute the reference density, thermal conductivity, and specific heat capacity.
         This is needed, in particular, for fluids that will be stored in storage tanks, for whose calculations constant fluid properties are assumed.
@@ -275,7 +275,7 @@ class Fluid:
     
     T_min : float
         Minimum temperature for which the properties can be computed (°C).
-        
+    
     T_max : float
         Maximum temperature for which the properties can be computed (°C).
     
@@ -384,10 +384,8 @@ class Fluid:
                 raise FluidError( "Glycol percentage could not be extracted from fluid name." )
             
             if glycol_name in [ 'EG', 'ETHYLENEGLYCOL' ]:
-                self._fluid_name = "Ethylene Glycol"
                 glycol_type = "EG"
             elif glycol_name in [ 'PG', 'PROPYLENEGLYCOL' ]:
-                self._fluid_name = "Propylene Glycol"
                 glycol_type = "PG"
             else:
                 raise FluidError( "Unexpected error." )
@@ -536,6 +534,16 @@ class Fluid:
             raise FluidError("Fluid: Glycol percentage must be positive.")
             
         self._glycol_percentage = glycol_percentage
+        
+        if self._mixture_type == 'mass-based':
+            mm_vv = 'm/m'
+        else:
+            mm_vv = 'v/v'
+        
+        if glycol_type == "EG":
+            self._fluid_name = f"Ethylene Glycol { self._glycol_percentage }% {mm_vv}"
+        if glycol_type == "PG":
+            self._fluid_name = f"Propylene Glycol { self._glycol_percentage }% {mm_vv}"
         
         if self._mixture_type == 'volume-based':
             # Mass fraction is computed at 20°C
