@@ -10,7 +10,7 @@ Class Fluid
 Fluid naming
 ------------
 
-As presented in the documentation of the class :class:`Fluid <Fluid>`, the most fundamental (and the only always-needed) parameter to initialized this class is the argument `fluid_name`, which defines the type of fluid. This section clarifies how to introduce this parameter correctly.
+As presented in the documentation of the class :class:`Fluid <Fluid>`, the most fundamental (and the only always-needed) parameter to initialize this class is the argument `fluid_name`, which defines the type of fluid. This section clarifies how to introduce this parameter correctly.
 
 A general rule that applies to all fluid names is that upper- and lower cases are indistinguishable to the platform, so the user does not have to worry about this. Spaces and hyphens are also irrelevant.
 
