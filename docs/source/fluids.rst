@@ -14,7 +14,7 @@ The class that stores how the fluid's properties change with temperature is the 
 Fluid naming
 ------------
 
-As presented in the :class:`documentation of the class Fluid <sercpy.fluids.Fluid>`, the most fundamental (and the only always-needed) parameter is `fluid_name`, which defines the type of fluid. This section clarifies how to introduce this parameter correctly.
+As presented in the :class:`documentation of the class Fluid <Fluid>`, the most fundamental (and the only always-needed) parameter is `fluid_name`, which defines the type of fluid. This section clarifies how to introduce this parameter correctly.
 
 A general rule that applies to all fluid names is that upper- and lower cases are indistinguishable to the platform, so the user does not have to worry about this. Spaces and hyphens are also irrelevant.
 
