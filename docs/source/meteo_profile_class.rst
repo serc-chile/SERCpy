@@ -12,7 +12,6 @@ Methods
    :toctree: generated/
 
    MeteoProfile.get_conditions
-   MeteoProfile.get_attribute
    MeteoProfile.compute_poa_irradiance
    MeteoProfile.download_tmy
    MeteoProfile.get_timezone
