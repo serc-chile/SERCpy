@@ -22,18 +22,16 @@ For pure water, acceptable names are `"w"` and `"water"`.
 Water-glycol mixtures
 ~~~~~~~~~~~~~~~~~~~~~
 
-Water-glycol mixtures with both ethylene glycol and propylene glycol are supported. To specify a mixture, the string must contain both the glycol type involved and the glycol percentage, e.g. `"ethylene glycol 40%"`. For ethylene glycol, both `"ethylene glycol"` and `"eg"` are valid as names, whereas for propylene glycol, `"propylene glycol"` and `"pg"` are valid. The number after the glycol type is **always** interpreted as a percentage, without the need to add a percentage symbol (`"%"`). Moreover, **only integer percentage values are valid**; e.g. `"12"` is valid, while `"12.5"` is not.
+Water-glycol mixtures with both ethylene glycol and propylene glycol are supported. To specify a mixture, the string must contain both the glycol type involved and the glycol percentage, e.g. `"ethylene glycol 40%"`. For ethylene glycol, both `"ethylene glycol"` and `"eg"` are valid as names, whereas for propylene glycol, `"propylene glycol"` and `"pg"` are valid. The number after the glycol type is **always** interpreted as a percentage, without the need to add a percentage symbol (`"%"`). Moreover, **only integer percentage values are valid**; e.g. `"12"` is valid, while `"12.5"` is not. The maximum percentage value allowed is 60%.
 
-Hence, some examples of valid mixtures are:
+Hence, some examples of valid mixture names are:
 
 - `"Ethylene Glycol 30"`
 - `"ethylene glycol 42%"`
 - `"EG50"`
-- `"propylene glycol 48%"`
+- `"propylene glycol 60%"`
 - `"propyleneglycol10%"`
 - `"PG5"`
-
-The maximum percentage value allowed is 60% for both glycol types. See the argument `glycol_percentage` in the documentation of the class :class:`Fluid <sercpy.fluids.Fluid>` for more details.
 
 Commercial heat transfer fluids
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -64,3 +62,5 @@ The commercial heat transfer fluids supported by **SERCpy** are:
 - Syltherm 800
 - Syltherm XLT
 - Texatherm 22
+
+All these names, when turned into `Python strings <https://docs.python.org/3/builtins/stdtypes.html#text-sequence-type-str>`_, are valid as values for the argument `fluid_name`.
