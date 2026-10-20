@@ -244,10 +244,10 @@ class Fluid:
     Parameters
     ----------
     fluid_name : str
-        String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :doc:`document on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
+        String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :ref:`section on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
     
-    p_abs_Pa : float, optional
-        Absolute pressure in Pascal. Only needed for water. Valid range: 20,000 to 4,000,000.
+    p_abs_Pa : float
+        Absolute pressure in Pascal. Only needed for water. For the other substances, it is assumed that the pressure is enough so that they do not boil. Valid range: 20,000 to 4,000,000.
     
     T_ref : float, optional
         Temperature at which to compute the reference density, thermal conductivity, and specific heat capacity.
@@ -258,8 +258,8 @@ class Fluid:
         Accepted values for volume-based percentages are `"v"`, `"v/v"`, `"volume"`, and `"volume-based"`.
         Accepted values for mass-based percentages are `"m"`, `"m/m"`, `"mass"`, and `"mass-based"`.
         If not specified, this parameter defaults to `"m"`.
-        **Warning:** For volumetric percentage values close the the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%. Therefore, in these cases, the mass-based percentage value is approximated to 60%, in order for the model to work.
-        In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.58% to 60%. A warning is thrown when this correction is carried out.
+        **Warning:** For volumetric percentage values close the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%. Therefore, in these cases, the mass-based percentage value is approximated to 60%, in order for the model to work.
+        In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.6% to 60%. A warning message is thrown when this correction is carried out.
     
     Attributes
     ----------
