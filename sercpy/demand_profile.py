@@ -521,9 +521,10 @@ class DemandProfile:
         else:
             self._weekly_demand_profile = [ 1 ]*48*7
             
+        self._Tamb_dependence = self.validate_argument("Tamb_dependence", Tamb_dependence)
+            
         if Tamb_dependence is not None:
             self._Tamb_dependence_mode = "manual"
-            self._Tamb_dependence = self.validate_argument("Tamb_dependence", Tamb_dependence)
         else:
             self._Tamb_dependence_mode = "auto"
                 

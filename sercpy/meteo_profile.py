@@ -317,30 +317,37 @@ class MeteoProfile:
             
     @property
     def elevation(self):
+        "Terrain elevation in the location where the simulation is carried out, in meters."
         return self._elevation
 
     @property
     def atmospheric_pressure(self):
+        "Atmoshperic pressure computed for the location, in Pa."
         return self._atmospheric_pressure
     
     @property
     def tz(self):
+        "Time zone name used by the MeteoProfile instance. Unless provided by the user, it is determined internally based on the location."
         return self._tz
     
     @property
     def time_zone(self):
+        "Time zone name used by the MeteoProfile instance. Unless provided by the user, it is determined internally based on the location."
         return self._tz
     
     @property
     def tmy_utc_offset(self):
+        "UTC offset of the TMY (typical meteorological year) data, in hours. If not provided by the user (strongly recommended for custom csv files), it is determined based on the location."
         return self._tmy_utc_offset
     
     @property
     def ground_albedo(self):
+        "Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1."
         return self._ground_albedo
     
     @property
     def solar_field(self):
+        "Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization."
         return self._solar_field
     
     def _import_solar_explorer_file( self ):
@@ -358,7 +365,7 @@ class MeteoProfile:
         
         """
         
-        tmy_file_path = self.get_attribute( "tmy_file_path" )
+        tmy_file_path = self._tmy_file_path
         
         with open( tmy_file_path ) as file:
             
@@ -432,7 +439,7 @@ class MeteoProfile:
         
         """
         
-        tmy_file_path = self.get_attribute( "tmy_file_path" )
+        tmy_file_path = self._tmy_file_path
         
         with open( tmy_file_path ) as file:
             
@@ -669,10 +676,10 @@ class MeteoProfile:
 
         """
         
-        df = self.get_attribute( "df_tmy" )
-        latitude = self.get_attribute( "latitude" )
-        longitude = self.get_attribute( "longitude" )
-        utc_offset  = self.get_attribute( "tmy_utc_offset" )
+        df = self._df_tmy
+        latitude = self._latitude
+        longitude = self._longitude
+        utc_offset  = self._tmy_utc_offset
         
         columns = df.columns.tolist()
         
@@ -765,13 +772,13 @@ class MeteoProfile:
         
         """
         
-        tmy_file_path = self.get_attribute( "tmy_file_path" )
-        ghi_col_name = self.get_attribute( "ghi_col_name" )
-        dni_col_name = self.get_attribute( "dni_col_name" )
-        dhi_col_name = self.get_attribute( "dhi_col_name" )
-        Tamb_col_name = self.get_attribute( "Tamb_col_name" )
-        sep = self.get_attribute( "sep" )
-        skiprows = self.get_attribute( "skiprows" )
+        tmy_file_path = self._tmy_file_path
+        ghi_col_name = self._ghi_col_name
+        dni_col_name = self._dni_col_name
+        dhi_col_name = self._dhi_col_name
+        Tamb_col_name = self._Tamb_col_name
+        sep = self._sep
+        skiprows = self._skiprows
         
         if sep is None:
             sep = ','
@@ -830,12 +837,12 @@ class MeteoProfile:
         
         """
         
-        latitude = self.get_attribute( "latitude" )
-        longitude = self.get_attribute( "longitude" )
-        api_key = self.get_attribute( "api_key" )
-        tmy_file_path = self.get_attribute( "tmy_file_path" )
-        irradiance_units = self.get_attribute( "irradiance_units" )
-        temp_units = self.get_attribute( "temp_units" )
+        latitude = self._latitude
+        longitude = self._longitude
+        api_key = self._api_key
+        tmy_file_path = self._tmy_file_path
+        irradiance_units = self._irradiance_units
+        temp_units = self._temp_units
         
         if tmy_file_path is None:
             
@@ -869,7 +876,7 @@ class MeteoProfile:
                 if latitude is None or longitude is None:
                     raise ValueError("MeteoProfile._import_meteo_data: Custom-format data file detected. Latitude and longitude must be provided along with custom-format data files.")
                 
-                utc_offset = self.get_attribute( "tmy_utc_offset" )
+                utc_offset = self._tmy_utc_offset
                 
                 if utc_offset is None:
                     utc_offset = self.get_utc_offset(latitude = latitude, longitude = longitude)
@@ -883,12 +890,12 @@ class MeteoProfile:
                 self._complete_irradiance_data()
                 
                 if irradiance_units is not None:
-                    self._df_tmy[ 'GHI' ] = convert_units( self._df_tmy[ 'GHI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
-                    self._df_tmy[ 'DNI' ] = convert_units( self._df_tmy[ 'DNI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
-                    self._df_tmy[ 'DHI' ] = convert_units( self._df_tmy[ 'DHI' ].values.astype(float).tolist(), self.get_attribute( "irradiance_units" ), "W/m2" )
+                    self._df_tmy[ 'GHI' ] = convert_units( self._df_tmy[ 'GHI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
+                    self._df_tmy[ 'DNI' ] = convert_units( self._df_tmy[ 'DNI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
+                    self._df_tmy[ 'DHI' ] = convert_units( self._df_tmy[ 'DHI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
                     
                 if temp_units is not None:
-                    self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), self.get_attribute( "temp_units" ), "°C" )
+                    self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), self._temp_units, "°C" )
         
         self._atmospheric_pressure = self.altitude_to_pressure( self._elevation )
         
@@ -929,11 +936,11 @@ class MeteoProfile:
         
         """
         
-        df_tmy = self.get_attribute( "df_tmy" )
-        latitude = self.get_attribute( "latitude" )
-        longitude = self.get_attribute( "longitude" )
-        tz = self.get_attribute("tz")
-        utc_offset = self.get_attribute( "tmy_utc_offset" )
+        df_tmy = self._df_tmy
+        latitude = self._latitude
+        longitude = self._longitude
+        tz = self._tz
+        utc_offset = self._tmy_utc_offset
         
         if tz == "auto":
             self._tz = self.get_timezone(latitude, longitude)
@@ -988,7 +995,7 @@ class MeteoProfile:
         
         """
         
-        df = self.get_attribute( "df_tmy" )
+        df = self._df_tmy
             
         if len( df ) == 8760*60:
             return
@@ -1038,40 +1045,6 @@ class MeteoProfile:
             if first_line == "Source,Location ID,City,State,Country,Latitude,Longitude,Time Zone,Elevation":
                 return "SAM"
             return None
-        
-    def get_attribute( self, attribute_name ):
-        """
-        Get a result of a MeteoProfile instance, other than the ones returned by the method `MeteoProfile.get_conditions`.
-        
-        If the MeteoProfile instance does not have the attribute specified, None is returned.
-        
-        Some of the attribute names and their meanings are:
-
-        
-        Parameters
-        ----------
-        attribute_name : str
-            Name of the attribute. See the description above for a list of accepted names.
-        
-        Raises
-        ------
-        ValueError
-            If the argument 'attribute_name' is not a string.
-            
-        Returns
-        -------
-        any
-            Attribute with the name specified, or None if the instance does not have an attribute with that name. See the description above for a list of the attributes available.
-        
-        """
-        
-        if type( attribute_name ) is not str:
-            raise ValueError( "MeteoProfile.get_attribute: attribute_name must be a string." )
-        
-        if attribute_name == 'time_zone':
-            attribute_name = 'tz'
-        
-        return getattr(self, '_' + attribute_name, None)
         
     @staticmethod
     def _validate_argument( argument_name, value ):
@@ -1599,16 +1572,16 @@ class MeteoProfile:
         
         self._solar_field = self._validate_argument("solar_field", solar_field)
         
-        coll_tilt_deg = solar_field.get_attribute( "coll_tilt" )
-        coll_azimuth_deg = solar_field.get_attribute( "coll_azimuth" )
-        coll_IAM = solar_field.get_attribute( "coll_IAM" )
-        ground_fraction_covered = solar_field.get_attribute( "ground_fraction_covered" )
-        row_width_to_coll_length_ratio = solar_field.get_attribute( "row_width_to_coll_length_ratio" )
+        coll_tilt_deg = solar_field._coll_tilt
+        coll_azimuth_deg = solar_field._coll_azimuth
+        coll_IAM = solar_field._coll_IAM
+        ground_fraction_covered = solar_field._ground_fraction_covered
+        row_width_to_coll_length_ratio = solar_field._row_width_to_coll_length_ratio
         
         coll_tilt_rad = coll_tilt_deg*pi/180
         coll_azimuth_rad = coll_azimuth_deg*pi/180
         
-        ground_albedo = self.get_attribute( "ground_albedo" )
+        ground_albedo = self._ground_albedo
         
         
         # assert coll_tilt_deg >= 0 and coll_tilt_deg <= 90
