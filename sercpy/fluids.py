@@ -47,7 +47,7 @@ class FluidState:
         Alias for h.
         
     D : float
-        Density.
+        Density in kg/m3.
         
     density : float
         Alias for D.
@@ -249,8 +249,11 @@ class Fluid:
     fluid_name : str
         String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :ref:`section on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
     
-    p_abs_Pa : float
+    p : float
         Absolute pressure in Pascal. Only needed for water. For the other substances, it is assumed that the pressure is enough so that they do not boil. Valid range: 20,000 to 4,000,000.
+        
+    P : float
+        Alias for `p`.
     
     T_ref : float, optional
         Temperature at which to compute the reference density, thermal conductivity, and specific heat capacity.
@@ -268,6 +271,12 @@ class Fluid:
     ----------
     fluid_name : str
         Name identifying the fluid.
+        
+    p : float
+        Absolute fluid pressure in Pa.
+        
+    P : float
+        Alias for `p`.
     
     h_sat_liq : float
         Specific enthalpy of liquid at saturation (J/kg).
@@ -341,7 +350,7 @@ class Fluid:
         Get density (kg/m3) from specific enthalpy (J/kg). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
     state( **kwargs )
-        This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`.
+        This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`. See :doc:`FluidState <fluidstate_class>`
     
     """
     
@@ -351,7 +360,8 @@ class Fluid:
             self,
             fluid_name,
             *,
-            p_abs_Pa = None,
+            p = None,
+            P = None,
             T_ref = None,
             mixture_type = 'm',
             
@@ -362,11 +372,14 @@ class Fluid:
             print( fluid_name_corrected )
         except:
             raise FluidError("Fluid: Argument 'fluid_name' must be convertible to string.")
+            
+        if p is None and P is not None:
+            p = P
         
         if fluid_name_corrected in [ 'WATER', 'W' ]:
             
             self._fluid_name = 'Water'
-            self.__init__water( p_abs_Pa, T_ref )
+            self.__init__water( p, T_ref )
             
         elif fluid_name_corrected in _thermal_oils:
             
@@ -415,33 +428,35 @@ class Fluid:
     def __init__water(
             
             self,
-            p_abs_Pa = None,
+            p = None,
             T_ref = None,
             
             ):
         
-        if p_abs_Pa is None:
-            raise FluidError("Fluid: Argument 'p_abs_Pa' must be a numeric value between 20,000 and 4,000,000.")
-        if not ( p_abs_Pa >= 2e4 and p_abs_Pa <= 4e6 ):
-            raise FluidError("Fluid: Argument 'p_abs_Pa' must be a numeric value between 20,000 and 4,000,000.")
+        if p is None:
+            raise FluidError("Fluid: Pressure must be a numeric value between 20,000 and 4,000,000.")
+        if not ( p >= 2e4 and p <= 4e6 ):
+            raise FluidError("Fluid: Pressure must be a numeric value between 20,000 and 4,000,000.")
+            
+        self._p = p
         
         self._can_boil = True
         
         # Define available range and properties in the limits
         self._T_min = 1
         self._T_max = 350
-        self._h_min = float( PropsSI( 'H', 'T', self._T_min + 273.15, 'P', p_abs_Pa, 'water' ) )
-        self._h_max = float( PropsSI( 'H', 'T', self._T_max + 273.15, 'P', p_abs_Pa, 'water' ) )
-        self._D_min = float( PropsSI( 'D', 'T', self._T_min + 273.15, 'P', p_abs_Pa, 'water' ) )
-        self._D_max = float( PropsSI( 'D', 'T', self._T_max + 273.15, 'P', p_abs_Pa, 'water' ) )
+        self._h_min = float( PropsSI( 'H', 'T', self._T_min + 273.15, 'P', p, 'water' ) )
+        self._h_max = float( PropsSI( 'H', 'T', self._T_max + 273.15, 'P', p, 'water' ) )
+        self._D_min = float( PropsSI( 'D', 'T', self._T_min + 273.15, 'P', p, 'water' ) )
+        self._D_max = float( PropsSI( 'D', 'T', self._T_max + 273.15, 'P', p, 'water' ) )
         
         # Saturation conditions
-        self._T_sat = float( PropsSI( 'T', 'P', p_abs_Pa, 'Q', 0.5, 'water' ) - 273.15 )
+        self._T_sat = float( PropsSI( 'T', 'P', p, 'Q', 0.5, 'water' ) - 273.15 )
         
-        self._h_sat_liq = float( PropsSI( 'H', 'P', p_abs_Pa, 'Q', 0, 'water' ) )
-        self._h_sat_vap = float( PropsSI( 'H', 'P', p_abs_Pa, 'Q', 1, 'water' ) )
-        self._D_sat_liq = float( PropsSI( 'D', 'P', p_abs_Pa, 'Q', 0, 'water' ) )
-        self._D_sat_vap = float( PropsSI( 'D', 'P', p_abs_Pa, 'Q', 1, 'water' ) )
+        self._h_sat_liq = float( PropsSI( 'H', 'P', p, 'Q', 0, 'water' ) )
+        self._h_sat_vap = float( PropsSI( 'H', 'P', p, 'Q', 1, 'water' ) )
+        self._D_sat_liq = float( PropsSI( 'D', 'P', p, 'Q', 0, 'water' ) )
+        self._D_sat_vap = float( PropsSI( 'D', 'P', p, 'Q', 1, 'water' ) )
         self._v_sat_liq = 1/self._D_sat_liq
         self._v_sat_vap = 1/self._D_sat_vap
         
@@ -450,9 +465,9 @@ class Fluid:
             if not ( T_ref > self._T_min and T_ref < self._T_max ):
                 raise FluidError(f"Fluid: T_ref must be larger than T_min: {self._T_min}, and smaller than T_max: {self._T_max}.")
             self._ref_conditions = True
-            self._cp_ref = float( PropsSI( 'C', 'T', T_ref + 273.15, 'P', p_abs_Pa, 'water' ) )
-            self._D_ref = float( PropsSI( 'D', 'T', T_ref + 273.15, 'P', p_abs_Pa, 'water' ) )
-            self._k_ref = float( PropsSI( 'conductivity', 'T', T_ref + 273.15, 'P', p_abs_Pa, 'water' ) )
+            self._cp_ref = float( PropsSI( 'C', 'T', T_ref + 273.15, 'P', p, 'water' ) )
+            self._D_ref = float( PropsSI( 'D', 'T', T_ref + 273.15, 'P', p, 'water' ) )
+            self._k_ref = float( PropsSI( 'conductivity', 'T', T_ref + 273.15, 'P', p, 'water' ) )
         else:
             self._ref_conditions = False
         
@@ -460,7 +475,7 @@ class Fluid:
         T_liq_max = self._T_sat + 273.15 - 1e-2
         while True:
             try:
-                h_liq_max = PropsSI( 'H', 'P', p_abs_Pa, 'T', T_liq_max, 'water' )
+                h_liq_max = PropsSI( 'H', 'P', p, 'T', T_liq_max, 'water' )
                 break
             except:
                 T_liq_max = T_liq_max - 1e-2
@@ -468,22 +483,22 @@ class Fluid:
         T_vap_min = self._T_sat + 273.15 + 1e-2
         while True:
             try:
-                h_vap_min = PropsSI( 'H', 'P', p_abs_Pa, 'T', T_vap_min, 'water' )
+                h_vap_min = PropsSI( 'H', 'P', p, 'T', T_vap_min, 'water' )
                 break
             except:
                 T_vap_min = T_vap_min + 1e-2
                 
         T_liq_array = np.linspace( self._T_min + 273.15, T_liq_max, 200 )
-        h_liq_array = PropsSI( 'H', 'T', T_liq_array, 'P', p_abs_Pa, 'water' )
-        D_liq_array = PropsSI( 'D', 'T', T_liq_array, 'P', p_abs_Pa, 'water' )
+        h_liq_array = PropsSI( 'H', 'T', T_liq_array, 'P', p, 'water' )
+        D_liq_array = PropsSI( 'D', 'T', T_liq_array, 'P', p, 'water' )
         
         self._T_to_h_liq = _define_polyfit(7, T_liq_array, h_liq_array)
         self._h_to_T_liq = _define_polyfit(7, h_liq_array, T_liq_array)
         self._T_to_D_liq = _define_polyfit(7, T_liq_array, D_liq_array)
         
         T_vap_array = np.linspace( T_vap_min, self._T_max + 273.15, 200 )
-        h_vap_array = PropsSI( 'H', 'T', T_vap_array, 'P', p_abs_Pa, 'water' )
-        D_vap_array = PropsSI( 'D', 'T', T_vap_array, 'P', p_abs_Pa, 'water' )
+        h_vap_array = PropsSI( 'H', 'T', T_vap_array, 'P', p, 'water' )
+        D_vap_array = PropsSI( 'D', 'T', T_vap_array, 'P', p, 'water' )
         
         self._T_to_h_vap = _define_polyfit(7, T_vap_array, h_vap_array)
         self._h_to_T_vap = _define_polyfit(7, h_vap_array, T_vap_array)
@@ -494,32 +509,33 @@ class Fluid:
         self._can_boil = False
         self._Q = 0
         fluid_name = 'INCOMP::' + self._CP_name
-        p_abs_Pa = 2000000
+        p = 2000000
+        self._p = p
         ##
         
         # Define available range and properties in the limits
         self._T_min = PropsSI( 'Tmin', fluid_name ) - 273.15
         self._T_max = PropsSI( 'Tmax', fluid_name ) - 273.15
         
-        self._h_min = float( PropsSI( 'H', 'T', self._T_min + 273.15, 'P', p_abs_Pa, fluid_name ) )
-        self._h_max = float( PropsSI( 'H', 'T', self._T_max + 273.15, 'P', p_abs_Pa, fluid_name ) )
-        self._D_min = float( PropsSI( 'D', 'T', self._T_min + 273.15, 'P', p_abs_Pa, fluid_name ) )
-        self._D_max = float( PropsSI( 'D', 'T', self._T_max + 273.15, 'P', p_abs_Pa, fluid_name ) )
+        self._h_min = float( PropsSI( 'H', 'T', self._T_min + 273.15, 'P', p, fluid_name ) )
+        self._h_max = float( PropsSI( 'H', 'T', self._T_max + 273.15, 'P', p, fluid_name ) )
+        self._D_min = float( PropsSI( 'D', 'T', self._T_min + 273.15, 'P', p, fluid_name ) )
+        self._D_max = float( PropsSI( 'D', 'T', self._T_max + 273.15, 'P', p, fluid_name ) )
         
         # Reference conditions
         if T_ref is not None:
             if not ( T_ref > self._T_min and T_ref < self._T_max ):
                 raise FluidError(f"Fluid: T_ref must be larger than T_min: {self._T_min}, and smaller than T_max: {self._T_max}.")
             self._ref_conditions = True
-            self._cp_ref = float( PropsSI( 'C', 'T', T_ref + 273.15, 'P', p_abs_Pa, fluid_name ) )
-            self._D_ref = float( PropsSI( 'D', 'T', T_ref + 273.15, 'P', p_abs_Pa, fluid_name ) )
-            self._k_ref = float( PropsSI( 'conductivity', 'T', T_ref + 273.15, 'P', p_abs_Pa, fluid_name ) )
+            self._cp_ref = float( PropsSI( 'C', 'T', T_ref + 273.15, 'P', p, fluid_name ) )
+            self._D_ref = float( PropsSI( 'D', 'T', T_ref + 273.15, 'P', p, fluid_name ) )
+            self._k_ref = float( PropsSI( 'conductivity', 'T', T_ref + 273.15, 'P', p, fluid_name ) )
         else:
             self._ref_conditions = False
                 
         T_liq_array = np.linspace( self._T_min + 273.15, self._T_max + 273.15, 200 )
-        h_liq_array = PropsSI( 'H', 'T', T_liq_array, 'P', p_abs_Pa, fluid_name )
-        D_liq_array = PropsSI( 'D', 'T', T_liq_array, 'P', p_abs_Pa, fluid_name )
+        h_liq_array = PropsSI( 'H', 'T', T_liq_array, 'P', p, fluid_name )
+        D_liq_array = PropsSI( 'D', 'T', T_liq_array, 'P', p, fluid_name )
         
         self._T_to_h_poly = _define_polyfit(7, T_liq_array, h_liq_array)
         self._h_to_T_poly = _define_polyfit(7, h_liq_array, T_liq_array)
@@ -589,7 +605,8 @@ class Fluid:
         self._can_boil = False
         self._Q = 0
         fluid_name = 'INCOMP::M' + glycol_type + '[' + fraction_str + ']'
-        p_abs_Pa = 300000
+        p = 300000
+        self._p = p
         
         T_liq_array = np.linspace( self._T_min + 273.15, self._T_max + 273.15, 200 )
         
@@ -599,10 +616,10 @@ class Fluid:
         k_liq_array = []
         for T in T_liq_array:
             try:
-                h = PropsSI( 'H', 'T', T, 'P', p_abs_Pa, fluid_name )
-                D = PropsSI( 'D', 'T', T, 'P', p_abs_Pa, fluid_name )
-                cp = PropsSI( 'C', 'T', T, 'P', p_abs_Pa, fluid_name )
-                k = PropsSI( 'CONDUCTIVITY', 'T', T, 'P', p_abs_Pa, fluid_name )
+                h = PropsSI( 'H', 'T', T, 'P', p, fluid_name )
+                D = PropsSI( 'D', 'T', T, 'P', p, fluid_name )
+                cp = PropsSI( 'C', 'T', T, 'P', p, fluid_name )
+                k = PropsSI( 'CONDUCTIVITY', 'T', T, 'P', p, fluid_name )
                 h_liq_array.append( h )
                 D_liq_array.append( D )
                 cp_liq_array.append( cp )
@@ -641,6 +658,14 @@ class Fluid:
     def fluid_name(self):
         "Get name of the substance (str)."
         return self._fluid_name
+    
+    @property
+    def p(self):
+        return self._p
+    
+    @property
+    def P(self):
+        return self.p
             
     @property
     def h_sat_liq(self):
