@@ -5,6 +5,9 @@ Class MeteoProfile
 
 .. autoclass:: MeteoProfile
 
+Methods
+-------
+
 .. autosummary::
    :toctree: generated/
 
