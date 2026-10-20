@@ -21,7 +21,6 @@ from pvlib.irradiance import get_extra_radiation, perez
 from scipy.integrate import quad, nquad
 from scipy.interpolate import interp1d
 from .config import get_api_key
-from .config import coordinates_tolerance
 from .units import convert_units
 from timezonefinder import timezone_at
 from .solar_field import SolarField
@@ -166,6 +165,29 @@ class MeteoProfile:
     solar_field : solar_field.SolarField instance, optional
         Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
+    Attributes
+    ----------
+    elevation : float
+        Terrain elevation in the location where the simulation is carried out, in meters.
+    
+    atmospheric_pressure : float
+        Atmoshperic pressure computed for the location, in Pa.
+        
+    tz : str
+        Time zone name used by the MeteoProfile instance. Unless provided by the user, it is determined internally based on the location.
+    
+    time_zone : str
+        Alias for `tz`.
+    
+    tmy_utc_offset"` : float
+        UTC offset of the TMY (typical meteorological year) data, in hours. If not provided by the user (strongly recommended for custom csv files), it is determined based on the location.
+    
+    ground_albedo : float
+        Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
+    
+    solar_field"` : solar_field.SolarField instance
+        Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization.
+        
     """
     
     def __init__(
@@ -292,6 +314,34 @@ class MeteoProfile:
         
         if solar_field is not None:
             self.compute_poa_irradiance( solar_field )
+            
+    @property
+    def elevation(self):
+        return self._elevation
+
+    @property
+    def atmospheric_pressure(self):
+        return self._atmospheric_pressure
+    
+    @property
+    def tz(self):
+        return self._tz
+    
+    @property
+    def time_zone(self):
+        return self._tz
+    
+    @property
+    def tmy_utc_offset(self):
+        return self._tmy_utc_offset
+    
+    @property
+    def ground_albedo(self):
+        return self._ground_albedo
+    
+    @property
+    def solar_field(self):
+        return self._solar_field
     
     def _import_solar_explorer_file( self ):
         """
@@ -996,12 +1046,7 @@ class MeteoProfile:
         If the MeteoProfile instance does not have the attribute specified, None is returned.
         
         Some of the attribute names and their meanings are:
-            - `"elevation"`: Terrain elevation in the location where the simulation is carried out (float) (in meters).
-            - `"atmospheric_pressure"`: Atmoshperic pressure computed for the location (float) (in Pa).
-            - `"tz"` or `"time_zone"`: Time zone name used by the MeteoProfile instance (str). Unless provided by the user, it is determined internally based on the location.
-            - `"tmy_utc_offset"`: UTC offset of the TMY (typical meteorological year) data (float) (in hours). If not provided by the user (strongly recommended for custom csv files), it is determined based on the location.
-            - `"ground_albedo"`: Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
-            - `"solar_field"`: solar_field.SolarField instance used to compute the plane-of-array irradiance, IAM factors, and self-shading effects.
+
         
         Parameters
         ----------

@@ -94,12 +94,6 @@ def get_api_key():
         api_key = None
     
     return api_key
-        
-        
-# Tolerance to compare latitude and longitude provided by the user
-# to the class meteo_profile.MeteoProfile
-# and the values extracted from a data file (only when possible) 
-coordinates_tolerance = 0.01
 
 demand_Tset_limits = [ 25, 150 ]
 demand_Tin_limits = [ 2, 130 ]

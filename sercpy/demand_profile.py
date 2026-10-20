@@ -12,7 +12,6 @@ import warnings
 import numpy as np
 from datetime import datetime
 from . import profile_app
-from timeit import default_timer
 from types import SimpleNamespace
 from .units import (
     
@@ -23,7 +22,6 @@ from .units import (
     )
 from .core import (
     
-    weekday_names,
     month_days,
     monthly_cummulated_days,
     month_names,
@@ -250,10 +248,46 @@ class DemandProfile:
         If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`Tamb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`Tamb_dependence`. If not provided, it defaults to `True`.
+        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`Tamb_dependence`. If not provided, it defaults to `True`.}
     
-    **kwargs : dict, optional
-        For compatibility only.
+    Attributes
+    ----------
+    weekly_demand_profile : list of float
+        List of 336 values that characterizes how thermal demand gets distributed throughout a week, with 30-minute resolution. The demand values are ordered from Monday to Sunday, and do not have any power or energy units.
+    
+    Tamb_dependence : float
+        Number between 0 and 3 defining the level of dependence of thermal demand on the daily ambiente temperature.
+    
+    monthly_T_set : list of float
+        List of 12 values containing the setpoint temperature of the heating system for each month of the year, from January to December.
+    
+    monthly_T_in : list of float
+        List of 12 values containing the temperature with which the heat transfer fluid enters the heating system during each month of the year, from January to December.
+    
+    monthly_heat_demand : list of float
+        List of 12 values containing the total energy demanded by the thermal load during each month of the year. Unit: Joule.
+    
+    monthly_consumption : list of float
+        List of 12 values containing the heat source consumption (electricity or fuel) during each month of the year. Unit: Joule for electricity; kg for fuels.
+    
+    op_start : str
+        Operation start time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days.
+    
+    op_end : str
+        Operation end time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days.
+    
+    op_start_saturday : str
+        Operation start time for saturdays.
+    
+    op_end_saturday : str
+        Operation end time for saturdays.
+    
+    op_start_sunday : str
+        Operation start time for sundays.
+    
+    op_end_sunday : str
+        Operation end time for sundays.
+    
     """
     
     def __init__(
@@ -519,6 +553,66 @@ class DemandProfile:
             
         self._compute_yearly_profiles()
         
+    @property
+    def weekly_demand_profile(self):
+        "List of 336 values that characterizes how thermal demand gets distributed throughout a week, with 30-minute resolution. The demand values are ordered from Monday to Sunday, and do not have any power or energy units."
+        return self._weekly_demand_profile
+        
+    @property
+    def Tamb_dependence(self):
+        "Number between 0 and 3 defining the level of dependence of thermal demand on the daily ambiente temperature."
+        return self._Tamb_dependence
+        
+    @property
+    def monthly_T_set(self):
+        "List of 12 values containing the setpoint temperature of the heating system for each month of the year, from January to December."
+        return self._monthly_T_set
+        
+    @property
+    def monthly_T_in(self):
+        "List of 12 values containing the temperature with which the heat transfer fluid enters the heating system during each month of the year, from January to December."
+        return self._monthly_T_in
+    
+    @property
+    def monthly_heat_demand(self):
+        "List of 12 values containing the total energy demanded by the thermal load during each month of the year. Unit: Joule."
+        return self._monthly_heat_demand
+        
+    @property
+    def monthly_consumption(self):
+        "List of 12 values containing the heat source consumption (electricity or fuel) during each month of the year. Unit: Joule for electricity; kg for fuels."
+        return self._monthly_consumption
+        
+    @property
+    def op_start(self):
+        "Operation start time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days."
+        return self._op_start
+        
+    @property
+    def op_end(self):
+        "Operation end time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days."
+        return self._op_end
+        
+    @property
+    def op_start_saturday(self):
+        "Operation start time for saturdays."
+        return self._op_start_saturday
+        
+    @property
+    def op_end_saturday(self):
+        "Operation end time for saturdays."
+        return self._op_end_saturday
+        
+    @property
+    def op_start_sunday(self):
+        "Operation start time for sundays."
+        return self._op_start_sunday
+        
+    @property
+    def op_end_sunday(self):
+        "Operation end time for sundays."
+        return self._op_end_sunday
+        
     @staticmethod
     def consumption_to_thermal_demand(
             
@@ -702,8 +796,8 @@ class DemandProfile:
         None
         """
         
-        daily_demand_profiles = self.get_attribute( "daily_demand_profiles" )
-        weekly_demand_factors = self.get_attribute( "weekly_demand_factors" )
+        daily_demand_profiles = self._daily_demand_profiles
+        weekly_demand_factors = self._weekly_demand_factors
         
         if daily_demand_profiles is None or weekly_demand_factors is None:
             raise KeyError("Class DemandProfile: Arguments 'daily_demand_profiles' and 'weekly_demand_factors' are needed for constructor 2.")
@@ -738,14 +832,14 @@ class DemandProfile:
         None
         """
         
-        daily_demand_profile = self.get_attribute( "daily_demand_profile" )
-        daily_demand_profile_saturday = self.get_attribute( "daily_demand_profile_saturday" )
-        daily_demand_profile_sunday = self.get_attribute( "daily_demand_profile_sunday" )
-        weekly_demand_factors = self.get_attribute( "weekly_demand_factors" )
-        daily_demand_ratio_saturday = self.get_attribute( "daily_demand_ratio_saturday" )
-        peak_demand_ratio_saturday = self.get_attribute( "peak_demand_ratio_saturday" )
-        daily_demand_ratio_sunday = self.get_attribute( "daily_demand_ratio_sunday" )
-        peak_demand_ratio_sunday = self.get_attribute( "peak_demand_ratio_sunday" )
+        daily_demand_profile = self._daily_demand_profile
+        daily_demand_profile_saturday = self._daily_demand_profile_saturday
+        daily_demand_profile_sunday = self._daily_demand_profile_sunday
+        weekly_demand_factors = self._weekly_demand_factors
+        daily_demand_ratio_saturday = self._daily_demand_ratio_saturday
+        peak_demand_ratio_saturday = self._peak_demand_ratio_saturday
+        daily_demand_ratio_sunday = self._daily_demand_ratio_sunday
+        peak_demand_ratio_sunday = self._peak_demand_ratio_sunday
         
         if daily_demand_profile is None:
             raise KeyError("Class DemandProfile: Argument 'daily_demand_profile' is needed for constructor 3.")
@@ -889,17 +983,17 @@ class DemandProfile:
                 raise ValueError("Function time_to_minute: input must be a string with format 'hh:mm', with 'hh' from '00' to '24' and 'mm' equal to '00' or '30'. '24:30' is not allowed.")
             return result
         
-        op_start = self.get_attribute( "op_start" )
-        op_end = self.get_attribute( "op_end" )
-        op_start_saturday = self.get_attribute( "op_start_saturday" )
-        op_end_saturday = self.get_attribute( "op_end_saturday" )
-        op_start_sunday = self.get_attribute( "op_start_sunday" )
-        op_end_sunday = self.get_attribute( "op_end_sunday" )
-        weekly_demand_factors = self.get_attribute( "weekly_demand_factors" )
-        peak_demand_ratio_saturday = self.get_attribute( "peak_demand_ratio_saturday" )
-        daily_demand_ratio_saturday = self.get_attribute( "daily_demand_ratio_saturday" )
-        peak_demand_ratio_sunday = self.get_attribute( "peak_demand_ratio_sunday" )
-        daily_demand_ratio_sunday = self.get_attribute( "daily_demand_ratio_sunday" )
+        op_start = self._op_start
+        op_end = self._op_end
+        op_start_saturday = self._op_start_saturday
+        op_end_saturday = self._op_end_saturday
+        op_start_sunday = self._op_start_sunday
+        op_end_sunday = self._op_end_sunday
+        weekly_demand_factors = self._weekly_demand_factors
+        peak_demand_ratio_saturday = self._peak_demand_ratio_saturday
+        daily_demand_ratio_saturday = self._daily_demand_ratio_saturday
+        peak_demand_ratio_sunday = self._peak_demand_ratio_sunday
+        daily_demand_ratio_sunday = self._daily_demand_ratio_sunday
         
         if op_start is None or op_end is None:
             raise ValueError("Class DemandProfile: 'op_start' and 'op_end' are necessary for week constructor 3.")
@@ -1252,16 +1346,16 @@ class DemandProfile:
                     try:
                         value_2 =  str( value )
                         if value_2 != 'mains':
-                            raise ValueError(f"Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+                            raise ValueError("Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
                         value = value_2
                     except:
-                        raise ValueError(f"Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+                        raise ValueError("Class DemandProfile: Argument T_in must be either a floating point value, or a list of 12 values, or the string 'mains'.")
             
             if type( value ) is list:
                 if len( value ) != 12:
-                    raise ValueError(f"Class DemandProfile: Argument 'T_in' must be either a floating point value, or a list of 12 values, or the string 'mains'.")
+                    raise ValueError("Class DemandProfile: Argument 'T_in' must be either a floating point value, or a list of 12 values, or the string 'mains'.")
                 if not all( [ v >= temp_limits[0] and v <= temp_limits[1] for v in value ] ):
-                    raise ValueError(f"Class DemandProfile: The value of T_in must be in the range 2 °C <= T_in <= 130 °C")
+                    raise ValueError("Class DemandProfile: The value of T_in must be in the range 2 °C <= T_in <= 130 °C")
             else:
                 assert type( value ) is str
                 assert value == 'mains'
@@ -1436,35 +1530,6 @@ class DemandProfile:
     @classmethod
     def from_dict( cls, kwargs ):
         return cls(**kwargs)
-    
-    def get_attribute(self, attribute_name):
-        """
-        Method to get attributes of a DemandProfile instance.
-        
-        In addition to the demand conditions that can be obtained from the method :meth:`get_demand_conditions <DemandProfile.get_demand_conditions>`, there are several other results that are computed by `DemandProfile` instances during the construction process that may be useful to the user.
-        
-        These results can be obtained by using this method. If the DemandProfile instance does not have the attribute that the user is asking for, the method returns None.
-        
-        Parameters
-        ----------
-        attribute_name : str
-            Name of the attribute to be returned. Possible names are:
-                
-                - `"weekly_demand_profile"` : List of 336 values defining how thermal demand is distributed during an entire week, with 30-minute resolution.
-                - `"Tamb_dependence"` : Floating point value from 0 to 3, which defines the level of dependence of the thermal demand on the average daily temperature.
-                - `"monthly_T_set"` : List of 12 values that define the setpoint of the system for each month of the year, starting on January. Unit: °C
-                - `"monthly_T_in"` : List of 12 values that define temperature with which the heat transfer fluid enters the heating system for each month of the year, starting on January. Unit: °C
-                - `"monthly_heat_demand"` : List of 12 values that define thermal energy demanded by the load during each month of the year, starting on January. Unit: J
-                - `"monthly_consumption"` : List of 12 values that define the monthly consumption of the heat source (electricity or fuel). This attribute is only available if the argument `monthly_consumption` was provided when defining the instance. If the heat source specified was `"electricity"`, the unit of the values returned is J (Joule). For fuels, the unit is kg.
-                - `"op_start"`, `"op_end"`, `"op_start_saturday"`, `"op_end_saturday"`, `"op_start_sunday"`, `"op_end_sunday"` : See the parameters with the same names in :doc:`the main documentation of the class </demand_profile_class>`.
-                
-        Returns
-        -------
-        Any
-            Attribute defined by the name introduced as argument. Possible return types include: `float`, `list`, and `str`
-
-        """
-        return getattr(self, "_" + attribute_name, None)
     
     @staticmethod
     def define_temp_to_factor_func(
@@ -1752,20 +1817,20 @@ class DemandProfile:
         ]
         
         for attribute in attributes_needed:
-            if self.get_attribute( attribute ) is None:
+            if hasattr( self, '_' + attribute ) is False:
                 raise ValueError(f"DemandProfile._compute_yearly_profiles: Class instance does not have the needed attribute: {attribute}")
         
-        monthly_Tset = self.get_attribute( "monthly_T_set"  )
-        monthly_Tin = self.get_attribute( "monthly_T_in"  )
-        monthly_heat_demand = self.get_attribute( "monthly_heat_demand"  )
-        monthly_production = self.get_attribute( "monthly_production" )
-        weekly_demand_profile = self.get_attribute( "weekly_demand_profile"  )
-        Tamb_dependence = self.get_attribute( "Tamb_dependence"  )
-        Tamb_dependence_mode = self.get_attribute( "Tamb_dependence_mode" )
-        Tamb_profile = self.get_attribute( "Tamb_profile"  )
-        fluid_cp = self.get_attribute( "fluid_cp"  )
-        smooth_Tamb_profile = self.get_attribute( "smooth_Tamb_profile" )
-        starting_week_day = datetime(self.get_attribute( "year" ), 1, 1).weekday()
+        monthly_Tset = self._monthly_T_set
+        monthly_Tin = self._monthly_T_in
+        monthly_heat_demand = self._monthly_heat_demand
+        monthly_production = self._monthly_production
+        weekly_demand_profile = self._weekly_demand_profile
+        Tamb_dependence = self._Tamb_dependence
+        Tamb_dependence_mode = self._Tamb_dependence_mode
+        Tamb_profile = self._Tamb_profile
+        fluid_cp = self._fluid_cp
+        smooth_Tamb_profile = self._smooth_Tamb_profile
+        starting_week_day = datetime(self._year, 1, 1).weekday()
         
         if Tamb_profile is None:
             warnings.warn("Class DemandProfile: Attribute 'Tamb_profile' has not been defined. The dependence of demand on ambient temperature will not be considered.")
@@ -2069,7 +2134,7 @@ class DemandProfile:
             flowrate, demanded_power, T_in, T_set = self._return_single_instant(month, day, hour, minute)
             
             if "flowrate_units" in kwargs:
-                flowrate = convert_units(flowrate, "kg/s", kwargs[ "flowrate_units" ], density = self.get_attribute( "fluid_density" ))
+                flowrate = convert_units(flowrate, "kg/s", kwargs[ "flowrate_units" ], density = self._fluid_density)
             if "power_units" in kwargs:
                 demanded_power = convert_units(demanded_power, 'W', kwargs[ "power_units" ])
             if "temp_units" in kwargs:
@@ -2122,7 +2187,7 @@ class DemandProfile:
             flowrate_list, demanded_power_list, T_in_list, T_set_list = self._return_lists_from_date_range( date_range )
             
             if "flowrate_units" in kwargs:
-                flowrate_list = convert_units(flowrate_list, "kg/s", kwargs[ "flowrate_units" ], density = self.get_attribute( "fluid_density" ))
+                flowrate_list = convert_units(flowrate_list, "kg/s", kwargs[ "flowrate_units" ], density = self._fluid_density )
             if "power_units" in kwargs:
                 demanded_power_list = convert_units(demanded_power_list, 'W', kwargs[ "power_units" ])
             if "temp_units" in kwargs:
