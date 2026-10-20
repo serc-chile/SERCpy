@@ -5,6 +5,9 @@ Class DemandProfile
 
 .. autoclass:: DemandProfile
 
+Methods
+-------
+
 .. autosummary::
    :toctree: generated/
 
