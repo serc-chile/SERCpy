@@ -65,6 +65,22 @@ Available pressure units are:
   - `"inHg"` or `"inhg"`: Inch of mercury
   - `"psi"` or `"PSI"`: Pounds per square inch 
 
+Distance
+~~~~~~~~
+
+Available distance units are:
+
+  - `"m"`: Meter
+  - `"km"`: Kilometer 
+  - `"cm"`: Centimeter
+  - `"mm"`: Millimeter
+  - `"dm"`: Decimeter
+  - `"hm"`: Hectometer
+  - `"in"`: Inch
+  - `"ft"`: Foot
+  - `"yd"`: Yard
+  - `"mile"` or `"mi"` or `"mi."`: Mile 
+
 Area
 ~~~~
 
