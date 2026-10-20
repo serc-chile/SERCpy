@@ -19,7 +19,7 @@ class FluidError(Exception):
 
 class FluidState:
     """
-    Class that stores the properties of a fluid at a single temperature/enthalpy.
+    Class that stores the properties of a fluid at a single temperature or specific enthalpy value.
     
     Parameters
     ----------
@@ -27,7 +27,10 @@ class FluidState:
         Instance that computes the properties of the fluid.
         
     kwargs: float
-        Allowed keyword arguments are `T`, `h`, and `H`. The first one must be specified if the state is going to be defined from temperature (in °C). Any of the other two must be specified if the state is going to be defined from enthalpy. Only one of these keyword arguments must be provided.
+        Allowed keyword arguments are `T`, `h`, and `H`.
+        `T` must be specified if the state is going to be defined from temperature (in °C).
+        Any of the other two must be specified if the state is going to be defined from enthalpy.
+        One and only one of these keyword arguments must be provided.
     
     Attributes
     ----------
@@ -309,19 +312,30 @@ class Fluid:
     Methods
     -------
     h_to_T( h )
-        Convert specific enthalpy (J/kg) to temperature (°C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+        Convert specific enthalpy (J/kg) to temperature (°C).
+        Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
     T_to_h( T )
-        Convert temperature (°C) to specific enthalpy (J/kg). Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+        Convert temperature (°C) to specific enthalpy (J/kg).
+        Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C).
+        Accepts both single numeric values and array-like objects as arguments.
+        Returns either float or np.array.
     
     h_to_Q( h )
-        Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg). Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture. Outside saturation, this method returns 0 for liquids and 1 for gases. Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+        Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg).
+        Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture.
+        Outside saturation, this method returns 0 for liquids and 1 for gases.
+        Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
     Q_to_h( Q )
-        Convert mixture quality to average specific enthalpy (J/kg). Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture, and must be a value in the range 0 - 1. Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+        Convert mixture quality to average specific enthalpy (J/kg).
+        Mixture quality is defined as the vapor fraction in a liquid-vapor saturated mixture, and must be a value in the range 0 - 1.
+        Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
     T_to_D( T )
-        Get density (kg/m3) from temperature (°C). Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
+        Get density (kg/m3) from temperature (°C). Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C).
+        Accepts both single numeric values and array-like objects as arguments.
+        Returns either float or np.array.
     
     h_to_D( h )
         Get density (kg/m3) from specific enthalpy (J/kg). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
@@ -567,7 +581,7 @@ class Fluid:
             warnings.warn(f"Fluid: Glycol mass fraction computed from volumetric fraction is {np.round( glycol_mass_fracion, 4 )}. The value will be approximated to 0.6 since the model does not support values larger than this.")
             glycol_mass_fracion = min( [ glycol_mass_fracion, 0.6 ] )
             
-        fraction_str = str( float( np.round( glycol_mass_fracion, 2 ) ) )
+        fraction_str = str( float( np.round( glycol_mass_fracion, 4 ) ) )
             
         self._T_min = 1
         self._T_max = 120
@@ -1041,7 +1055,7 @@ class Fluid:
         Parameters
         ----------
         **kwargs : float
-            Accepted keyword arguments are `T`, `h`, `H`. The first argument must be provided when state is being defined from temperature. Either of the two latter arguments can be provided to define the state from specific enthalpy. One and only one of these three arguments must be provided.
+            See the initialization arguments for the class :doc:`FluidState <fluidstate_class>`
 
         Returns
         -------
