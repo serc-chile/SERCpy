@@ -5,6 +5,10 @@ Fluids
 
 Fluids other than water are assumed to be incompressible liquids; hence, pressure is not relevant for their properties. For water, absolute pressure must be specified by the user when initializing a :doc:`Fluid <fluid_class>` instance; this value determines the boiling temperature of the fluid. Absolute pressures from 20,000 to 4,000,000 Pa are supported, and water vapor properties are modeled for temperatures up to 350 °C.
 
+:Author: Jane Doe
+:Version: 1.2
+:License: MIT
+
 The two main classes of this module are:
 
 .. list-table::
