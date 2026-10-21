@@ -7,7 +7,7 @@ Internally, classes and simulations work with SI units, except for temperature w
 
 .. toctree::
   :maxdepth: 2
-
+  
   available_units
   converting_units
   identifying_type_of_unit
