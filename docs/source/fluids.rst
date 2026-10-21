@@ -7,12 +7,23 @@ Fluids other than water are assumed to be incompressible liquids; hence, pressur
 
 The two main classes of this module are:
 
+.. list-table::
+   :class: borderless
+   :widths: 30 70
 
+   * - ``--verbose``
+     - Print detailed output.
+   * - ``--output PATH``
+     - Write results to PATH.
+
+:doc:`Fluid <fluid_class>`: Instances of this class store how the properties of the fluid change with temperature. Thus, it is the class that models the fluid.
+
+:doc:`FluidState <fluidstate_class>`: etsgdfdf
 
 The class that stores how the fluid's properties change with temperature is the class :doc:`Fluid <fluid_class>`, whereas the class :doc:`FluidState <fluidstate_class>` stores the properties for a fixed temperature or specific enthalpy value.
 
 .. toctree::
-  :maxdepth: 2
+  :hidden:
 
   fluid_class
   fluidstate_class
