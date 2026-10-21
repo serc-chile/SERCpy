@@ -11,6 +11,6 @@ Follow the :doc:`examples/MeteoProfile_tutorial` to get familiarized with the di
   :maxdepth: 2
 
   meteo_profile_class
-  examples/MeteoProfile_tutorial
+  MeteoProfile_tutorial
 
 
