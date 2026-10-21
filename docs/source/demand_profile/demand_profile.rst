@@ -14,5 +14,5 @@ Follow the :doc:`examples/DemandProfile_tutorial` to get familiarized with the d
 
   demand_profile_class
   Tamb_dependence
-  examples/DemandProfile_tutorial
+  DemandProfile_tutorial
 
