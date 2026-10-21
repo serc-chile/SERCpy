@@ -14,8 +14,8 @@ Contents
    :maxdepth: 2
    :titlesonly:
 
-   usage
-   meteo_profile
-   demand_profile
-   fluids
-   units
+   usage/usage
+   meteo_profile/meteo_profile
+   demand_profile/demand_profile
+   fluids/fluids
+   units/units
