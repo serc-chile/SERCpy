@@ -23,7 +23,7 @@ class FluidState:
     
     Parameters
     ----------
-    fluid : sercpy.fluids.Fluid instance
+    fluid : :doc:`Fluid <fluid_class>`
         Instance that computes the properties of the fluid.
         
     **kwargs: float
@@ -34,7 +34,7 @@ class FluidState:
     
     Attributes
     ----------
-    fluid : sercpy.fluids.Fluid instance
+    fluid : :doc:`Fluid <fluid_class>`
         Object from which the fluid properties are computed. It is the same object provided at initialization.
     
     T : float
