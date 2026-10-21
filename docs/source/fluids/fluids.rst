@@ -34,7 +34,7 @@ Water
     water = Fluid( 'water', p = 200000 )
 
     # Print the vaporization enthalpy
-    print( water.h_fg )
+    print( f"Water vaporization enthalpy: {water.h_fg} J/kg" )
 
 Therminol 66
 ~~~~~~~~~~~~
@@ -48,5 +48,5 @@ Therminol 66
     state_180 = therminol.state( T = 180 )
     
     # Print the density and specific heat capacity at that temperature
-    print( f"Density at 180 °C: { state_180.D }" )
-    print( f"Specific heat capacity at 180 °C: { state_180.cp }" )
+    print( f"Density at 180 °C: { state_180.D } kg/m3" )
+    print( f"Specific heat capacity at 180 °C: { state_180.cp } J/kg °C" )
