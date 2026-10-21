@@ -294,28 +294,28 @@ class Fluid:
         Maximum temperature for which the properties can be computed (°C).
     
     h_min : float
-        Minimum specific enthalpy for which the properties can be computed (J/kg). It is equal to specific enthalpy at T_min.
+        Minimum specific enthalpy for which the properties can be computed (J/kg). It is equal to specific enthalpy at `T_min`.
     
     h_max : float
-        Maximum specific enthalpy for which the properties can be computed (J/kg). It is equal to specific enthalpy at T_max.
+        Maximum specific enthalpy for which the properties can be computed (J/kg). It is equal to specific enthalpy at `T_max`.
     
     cp_ref : float
-        Reference specific heat capacity (J/kg °C). It is computed at the temperature given by the argument T_ref.
+        Reference specific heat capacity (J/kg °C). It is computed at the temperature given by the argument `T_ref`.
     
     D_ref : float
-        Reference density (kg/m3). It is computed at the temperature given by the argument T_ref.
+        Reference density (kg/m3). It is computed at the temperature given by the argument `T_ref`.
     
     k_ref : float
-        Reference thermal conductivity (W/m °C). It is computed at the temperature given by the argument T_ref.
+        Reference thermal conductivity (W/m °C). It is computed at the temperature given by the argument `T_ref`.
     
     glycol_percentage : int
         Only for water-glycol mixtures. Glycol percentage of the mixture.
         
     glycol_type : str
-        Only for water-glycol mixtures. Either 'Ethylene Glycol' or 'Propylene Glycol'. It is actually an alias for `fluid_name`, only when valid.
+        Only for water-glycol mixtures. Either `"Ethylene Glycol"` or `"Propylene Glycol"`.
     
     mixture_type : str
-        Only for water-glycol mixtures. Either 'mass-based' or 'volume-based'.
+        Only for water-glycol mixtures. Either `"mass-based"` or "`volume-based`".
         
         
     Methods
