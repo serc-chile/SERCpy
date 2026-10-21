@@ -55,6 +55,12 @@ class FluidState:
     d : float
         Alias for D.
         
+    cp : float
+        Specific heat capacity in J/kg °C.
+        
+    Cp : float
+        Alias for cp.
+        
     Q : float
         Liquid-vapor mixture quality. It is a value in the range 0 - 1 representing the vapor fraction. It is 0 for completely liquid substances, and 1 for completely gaseous substances.
         
@@ -150,6 +156,19 @@ class FluidState:
     def d(self):
         "Get density in kg/m3."
         return self.D
+    
+    @property
+    def cp(self):
+        "Get specific heat capacity in J/kg °C."
+        if not hasattr(self, "_cp"):
+            self._cp = self._fluid.T_to_cp( self.T )
+        
+        return self._cp
+    
+    @property
+    def Cp(self):
+        "Get specific heat capacity in J/kg °C."
+        return self.cp
     
     @property
     def Q(self):
@@ -283,6 +302,12 @@ class Fluid:
     
     h_sat_vap : float
         Specific enthalpy of vapor at saturation (J/kg).
+        
+    h_lg : float
+        Enthalpy  of vaporization (J/kg).
+    
+    h_fg : float
+        Alias for h_lg.
     
     T_sat : float
         Saturation temperature (°C).
@@ -329,6 +354,12 @@ class Fluid:
         Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C).
         Accepts both single numeric values and array-like objects as arguments.
         Returns either float or np.array.
+        
+    T_to_cp( T )
+        Convert temperature (°C) to specific heat capacity (J/kg °C).
+        Fails when the temperature provided is too close to saturation (tolerance: 1e-8 °C).
+        Accepts both single numeric values and array-like objects as arguments.
+        Returns either float or np.array.
     
     h_to_Q( h )
         Get mixture quality (float in the range 0 - 1) from specific enthalpy (J/kg).
@@ -369,7 +400,6 @@ class Fluid:
         # ' -_.,:;%'
         try:
             fluid_name_corrected = str( fluid_name ).upper().translate(str.maketrans( '', '', ' -_%' ) )
-            print( fluid_name_corrected )
         except:
             raise FluidError("Fluid: Argument 'fluid_name' must be convertible to string.")
             
@@ -672,21 +702,34 @@ class Fluid:
         "Get specific enthalpy of liquid at saturation, in J/kg."
         if self._can_boil:
             return self._h_sat_liq
-        raise AttributeError("Boiling is not modeled for this fluid type.")
+        raise AttributeError("Boiling modeling is not supported for this type of fluid.")
     
     @property
     def h_sat_vap(self):
         "Get specific enthalpy of vapor at saturation, in J/kg."
         if self._can_boil:
             return self._h_sat_vap
-        raise AttributeError("Boiling is not modeled for this fluid type.")
+        raise AttributeError("Boiling modeling is not supported for this type of fluid.")
+    
+    @property
+    def h_lg(self):
+        "Get the heat of vaporization, in J/kg."
+        if self._can_boil:
+            if not hasattr(self, "_h_lg"):
+                self._h_lg = self._h_sat_vap - self._h_sat_liq
+            return self._h_lg
+        raise AttributeError("Boiling modeling is not supported for this type of fluid.")
+        
+    @property
+    def h_fg(self):
+        return self.h_lg
     
     @property
     def T_sat(self):
         "Get saturation temperature, in °C."
         if self._can_boil:
             return self._T_sat
-        raise AttributeError("Boiling is not modeled for this fluid type.")
+        raise AttributeError("Boiling modeling is not supported for this type of fluid.")
     
     @property
     def T_min(self):
@@ -876,6 +919,57 @@ class Fluid:
                 return float( self._T_to_h_vap( T_K ) )
         
         return float( self._T_to_h_poly( T_K ) )
+    
+    def T_to_cp( self, T ):
+        """
+        Convert temperature to specific heat capacity.
+
+        Parameters
+        ----------
+        T : float
+            Temperature in °C.
+
+        Raises
+        ------
+        ValueError
+            If the temperature is too close to the saturation temperature of the fluid (tolerance: 1e-8 °C).
+
+        Returns
+        -------
+        float
+            Specific heat capacity in J/kg °C.
+
+        """
+        try:
+            T = float( T )
+        except TypeError:
+            try:
+                T = list( T )
+                return self._process_array(self.T_to_cp, T)
+            except TypeError:
+                raise TypeError( "Fluid.T_to_cp: Value 'T' must be numeric or array-like." )
+        
+        if self._can_boil and abs( T - self._T_sat ) < 1e-8:
+            raise ValueError(f"Fluid.T_to_cp: Temperature provided ({T} °C) is less than 1e-8 °C from saturation temperature ({self._Tsat} °C).")
+        
+        if T < self._T_min:
+            if abs( T - self._T_min ) > 0.005*( self._T_max - self._T_min ):
+                warnings.warn(f"Fluid.T_to_cp: A temperature value below the minimum available ({self._T_min} °C) was provided. Cp for minimum available temperature is returned.")
+            return float( self.T_to_h( self._T_min + 1 ) - self.T_to_h( self._T_min ) )
+        elif T > self._T_max:
+            if abs( T - self._T_max ) > 0.005*( self._T_max - self._T_min ):
+                warnings.warn(f"Fluid.T_to_cp: A temperature value above the maximum available ({self._T_min} °C) was provided. Cp for maximum available temperature is returned.")
+            return float( self.T_to_h( self._T_max ) - self.T_to_h( self._T_max - 1 ) )
+        elif T - self._T_min < 1:
+            return float( self.T_to_h( T + 1 ) - self.T_to_h( T ) )
+        elif self._T_max - T < 1:
+            return float( self.T_to_h( T ) - self.T_to_h( T - 1 ) )
+        elif self._can_boil and T < self._T_sat and self._T_sat - T < 1:
+            return float( self.T_to_h( T ) - self.T_to_h( T - 1 ) )
+        elif self._can_boil and T > self._T_sat and T - self._T_sat < 1:
+            return float( self.T_to_h( T + 1 ) - self.T_to_h( T ) )
+        else:
+            return float( ( self.T_to_h( T + 1 ) - self.T_to_h( T - 1 ) )/2 )
         
     def h_to_Q( self, h ):
         """
