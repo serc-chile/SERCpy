@@ -6,12 +6,14 @@ Created on Mon Aug 17 11:18:03 2026
 """
 
 from math import pi
+import numpy as np
 
 class UnitsError(Exception):
     pass
 
+# Unit names with conversion factors
 unit_database = {
-
+    
     'time': {
         
         's': 1,
@@ -228,7 +230,8 @@ for unit_type in unit_database:
         if _unit in unit_type_dict:
             raise UnitsError(f"Repeated unit: {_unit}")
         unit_type_dict[ _unit ] = unit_type
-        
+
+# Function to convert temperatures from other units to °C
 def _convert_to_C( input_value, original_units ):
     
     if original_units in [ 'C', '°C' ]:
@@ -236,11 +239,12 @@ def _convert_to_C( input_value, original_units ):
     if original_units in [ 'K', '°K' ]:
         return input_value - 273.15
     if original_units in [ 'F', '°F' ]:
-        return (input_value - 32)*5/9
+        return (input_value - 32)*(5/9)
     if original_units in [ 'R', '°R', 'Ra', '°Ra' ]:
-        return input_value*5/9 - 273.15
+        return input_value*(5/9) - 273.15
     raise UnitsError(f"Temperature units not valid: {original_units}")
-    
+
+# Function to convert temperature in °C to other units
 def _convert_C( input_value, goal_units ):
     
     if goal_units in [ 'C', '°C' ]:
@@ -248,16 +252,18 @@ def _convert_C( input_value, goal_units ):
     if goal_units in [ 'K', '°K' ]:
         return input_value + 273.15
     if goal_units in [ 'F', '°F' ]:
-        return input_value*9/5 + 32
+        return input_value*(9/5) + 32
     if goal_units in [ 'R', '°R', 'Ra', '°Ra' ]:
-        return (input_value + 273.15)*9/5
+        return (input_value + 273.15)*(9/5)
     raise UnitsError(f"Temperature units not valid: {goal_units}")
-    
+
+# Function to convert temperature
 def _convert_temperature( input_value, original_units, goal_units ):
     
     temp_C = _convert_to_C( input_value, original_units )
     return _convert_C( temp_C, goal_units )
 
+# Isolate units that are separated by spaces, dots, or asterisks
 def _isolate_units( unit_string ):
     
     unit_string = unit_string.replace( '*', ' ' )
@@ -293,6 +299,7 @@ def get_unit_type( units: str ) -> str:
         - specific_energy_volume
         - specific_heat_capacity
         - irradiance
+        - thermal_conductivity
 
     Parameters
     ----------
@@ -348,12 +355,18 @@ def get_unit_type( units: str ) -> str:
     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
         return 'specific_heat_capacity'
     
-    if ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'area'} or 
-         unit_types_numerator == {'power'} and unit_types_denominator == {'area'} ):
+    if ( ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'area'} ) or 
+         ( unit_types_numerator == {'power'} and unit_types_denominator == {'area'} ) ):
         return 'irradiance'
     
-    return None
+    if ( ( unit_types_numerator == {'power'} and unit_types_denominator == {'distance', 'temperature'} ) or 
+         ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'distance', 'temperature'} ) ):
+        return 'thermal_conductivity'
     
+    return None
+
+
+# Function to determine the conversion factor between the units introduced by the user and the "standard" units (i.e. units with a value of "1" in the dictionary "unit_database")
 def _conversion_factor_to_basic_units( units ):
     
     if not '/' in units:
@@ -385,6 +398,7 @@ def _conversion_factor_to_basic_units( units ):
         
     return factor
 
+# Function to correct units before processing them
 def _pre_process_units( units ):
     units = units.replace( 'short ton', 'short_ton' )
     units = units.replace( 'Short Ton', 'Short_Ton' )
@@ -409,7 +423,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
 
     Parameters
     ----------
-    input_value : float or list of float
+    input_value : float or array-like
         Value or list of values to be converted.
     original_units : str
         Original units in which the quantities are expressed.
@@ -427,8 +441,8 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
 
     Returns
     -------
-    float or list of float
-        Quantity specified as `input_value`, in the new unit system. If the input is a list, so is the returned value.
+    float or np.array
+        Quantity specified as `input_value`, in the new unit system. If the input is an array of values, so is the output.
 
     """
     
@@ -436,9 +450,10 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         input_value = float( input_value )
     except TypeError:
         try:
-            input_value = [ float( value ) for value in input_value ]
+            input_value = np.array( input_value )
+            assert input_value.ndim == 1
         except:
-            raise UnitsError("Unit conversion error: input_value must be either a floating point value or a list of floating point values.")
+            raise UnitsError("Unit conversion error: input_value must be either a numeric value or a 1-dimensional array-like object.")
     try:
         original_units = str( original_units )
     except:
@@ -447,6 +462,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         goal_units = str( goal_units )
     except:
         raise UnitsError("convert_units: Argument 'goal_units' must be convertible to type str.")
+    
     if density is not None:
         try:
             density = float( density )
@@ -577,9 +593,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
             
         conversion_function = lambda value: conversion_factor*value
     
-    if type( input_value ) is float:
-        return conversion_function( input_value )
-    return [ conversion_function( value ) for value in input_value ]
+    conversion_function( input_value )
 
 if __name__ == "__main__":
     # Test
@@ -676,7 +690,6 @@ if __name__ == "__main__":
     density_units = 'g/cm3'
     print( f"15 m3/day to kg/min (new density units): { convert_units( 15, 'm3/day', 'kg/min', density = density_1, density_units = density_units ) }" )
     
-    
     # Convert 15 kg/hr to m3/day
     print( f"15 kg/hr to m3/day: { convert_units( 15, 'kg/hr', 'm3/day', density = density_1 ) }" )
     
@@ -689,7 +702,6 @@ if __name__ == "__main__":
     density_units = 'tonne/bbl'
     print( f"15 m3/day to kg/min (new density): { convert_units( 15, 'm3/day', 'kg/min', density = density_1, density_units = density_units ) }" )
     
-    
     # Convert heating value of a fuel
     # Convert 4000 kJ/kg to kcal/lb
     print( f"4000 kJ/kg to kcal/lb: { convert_units( 4000, 'kJ/kg', 'kcal/lb' ) }" )
@@ -698,6 +710,6 @@ if __name__ == "__main__":
     # Convert 850 W/m2 to BTU/km2 day
     print( f"850 W/m2 to BTU/km2 day: { convert_units( 850, 'W/m2', 'BTU/km2 day' ) }" )
     
-    
-    
-    
+    # Convert thermal conductivity
+    # Convert 0.5 W/m K to BTU/hr ft F
+    print( f"0.5 W/m K to BTU/hr ft F: { convert_units( 0.5, 'W/m K', 'BTU/hr ft F' ) }" )
