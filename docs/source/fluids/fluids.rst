@@ -48,5 +48,23 @@ Therminol 66
     state_180 = therminol.state( T = 180 )
     
     # Print the density and specific heat capacity at that temperature
-    print( f"Density at 180 °C: { state_180.D } kg/m3" )
-    print( f"Specific heat capacity at 180 °C: { state_180.cp } J/kg °C" )
+    print( f"Density of Therminol 66 at 180 °C: { state_180.D } kg/m3" )
+    print( f"Specific heat capacity of Therminol 66 at 180 °C: { state_180.cp } J/kg °C" )
+
+Water-glycol mixtures
+~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: python
+
+    # Initialize a model for a mixture of 40% propylene glycol v/v
+    # Reference properties are computed at 80 °C
+    glycol_mixture = Fluid( "propylene glycol 40%", T_ref = 80, mixture_type = 'v/v' )
+
+    # Print reference density, cp, and thermal conductivity
+    print( f"Reference density: { glycol_mixture.D_ref } kg/m3 )
+    print( f"Reference cp: { glycol_mixture.cp_ref } J/kg °C )
+    print( f"Reference thermal conductivity: { glycol_mixture.k_ref } kg/m3 )
+    
+    # Print the maximum and minimum temperature the model supports
+    print( f"Maximum temperature available: { glycol_mixture.T_max } °C" )
+    print( f"Minumum temperature available: { glycol_mixture.T_min } °C" )
