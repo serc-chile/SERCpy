@@ -67,9 +67,9 @@ Water-glycol mixtures
     glycol_mixture = Fluid( "propylene glycol 40%", T_ref = 80, mixture_type = 'v/v' )
 
     # Print reference density, cp, and thermal conductivity
-    print( f"Reference density: { glycol_mixture.D_ref } kg/m3 )
-    print( f"Reference cp: { glycol_mixture.cp_ref } J/kg °C )
-    print( f"Reference thermal conductivity: { glycol_mixture.k_ref } kg/m3 )
+    print( f"Reference density: { glycol_mixture.D_ref } kg/m3" )
+    print( f"Reference cp: { glycol_mixture.cp_ref } J/kg °C" )
+    print( f"Reference thermal conductivity: { glycol_mixture.k_ref } kg/m3" )
     
     # Print the maximum and minimum temperature the model supports
     print( f"Maximum temperature available: { glycol_mixture.T_max } °C" )
