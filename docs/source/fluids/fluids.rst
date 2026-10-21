@@ -41,6 +41,9 @@ Therminol 66
 
 .. code-block:: python
 
+    # Import Fluid
+    from sercpy.fluids import Fluid
+
     # Initialize a model for Therminol 66
     therminol = Fluid( 'Therminol 66' )
 
@@ -55,6 +58,9 @@ Water-glycol mixtures
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
+
+    # Import Fluid
+    from sercpy.fluids import Fluid
 
     # Initialize a model for a mixture of 40% propylene glycol v/v
     # Reference properties are computed at 80 °C
