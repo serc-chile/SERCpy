@@ -18,3 +18,35 @@ The two main classes of this module are:
 
   fluid_class
   fluidstate_class
+
+Examples
+--------
+
+Water
+~~~~~
+
+.. code-block:: python
+
+    # Import Fluid
+    from sercpy.fluids import Fluid
+
+    # Initialize a model for water at 2 bar absolute pressure
+    water = Fluid( 'water', p = 200000 )
+
+    # Print the vaporization enthalpy
+    print( water.h_fg )
+
+Therminol 66
+~~~~~~~~~~~~
+
+.. code-block:: python
+
+    # Initialize a model for Therminol 66
+    therminol = Fluid( 'Therminol 66' )
+
+    # Define an instance of FluidState for the object just defined at 180 °C
+    state_180 = therminol.state( T = 180 )
+    
+    # Print the density and specific heat capacity at that temperature
+    print( f"Density at 180 °C: { state_180.D }" )
+    print( f"Specific heat capacity at 180 °C: { state_180.cp }" )
