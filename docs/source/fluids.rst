@@ -14,7 +14,7 @@ The two main classes of this module are:
     Instances of this class store the properties for a single temperature value of a :doc:`Fluid <fluid_class>` instance.
 
 .. toctree::
-  :hidden:
+  :maxdepth: 2
 
   fluid_class
   fluidstate_class
