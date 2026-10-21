@@ -5,6 +5,15 @@ Units
 
 Internally, classes and simulations work with SI units, except for temperature which is stored in °C. Furthermore, flowrates are internally treated as mass flowrates, although they can easily be converted to volumetric flowrates as just discussed. Nevertheless, the user can specify most variables with various possible units, and they are converted to the default system when processed. This section details all the possible units available to the user.
 
+.. toctree::
+  :maxdepth: 2
+
+  converting_units
+  identifying_type_of_unit
+  available_units
+
+.. _available_units
+
 Available units
 ---------------
 
@@ -176,12 +185,16 @@ where:
   - `P` stands for any power unit
   - `A` stands for any area unit
 
+.. _converting_units
+
 Converting units
 ----------------
 
 The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
 .. autofunction:: sercpy.units.convert_units
+
+.. _identifying_type_of_unit
 
 Identifying the type of unit
 ----------------------------
