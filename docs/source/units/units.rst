@@ -163,6 +163,7 @@ The rules for constructing units are the following:
 
   - Division of units is expressed with `"/"`.
   - Multiplication of units is expressed with a space between the units.
+  - Only one division operator `"/"` is allowed within a unit string.
   - All units at the right side of `"/"` are interpreted as being raised to `-1`. For example, in the case of specific heat capacity units, `"J/kg K"` is correct without the need to put `"kg K"` between parenthesis.
 
 Quantities that can be constructed in this way are:
@@ -174,6 +175,7 @@ Quantities that can be constructed in this way are:
   - Specific heat capacity units: `"E/M T"`
   - Specific energy units (e.g heating value of fuels): `"E/M"`
   - Irradiance or irradiation units: `"P/A"` or `"E/t A"`
+  - Thermal conductivity: `"P/D T"` or `"E/t D T"`.
 
 where:
 
@@ -184,6 +186,7 @@ where:
   - `t` stands for any time unit
   - `P` stands for any power unit
   - `A` stands for any area unit
+  - `D` stands for any distance unit.
 
 .. _converting_units
 
