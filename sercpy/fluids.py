@@ -36,6 +36,12 @@ class FluidState:
     ----------
     fluid : :doc:`Fluid <fluid_class>`
         Object from which the fluid properties are computed. It is the same object provided at initialization.
+        
+    p : float
+        Fluid pressure in Pa.
+        
+    P : float
+        Alias for `p`.
     
     T : float
         Temperature in °C.
@@ -117,6 +123,16 @@ class FluidState:
     def fluid(self):
         "Get sercpy.fluids.Fluid object from which the FluidState instance was constructed."
         return self._fluid
+    
+    @property
+    def p(self):
+        if not hasattr(self, "_p"):
+            self._p = self._fluid.p
+        return self._p
+    
+    @property
+    def P(self):
+        return self.p
         
     @property
     def T(self):
