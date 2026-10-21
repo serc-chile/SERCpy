@@ -8,7 +8,7 @@ Another factor that can greatly influence the performance of a solar energy syst
 Follow the :doc:`examples/MeteoProfile_tutorial` to get familiarized with the different construction modes of the class and some of the most relevant construction parameters, and then see the :doc:`documentation of the class and its methods <meteo_profile_class>` to delve deeper into the available functionalities and the parameters they work with.
 
 .. toctree::
-  :maxdepth: 2
+  :maxdepth: 3
 
   meteo_profile_class
   MeteoProfile_tutorial
