@@ -119,7 +119,7 @@ class DemandProfile:
     
     Moreover, this class is capable of modeling the dependence of the demanded power on the ambient temperature. Its default behavior is to automatically determine the level of dependence based on the monthly heat demand and ambient temperature provided by the user.
     
-    It is strongly recommended to follow the :doc:`tutorial on the use of this class <examples/DemandProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
+    It is strongly recommended to follow the :doc:`tutorial on the use of this class </examples/DemandProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
 
     Parameters
     ----------
@@ -130,13 +130,13 @@ class DemandProfile:
         Specific heat capacity of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_cp_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `"J/kg K"`. See :doc:`units`.
+        Units in which `fluid_cp` is being specified. If not provided, it defaults to `"J/kg K"`. See :doc:`/units/units`.
     
     fluid_density : float, optional
         Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
         
     fluid_density_units : str, optional
-        Units in which `fluid_density` is being specified. If not provided, it defaults to `"kg/m3"`. See :doc:`units`.
+        Units in which `fluid_density` is being specified. If not provided, it defaults to `"kg/m3"`. See :doc:`/units/units`.
     
     T_set : float or list of float
         Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
@@ -145,7 +145,7 @@ class DemandProfile:
         Temperature of the water entering the heating system. In the case of closed loops, it represents the temperature of the water coming back from the thermal load. It can be a floating point value or a list of 12 values (one per month). Range: 2 °C <= `T_in` <= 130 °C. Another valid value for this argument is the string `"mains"`, which implies that the water enters the heating system from the water distribution network. In this case, it is mandatory to provide the argument `meteo_profile` described below.
     
     temp_units : str, optional
-        Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`units`.
+        Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`/units/units`.
         
     T_units : str, optional
         Alias for `temp_units`.
@@ -154,7 +154,7 @@ class DemandProfile:
         List of values >= 0, representing the heat demand of the thermal load in each month of the year. Either this parameter or `monthly_consumption` must be provided.
     
     heat_demand_units : str, optional
-        Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. See :doc:`units`
+        Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. See :doc:`/units/units`
         
     monthly_consumption : list of float, optional
         Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels or electricity.
@@ -163,7 +163,7 @@ class DemandProfile:
         Name of the heat source. Needed if the argument `monthly_consumption` is used. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `"electricity"`, `"liquefied petroleum gas"`, `"natural gas"`, `"methane"`, `"propane"`, `"butane"`, `"diesel"`, `"coal"`, `"biomass"`.
     
     consumption_units : str, optional
-        Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`units`.
+        Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`/units/units`.
     
     heater_efficiency : float, optional
         Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
@@ -172,13 +172,13 @@ class DemandProfile:
         Heating value of the heat source (fuel). Only useful when `monthly_consumption` is specified to compute the heat demand.  Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
     
     heat_source_heating_value_units : str, optional
-        Units in which `heat_source_heating_value` is being provided. Only specific energy units in terms of mass (not volume) are allowed. If not provided, it defaults to `J/kg`. See :doc:`units`.
+        Units in which `heat_source_heating_value` is being provided. Only specific energy units in terms of mass (not volume) are allowed. If not provided, it defaults to `J/kg`. See :doc:`/units/units`.
     
     heat_source_density : float, optional
         Density of the heat source (fuel). Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
         
     heat_source_density_units : str, optional
-        Units in which `heat_source_density` is being provided. If not provided, it defaults to `kg/m3`. See :doc:`units`.
+        Units in which `heat_source_density` is being provided. If not provided, it defaults to `kg/m3`. See :doc:`/units/units`.
     
     condensation_boiler : bool, optional
         Whether the heater corresponds to a condensation boiler. If set to True, the higher heating value of the selected fuel is used to compute the heat demand from consumption values.
@@ -235,7 +235,7 @@ class DemandProfile:
         Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
     
     Tamb_units : str, optional
-        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `temp_units`/`T_units`. See :doc:`units`.
+        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `temp_units`/`T_units`. See :doc:`/units/units`.
         
     meteo_profile : sercpy.meteo_profile.MeteoProfile instance
         A `MeteoProfile` instance can be used to replace the argument `Tamb_profile`. If that argument is not provided and `meteo_profile` is provided instead, the ambient temperature profile will be extracted from that object. Specifying the argument `meteo_profile` is mandatory if the value of the argument `T_in` is the string `"mains"`.
@@ -245,10 +245,10 @@ class DemandProfile:
     
     Tamb_dependence : float or callable, optional
         Parameter to define the level of dependence of the thermal load on the ambient temperature. Using this parameter is generally discouraged since the class is meant to automatically determine it.
-        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`Tamb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
+        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`/demand_profile/Tamb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`Tamb_dependence`. If not provided, it defaults to `True`.}
+        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`/demand_profile/Tamb_dependence`. If not provided, it defaults to `True`.}
     
     Attributes
     ----------
@@ -639,7 +639,7 @@ class DemandProfile:
         energy_source_consumption : float or list of float
             Consumption or list of consumption values to convert.
         consumption_units : str
-            Units in which `energy_source_consumption` is being specified. If `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`units`.
+            Units in which `energy_source_consumption` is being specified. If `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`/units/units`.
         energy_source_name : str, optional
             Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. If not provided, it defaults to None.
         goal_units : str, optional
@@ -651,11 +651,11 @@ class DemandProfile:
         fuel_density : float, optional
             Density of the fuel used. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
         fuel_density_units : str, optional
-            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`/units`
+            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`/units/units`
         fuel_HV : float, optional
             Heating value of the fuel used as heat source, in terms of `energy/mass`. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
         fuel_HV_units : str, optional
-            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`/units`
+            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`/units/units`
 
         Returns
         -------
@@ -2073,7 +2073,7 @@ class DemandProfile:
                 
                 - `month`, `day`, `hour` and `minute`, when provided together, can replace a `datetime.datetime` instance to get the conditions for a single instant in time. The expected type for all these arguments is `int`, with ranges 1 to 12, 1 to 31, 0 to 23, and 0 to 59, respectively.
                 
-                - `flowrate_units`, `power_units`, and `temp_units` can be used to customize the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units`.
+                - `flowrate_units`, `power_units`, and `temp_units` can be used to customize the units for the values of flowrate, power, and temperature, respectively. `T_units` is an allowed alias for `temp_units`. See :doc:`/units/units`.
                 
                 - `inclusive`, `freq`, and `tz` can be used to customize the generation of the `pandas.DatetimeIndex` instance. These keyword arguments are thus only taken into account when two `datetime.datetime` instances are provided as positional arguments. See `pandas.date_range <https://pandas.pydata.org/docs/reference/api/pandas.date_range.html>`_
 

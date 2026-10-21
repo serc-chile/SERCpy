@@ -93,7 +93,7 @@ class MeteoProfile:
     
     The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
     
-    It is strongly recommended to follow the :doc:`tutorial on the use of this class <examples/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
+    It is strongly recommended to follow the :doc:`tutorial on the use of this class </examples/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
     
     Parameters
     ----------
@@ -114,7 +114,7 @@ class MeteoProfile:
         User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
     
     tmy_file_path : str, optional
-        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class <examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
+        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class </examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
         In the next arguments, the terms 'custom format' and 'custom file' refer to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
     
     ghi_col_name : str, optional
@@ -142,10 +142,10 @@ class MeteoProfile:
         Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user.
     
     irradiance_units : str, optional
-        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, 'W/m2' is assumed.
+        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, 'W/m2' is assumed. See :doc:`/units/units`.
     
     temp_units : str, optional
-        Units in which ambient temperature is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, '°C' is assumed.
+        Units in which ambient temperature is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, '°C' is assumed. See :doc:`/units/units`.
     
     T_units : str, optional
         Alias for temp_units.
@@ -154,7 +154,7 @@ class MeteoProfile:
         Terrain elevation of the place where the TMY is taken from. It is used to compute the atmospheric pressure in that location. If not provided, the value 0 is assumed.
     
     elevation_units : str, optional
-        Units in which elevation is being provided. If not provided, 'm' is assumed.
+        Units in which elevation is being provided. If not provided, 'm' is assumed. See :doc:`/units/units`.
     
     tz : str, optional
         Name of the time zone corresponding to the location; e.g. 'America/New_York' or 'America/Santiago'. This argument is most likely unncesessary since the time zone is automatically determined from the location, unless it is provided.
@@ -1506,9 +1506,9 @@ class MeteoProfile:
         altitude : float
             Altitude where the pressure needs to be computed. Available range in meters: -500 to 10,000.
         altitude_units : str, optional
-            Units with which the altitude is being provided. If not provided, it defaults to 'm'.
+            Units with which the altitude is being provided. If not provided, it defaults to 'm'. See :doc:`/units/units`.
         pressure_units : str, optional
-            Units with which the pressure is meant to be returned. If not provided, it defaults to 'Pa'.
+            Units with which the pressure is meant to be returned. If not provided, it defaults to 'Pa'. See :doc:`/units/units`.
 
         Returns
         -------
@@ -2063,13 +2063,13 @@ class MeteoProfile:
         minute : int, optional
             If provided along with `month`, `day`, and `minute`, the instant given by those arguments is returned. Integers from `0` to `59` are valid. In this case, the type returned is `dict`. 
         irradiance_units : str, optional
-            Units in which the irradiance values should be returned. If not specified, it defaults to "W/m2".
+            Units in which the irradiance values should be returned. If not specified, it defaults to "W/m2". See :doc:`/units/units`.
         temp_units : str, optional
-            Units in which the temperature values should be returned. If not specified, it defaults to "°C".
+            Units in which the temperature values should be returned. If not specified, it defaults to "°C". See :doc:`/units/units`.
         T_units : str, optional
             Alias for `temp_units`.
         angle_units : str, optional
-            Units in which the angle values should be returned. If not specified, it defaults to `"°"` (degrees).
+            Units in which the angle values should be returned. If not specified, it defaults to `"°"` (degrees). See :doc:`/units/units`.
             
         returns
         -------
