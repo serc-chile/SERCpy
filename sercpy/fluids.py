@@ -26,7 +26,7 @@ class FluidState:
     fluid : sercpy.fluids.Fluid instance
         Instance that computes the properties of the fluid.
         
-    kwargs: float
+    **kwargs: float
         Allowed keyword arguments are `T`, `h`, and `H`.
         `T` must be specified if the state is going to be defined from temperature (in °C).
         Any of the other two must be specified if the state is going to be defined from enthalpy.
