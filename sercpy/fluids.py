@@ -397,7 +397,7 @@ class Fluid:
         Get density (kg/m3) from specific enthalpy (J/kg). Accepts both single numeric values and array-like objects as arguments. Returns either float or np.array.
     
     state( **kwargs )
-        This method returns a `sercpy.fluids.FluidState` instance, defined from the `Fluid` instance and `kwargs`. See :doc:`FluidState </fluids/fluidstate_class>`
+        This method returns a :doc:`FluidState <fluidstate_class>` instance, defined from the `Fluid` instance and `**kwargs`.
     
     """
     
