@@ -185,7 +185,7 @@ class MeteoProfile:
     ground_albedo : float
         Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
     
-    solar_field"` : solar_field.SolarField instance
+    solar_field : solar_field.SolarField instance
         Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization.
         
     """
