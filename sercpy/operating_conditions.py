@@ -31,6 +31,32 @@ class OperatingConditions:
     time_step_min : int, optional
         Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step( time_step_min )`.
     
+    Attributes
+    ----------
+    time_step : int
+        Time step length in minutes. It must be established by the user at initialization, or by using the method `OperatingConditions.set_time_step`.
+    
+    time_step_min : int
+        Alias for `time_step`.
+    
+    time_steps_per_day : int
+        Number of time steps per day. E.g. with a 6-minute time step, this value would be `2400`.
+    
+    time_steps_per_hour : int
+        Number of time steps per hour. E.g. with a 6-minute time step, this value would be `10`.
+        
+    Methods
+    -------
+    get_conditions( time_step_number )
+        Get a dictionary with the operating conditions of the system at the instant defined by `time_step_number`. This includes both meteorological- and demand conditions. The number introduced represents an "index" within the yearly profile. Returns: dict.
+    
+    set_time_step( time_step_min )
+        Method to set the simulation time step. It can be used to modify another time step value previously established. Returns: None
+        
+    to_df()
+        Get a pandas.DataFrame containing the conditions dataset of the whole simulation year. Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
+        
+    
     """
     def __init__(
             
@@ -174,7 +200,7 @@ class OperatingConditions:
         Parameters
         ----------
         time_step_number : int
-            Time step number for which the conditions will be returned. The standard numbering goes from 0 to the number of time steps per year minus one. Nevertheless, numbers out of this range are valid as well; in this case, the values returned become cyclic.
+            Time step number for which the conditions will be returned. The number is interpreted as an index within the entire yearly profile; thus the standard numbering goes from 0 to the number of time steps per year minus one. Nevertheless, numbers out of this range are valid as well; in this case, the conditions returned become cyclic.
         
         Returns
         -------
