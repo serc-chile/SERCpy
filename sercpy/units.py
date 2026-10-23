@@ -593,7 +593,7 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
             
         conversion_function = lambda value: conversion_factor*value
     
-    conversion_function( input_value )
+    return conversion_function( input_value )
 
 if __name__ == "__main__":
     # Test
