@@ -275,7 +275,9 @@ class OperatingConditions:
         Returns
         -------
         dict
-            Dictionary containing the values of the system's operating conditions. The keys within the dictionary have the same names as the data returned by the MeteoProfile and the DemandProfile instances.
+            Dictionary containing the values of the system's operating conditions.
+            The keys within the dictionary have the same names as the data returned by the MeteoProfile and the DemandProfile instances.
+            **Warning:** The solar position data (zenith and azimuth) is by default ***not*** extracted from the `MeteoProfile` instance, and can therefore not be accessed by sungi this method. To change this, see `inlcude_solar_position` in the initialization arguments of the class.
         
         """
         
