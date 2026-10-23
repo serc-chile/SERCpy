@@ -18,7 +18,7 @@ class OperatingConditions:
     """
     Class that provides the operating conditions of a solar thermal system throughout an entire operation year.
     
-    It takes a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance, a :doc:`DemandProfile </demand_profile/demand_profile_class>` instance, and a time step to generate the data that will be provided to the system simulation.
+    It takes a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance, a :doc:`DemandProfile </demand_profile/demand_profile_class>` instance, and a time step length to generate the data that will be provided to the system simulation.
     
     Parameters
     ----------
