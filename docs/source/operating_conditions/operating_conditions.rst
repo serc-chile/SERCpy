@@ -11,7 +11,7 @@ After having established a :doc:`Meteorological Profile </meteo_profile/meteo_pr
 
   OperatingConditions_tutorial
 
-See the :doc:`tutorial on this class <OperatingConditions_tutorial>` to get familiarized with its main functionalities.
+See the :doc:`tutorial on the class <OperatingConditions_tutorial>` to get familiarized with its main functionalities.
 
 .. currentmodule:: sercpy.operating_conditions
 
