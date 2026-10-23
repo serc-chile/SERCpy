@@ -17,5 +17,6 @@ Contents
    usage/usage
    meteo_profile/meteo_profile
    demand_profile/demand_profile
+   operating_conditions/operating_conditions
    fluids/fluids
    units/units
