@@ -44,7 +44,7 @@ class OperatingConditions:
         Alias for `time_step`.
     
     time_steps_per_day : int
-        Number of time steps per day. E.g. with a 6-minute time step, this value would be `2400`.
+        Number of time steps per day. E.g. with a 6-minute time step, this value would be `240`.
     
     time_steps_per_hour : int
         Number of time steps per hour. E.g. with a 6-minute time step, this value would be `10`.
