@@ -9,6 +9,7 @@ from .meteo_profile import MeteoProfile
 from .demand_profile import DemandProfile
 from typing import Optional
 import pandas as pd
+import numpy as np
 
 class OpCondError(Exception):
     pass
@@ -30,6 +31,9 @@ class OperatingConditions:
     
     time_step_min : int, optional
         Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step( time_step_min )`.
+    
+    include_solar_position : bool, optional
+        Whether to include the solar position data in the yearly profiles (`"zenith"`, `"apparent_zenith"`, and `"azimuth"`). This is not necessary for standard simulations carried out by SERCpy, and it may extend initialization time of the object. Therefore, it defaults to False.
     
     Attributes
     ----------
@@ -54,7 +58,7 @@ class OperatingConditions:
         Method to set the simulation time step. It can be used to modify another time step value previously established. Returns: None
         
     to_df()
-        Get a pandas.DataFrame containing the conditions dataset of the whole simulation year. Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
+        Get a `pandas.DataFrame` containing the conditions dataset of the whole simulation year. Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
         
     
     """
@@ -65,9 +69,11 @@ class OperatingConditions:
             meteo_profile: MeteoProfile,
             demand_profile: DemandProfile,
             
-            time_step_min: Optional[ int ] = None ):
+            time_step_min: Optional[ int ] = None,
+            include_solar_position: Optional[ bool ] = False ):
         
         self._ready = False
+        self._include_solar_position = include_solar_position
         
         if not isinstance(meteo_profile, MeteoProfile):
             raise TypeError("OperatingConditions: Argument 'meteo_profile' must be a meteo_profile.MeteoProfile instance.")
@@ -136,6 +142,64 @@ class OperatingConditions:
             ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
         
         return pd.DataFrame.from_dict( self._effective_profiles )
+    
+    @staticmethod
+    def _average_azimuth( azimuth_values ):
+        """
+        Private static method used to correct the error induced by averaging azimuthal solar position values during a time step in which the sun passes from azimuth = 360° to azimuth = 0°, or viceversa. This corresponds to solar midday in the Southern hemisphere.
+        
+        Parameters
+        ----------
+        azimuth_values : array-like
+            List of solar azimuthal values with minutal resolution, during one simulation time step. Units: Degree (°).
+
+        Returns
+        -------
+        float
+            Correct average azimuthal value, in degrees (0° to 360°).
+
+        """
+        
+        azimuth_values_corrected = []
+        correction_type = None
+        
+        assert type( azimuth_values ) in [ list, np.ndarray ] and len( azimuth_values ) >= 1
+        
+        if len( azimuth_values ) == 1:
+            return float( azimuth_values[ 0 ] )
+        
+        for i in range( len( azimuth_values ) ):
+            
+            if i == 0:
+                azimuth_values_corrected.append( azimuth_values[i] )
+                continue
+            
+            if abs( azimuth_values[i] - azimuth_values[ i - 1] ) > 180:
+                if correction_type is not None:
+                    raise Exception( "OperatingConditions._average_azimuth: Discontinuity encountered twice." )
+                if azimuth_values[i] < azimuth_values[ i - 1 ]:
+                    correction_type = 'above_360'
+                else:
+                    correction_type = 'below_0'
+            
+            if correction_type is None:
+                azimuth_values_corrected.append( azimuth_values[i] )
+                continue
+            
+            if correction_type == 'above_360':
+                azimuth_values_corrected.append( 360 + azimuth_values[i] )
+            elif correction_type == 'below_0':
+                azimuth_values_corrected.append( azimuth_values[i] - 360 )
+            else:
+                raise Exception( "OperatingConditions._average_azimuth: correction_type unknown." )
+        
+        avg_value = float( np.mean( azimuth_values_corrected ) )
+        
+        if avg_value > 360:
+            return avg_value - 360
+        elif avg_value < 0:
+            return 360 + avg_value
+        return avg_value
         
     def set_time_step( self, time_step_min ):
         """
@@ -182,7 +246,13 @@ class OperatingConditions:
             if key == "timestamp":
                 continue
             
-            self._effective_profiles[ key ] = self._minutal_profiles[ key ].reshape(-1, time_step_min).mean(axis=1).astype(float).tolist()
+            if ( not self._include_solar_position ) and key in [ "azimuth", "zenith", "apparent_zenith" ]:
+                continue
+            
+            if key == "azimuth":
+                self._effective_profiles[ key ] = [ self._average_azimuth( self._minutal_profiles[ key ][ initial_minute : initial_minute + time_step_min ] ) for initial_minute in range( 0, 525600, time_step_min ) ]
+            else:
+                self._effective_profiles[ key ] = self._minutal_profiles[ key ].reshape(-1, time_step_min).mean(axis=1).astype(float).tolist()
         
         self._time_step = time_step_min
         self._time_steps_per_year = len( self._effective_profiles[ "timestamp" ] )
