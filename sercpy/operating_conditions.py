@@ -18,7 +18,7 @@ class OperatingConditions:
     """
     Class that provides the operating conditions of a solar thermal system throughout an entire operation year.
     
-    It takes a MeteoProfile instance, a DemandProfile instance, and a time step to generate the data that will be provided to the system simulation.
+    It takes a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance, a :doc:`DemandProfile </demand_profile/demand_profile_class>` instance, and a time step to generate the data that will be provided to the system simulation.
     
     Parameters
     ----------
@@ -84,6 +84,8 @@ class OperatingConditions:
         
         date_times = pd.DatetimeIndex( meteo_df[ "timestamp" ] )
         
+        print( date_times[0] )
+        
         self._minutal_profiles = { "timestamp": date_times }
         
         for column in meteo_df.columns.tolist():
@@ -114,6 +116,13 @@ class OperatingConditions:
         "Get the simulation time step in minutes."
         return self.time_step
     
+    @property
+    def time_steps_per_year(self):
+        "Number of time steps per year, according to the current time step. It is equivalent to the total length of the dataset stored by the object."
+        if not self._ready:
+            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+        return self._time_steps_per_year
+        
     @property
     def time_steps_per_day(self):
         "Number of time steps per day, according to the current time step."
@@ -295,4 +304,13 @@ class OperatingConditions:
         
         time_step_number = time_step_number%self._time_steps_per_year
         
-        return { key: float( self._effective_profiles[ key ][ time_step_number ] ) for key in self._effective_profiles }
+        result = {}
+        
+        for key in self._effective_profiles:
+            
+            if key == "timestamp":
+                result[ key ] = self._effective_profiles[ key ][ time_step_number ]
+            else:
+                result[ key ] = float( self._effective_profiles[ key ][ time_step_number ] )
+                
+        return result
