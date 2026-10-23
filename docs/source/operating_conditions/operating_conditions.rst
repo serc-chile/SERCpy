@@ -6,6 +6,13 @@ After having established a :doc:`Meteorological Profile </meteo_profile/meteo_pr
 - To match the demand schedule stored in the `DemandProfile` instance to the time zone data stored in the `MeteoProfile` instance. This includes eventual time shifts due to daiylight saving time.
 - To convert the minutal data stored in these two objects to profiles with lower time resolution. The minutal resolution can also be conserved by setting the time step to 1 minute.
 
+.. toctree::
+  :hidden:
+
+  OperatingConditions_tutorial
+
+See the :doc:`tutorial on this class <OperatingConditions_tutorial>` to get familiarized with its main functionalities.
+
 .. currentmodule:: sercpy.operating_conditions
 
 .. autoclass:: OperatingConditions
