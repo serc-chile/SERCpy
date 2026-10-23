@@ -9,21 +9,23 @@ from .meteo_profile import MeteoProfile
 from .demand_profile import DemandProfile
 from typing import Optional
 import pandas as pd
-import warnings
+
+class OpCondError(Exception):
+    pass
 
 class OperatingConditions:
     """
     Class that provides the operating conditions of a solar thermal system throughout an entire operation year.
     
-    It takes a MeteoProfile instance, a DemandProfile instance, and a time step length to generate the data that will be provided to the system simulation.
+    It takes a MeteoProfile instance, a DemandProfile instance, and a time step to generate the data that will be provided to the system simulation.
     
     Parameters
     ----------
     
-    meteo_profile : sercpy.meteo_profile.MeteoProfile instance
+    meteo_profile : :doc:`MeteoProfile </meteo_profile/meteo_profile_class>`
         Object from which the meteorological data (ambient temperature, irradiance, mains water temperature, etc) is extracted.
     
-    demand_profile : sercpy.demand_profile.DemandProfile instance
+    demand_profile : :doc:`DemandProfile </demand_profile/demand_profile_class>`
         Object from which the demand data (i.e. demanded flowrate, temperature setpoint and inlet temperature of the heat transfer flow) is extracted.
     
     time_step_min : int, optional
@@ -67,6 +69,47 @@ class OperatingConditions:
         
         if time_step_min is not None:
             self.set_time_step( time_step_min )
+            
+    @property
+    def time_step(self):
+        "Get the simulation time step in minutes."
+        if not self._ready:
+            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+        return self._time_step
+    
+    @property
+    def time_step_min(self):
+        "Get the simulation time step in minutes."
+        return self.time_step
+    
+    @property
+    def time_steps_per_day(self):
+        "Number of time steps per day, according to the current time step."
+        if not self._ready:
+            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+        return self._time_steps_per_day
+    
+    @property
+    def time_steps_per_hour(self):
+        "Number of time steps per hour, according to the current time step."
+        if not self._ready:
+            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+        return self._time_steps_per_hour
+    
+    def to_df(self):
+        """
+        Get the entire dataset stored by the `OperatingConditions` instance as a `pandas.DataFrame`.
+
+        Returns
+        -------
+        `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_
+            DataFrame containing the data for all time steps of an entire year. The columns of the DataFrame have the same names as the keys of the dictionaries returned by the method `OperatingConditions.get_conditions`.
+
+        """
+        if not self._ready:
+            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+        
+        return pd.DataFrame.from_dict( self._effective_profiles )
         
     def set_time_step( self, time_step_min ):
         """
@@ -114,13 +157,19 @@ class OperatingConditions:
                 continue
             
             self._effective_profiles[ key ] = self._minutal_profiles[ key ].reshape(-1, time_step_min).mean(axis=1).astype(float).tolist()
-            
+        
+        self._time_step = time_step_min
         self._time_steps_per_year = len( self._effective_profiles[ "timestamp" ] )
+        assert self._time_steps_per_year%365 == 0
+        assert self._time_steps_per_year%8760 == 0
+        self._time_steps_per_day = self._time_steps_per_year//365
+        self._time_steps_per_hour = self._time_steps_per_year//8760
         
         self._ready = True
             
     def get_conditions( self, time_step_number ):
         """
+        Method to retrieve the operating conditions for a specific moment. The instant in time is specified as an index within the yearly profile.
         
         Parameters
         ----------
@@ -140,6 +189,9 @@ class OperatingConditions:
             raise TypeError(f"OperatingConditions: Argument 'time_step_number' could not be interpreted as a number. Value type: { type( time_step_number ) }.")
         except AssertionError:
             raise ValueError("OperatingConditions: Argument 'time_step_number' must be an integer value.")
+            
+        if not self._ready:
+            raise OpCondError("OperatingConditions.get_conditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`.")
         
         time_step_number = int( time_step_number )
         

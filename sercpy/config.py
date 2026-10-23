@@ -81,11 +81,33 @@ kwargs_list = [
 this_folder = Path(__file__).parent.resolve()
 
 def set_api_key( api_key ):
+    """
+    Function that allows the user to permanently store their API key for `Renewable Energies API by Chilean Ministriy of Energy <https://api.minenergia.cl/>`_
+
+    Parameters
+    ----------
+    api_key : str
+        User's API key.
+
+    Returns
+    -------
+    None.
+
+    """
     assert type(api_key) is str
     with open( this_folder / 'API_Key.txt', 'w' ) as api_key_file:
         api_key_file.write(api_key)
         
 def get_api_key():
+    """
+    Function to retrieve the API key for `Renewable Energies API by Chilean Ministriy of Energy <https://api.minenergia.cl/>`_ previously stored by the user.
+    
+    Returns
+    -------
+    api_key : str or NoneType
+        User's API key. The function returns None if no API key can be found.
+    
+    """
     
     if Path.is_file( this_folder / 'API_Key.txt' ):
         with open( this_folder / 'API_Key.txt' ) as api_key_file:
