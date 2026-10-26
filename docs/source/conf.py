@@ -4,7 +4,7 @@
 
 project = 'SERCpy'
 copyright = '2026, SERC Chile'
-author = 'Solar Energy Research Center (SERC) Chile'
+author = 'Adrian Riebel'
 
 release = '0.1'
 version = '0.1.0'
