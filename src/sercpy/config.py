@@ -95,7 +95,7 @@ def set_api_key( api_key ):
 
     """
     if not type(api_key) is str:
-        raise ValueError("sercpy.config.set_api_key: api_key must be a string.")
+        raise TypeError("sercpy.config.set_api_key: api_key must be a string.")
     _API_Key_folder.mkdir( exist_ok = True )
     with open( _API_Key_folder / 'API_Key.txt', 'w' ) as api_key_file:
         api_key_file.write(api_key)
