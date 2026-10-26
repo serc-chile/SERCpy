@@ -1854,11 +1854,14 @@ class MeteoProfile:
                                  relative_airmass_array,
                                  return_components = True )
         
-        print( f"Columns: {diff_irradiance.columns}" )
-        
-        isotropic_irradiance_array = diff_irradiance[ 'isotropic' ].values
-        circumsolar_irradiance_array = diff_irradiance['circumsolar'].values
-        horizon_irradiance_array = diff_irradiance[ 'horizon' ].values
+        try:
+            isotropic_irradiance_array = diff_irradiance[ 'isotropic' ].values
+            circumsolar_irradiance_array = diff_irradiance['circumsolar'].values
+            horizon_irradiance_array = diff_irradiance[ 'horizon' ].values
+        except KeyError:
+            isotropic_irradiance_array = diff_irradiance[ 'poa_isotropic' ].values
+            circumsolar_irradiance_array = diff_irradiance['poa_circumsolar'].values
+            horizon_irradiance_array = diff_irradiance[ 'poa_horizon' ].values
         
         aoi_array, longi_array, trans_array = incidence_angles(zenith_array, azimuth_array)
         
