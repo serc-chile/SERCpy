@@ -84,6 +84,8 @@ class OperatingConditions:
         
         date_times = pd.DatetimeIndex( meteo_df[ "timestamp" ] )
         
+        print( date_times[0] )
+        
         self._minutal_profiles = { "timestamp": date_times }
         
         for column in meteo_df.columns.tolist():
