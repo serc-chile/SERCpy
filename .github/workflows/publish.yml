@@ -1,0 +1,18 @@
+name: Publish to PyPI
+on:
+  release:
+    types: [published]        # runs when you publish a GitHub Release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest     # a fresh Linux machine provided by GitHub
+    environment: pypi
+    permissions:
+      id-token: write          # lets PyPI verify the upload comes from your repo
+    steps:
+      - uses: actions/checkout@v4                     # get your code
+      - uses: actions/setup-python@v5                 # install Python
+        with:
+          python-version: "3.x"
+      - run: pip install build && python -m build     # build the wheel and sdist
+      - uses: pypa/gh-action-pypi-publish@release/v1  # upload to PyPI
