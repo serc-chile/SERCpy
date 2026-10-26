@@ -43,9 +43,7 @@ In order to generate a meteorological profile...
 2. Creating the demand profile
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To compute and obtain the demand conditions of a thermal load throughout an entire operation year, use the class ``DemandProfile``:
-
-.. autoclass:: sercpy.thermal.demand_profile.DemandProfile
+To compute and obtain the demand conditions of a thermal load throughout an entire operation year,....
 
 
 3. Configuring the solar energy system
