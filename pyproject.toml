@@ -1,13 +1,14 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sercpy"
 version = "0.1.0"
 description = "Python library for simulating solar thermal energy systems"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
+    "requests>=2.32",
     "numpy>=2.2",
     "pandas>=2.3",
     "scipy>=1.16",
@@ -15,5 +16,26 @@ dependencies = [
     "coolprop>=6.7",
     "pvlib>=0.13",
     "timezonefinder>=8.3",
-    "pyperclip>=1.11"
+    "pyperclip>=1.11",
 ]
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "SERC Chile", email = "serc.chile@uc.cl" },
+    { name = "Adrian Riebel" },
+]
+keywords = ["solar thermal", "energy systems", "simulation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering",
+]
+
+[project.urls]
+Source = "https://github.com/serc-chile/SERCpy"
+Documentation = "https://sercpy.readthedocs.io"
+Issues = "https://github.com/serc-chile/SERCpy/issues"
+
+[tool.setuptools.package-data]
+sercpy = ["img/*.png"]
