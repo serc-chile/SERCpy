@@ -7,9 +7,19 @@ Created on Mon Aug 31 14:38:54 2026
 
 from pathlib import Path
 
-import tkinter as tk
-from tkinter import ttk
-from tkinter import font as tkfont
+class TkinterImportError(Exception):
+    pass
+
+try:
+
+    import tkinter as tk
+    from tkinter import ttk
+    from tkinter import font as tkfont
+
+except:
+    
+    raise TkinterImportError("sercpy.profile_app: Module 'tkinter' could not be imported. Check whether it is installed.")
+
 import warnings
 
 # tkinter's own clipboard (clipboard_append) hands text to the OS only

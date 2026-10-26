@@ -5,7 +5,7 @@ Created on Wed Oct 14 09:46:22 2026
 @author: Adrian Riebel Brummer
 """
 
-from fluids import FluidState
+from .fluids import FluidState
 
 class Outlet:
     
@@ -36,6 +36,8 @@ class Device:
     
     def set_inputs( self, **kwargs ):
         
+        pass
         
+    def set_connections(  ):
         
-    def set_connections(  )
+        pass

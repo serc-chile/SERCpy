@@ -78,7 +78,7 @@ kwargs_list = [
     
     ]
 
-this_folder = Path(__file__).parent.resolve()
+_API_Key_folder = Path.home() / ".sercpy"
 
 def set_api_key( api_key ):
     """
@@ -94,8 +94,10 @@ def set_api_key( api_key ):
     None.
 
     """
-    assert type(api_key) is str
-    with open( this_folder / 'API_Key.txt', 'w' ) as api_key_file:
+    if not type(api_key) is str:
+        raise ValueError("sercpy.config.set_api_key: api_key must be a string.")
+    _API_Key_folder.mkdir( exist_ok = True )
+    with open( _API_Key_folder / 'API_Key.txt', 'w' ) as api_key_file:
         api_key_file.write(api_key)
         
 def get_api_key():
@@ -109,8 +111,8 @@ def get_api_key():
     
     """
     
-    if Path.is_file( this_folder / 'API_Key.txt' ):
-        with open( this_folder / 'API_Key.txt' ) as api_key_file:
+    if Path.is_file( _API_Key_folder / 'API_Key.txt' ):
+        with open( _API_Key_folder / 'API_Key.txt' ) as api_key_file:
             api_key = api_key_file.read()
     else:
         api_key = None
