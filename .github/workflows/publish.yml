@@ -5,6 +5,7 @@ on:
 
 jobs:
   publish:
+    if: startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest     # a fresh Linux machine provided by GitHub
     environment: pypi
     permissions:
