@@ -5,4 +5,4 @@ The class `sercpy.solar.SolarField` models how all collector that make up a sola
 
 .. currentmodule:: sercpy.solar
 
-.. autoclass:: SolarCollector
+.. autoclass:: SolarField
