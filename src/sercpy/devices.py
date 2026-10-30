@@ -29,6 +29,8 @@ class Outlet:
             flowrate = float(flowrate)
         except:
             raise TypeError("Outlet: flowrate must be a numeric value.")
+        if flowrate < 0:
+            raise ValueError(f"Outlet: Flowrate cannot be negative. Flowrate value introduced: {flowrate}")
         self._flowrate = flowrate
         
 

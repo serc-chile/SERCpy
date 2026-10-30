@@ -23,7 +23,7 @@ from scipy.interpolate import interp1d
 from .config import get_api_key
 from .units import convert_units
 from timezonefinder import timezone_at
-from .solar_field import SolarField
+from .solar import SolarField
 import warnings
 from zoneinfo import ZoneInfo
 
@@ -97,7 +97,6 @@ class MeteoProfile:
     
     Parameters
     ----------
-    
     location : tuple of two float, optional
         Tuple with the form `(latitude, longitude)` defining the place where the simulation will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
     
@@ -162,7 +161,7 @@ class MeteoProfile:
     time_zone : str, optional
         Alias for tz.
     
-    solar_field : solar_field.SolarField instance, optional
+    solar_field : sercpy.solar.SolarField instance, optional
         Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
     Attributes
@@ -185,7 +184,7 @@ class MeteoProfile:
     ground_albedo : float
         Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
     
-    solar_field : solar_field.SolarField instance
+    solar_field : sercpy.solar.SolarField instance
         Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization.
         
     """
@@ -246,7 +245,7 @@ class MeteoProfile:
         elif latitude is not None or longitude is not None:
             
             if latitude is None or longitude is None:
-                raise ValueError("Class MeteoProfile: latitude and longitude must be provided together.")
+                raise ValueError("MeteoProfile: latitude and longitude must be provided together.")
             
             self._latitude = self._validate_argument( "latitude", latitude )
             self._longitude = self._validate_argument( "longitude", longitude )
@@ -256,7 +255,7 @@ class MeteoProfile:
         else:
             
             if tmy_file_path is None:
-                raise ValueError("Class MeteoProfile: A meteorological data file must be provided if no location is provided.")
+                raise ValueError("MeteoProfile: A meteorological data file must be provided if no location is provided.")
             
             self._latitude = None
             self._longitude = None
@@ -1071,9 +1070,11 @@ class MeteoProfile:
             Processed value. In most cases, the value returned is the same as the input.
         
         """
+        if type(argument_name) is not str:
+            raise TypeError("MeteoProfile._validate_argument: Argument 'argument_name' must be a string.")
         
         if not argument_name in MeteoProfile_valid_args:
-            raise ValueError( f"Class MeteoProfile: '{argument_name}' is not a valid argument." )
+            raise ValueError( f"MeteoProfile: '{argument_name}' is not a valid argument." )
             
         if value is None:
             return value
@@ -1084,35 +1085,35 @@ class MeteoProfile:
                 assert len( value ) == 2
                 value = ( float( value[0] ), float( value[1] ) )
             except:
-                raise ValueError( "Class MeteoProfile: Argument 'location' must be convertible to a tuple with length 2." )
+                raise ValueError( "MeteoProfile: Argument 'location' must be convertible to a tuple with length 2." )
                 
         if argument_name in [ "latitude", "longitude" ]:
             try:
                 value = float( value )
             except:
-                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
+                raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
                 
         if argument_name == "ground_albedo":
             try:
                 value = float( value )
             except:
-                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
+                raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be convertible to type float." )
                 
             if not value >= 0 and value < 1:
-                raise ValueError( "Class MeteoProfile: Argument 'ground_albedo' must be >= 0 and < 1." )
+                raise ValueError( "MeteoProfile: Argument 'ground_albedo' must be >= 0 and < 1." )
             
                 
         if argument_name == "api_key":
             try:
                 value = str( value )
             except: 
-                ValueError( "Class MeteoProfile: Argument 'api_key' must be convertible type 'str'." )
+                ValueError( "MeteoProfile: Argument 'api_key' must be convertible type 'str'." )
                 
         if argument_name == "tmy_file_path":
             try:
                 value = Path( value )
             except:
-                raise ValueError( "Class MeteoProfile: Argument 'tmy_file_path' must be convertible to type pathlib.Path." )
+                raise ValueError( "MeteoProfile: Argument 'tmy_file_path' must be convertible to type pathlib.Path." )
                 
         if argument_name in [
                 
@@ -1126,14 +1127,14 @@ class MeteoProfile:
             try:
                 value = str( value )
             except: 
-                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
                 
         if argument_name == "tmy_utc_offset":
             
             try:
                 value = float( value )
             except:
-                raise ValueError( "Class MeteoProfile: Argument 'tmy_utc_offset' must be convertible type 'float'." )
+                raise ValueError( "MeteoProfile: Argument 'tmy_utc_offset' must be convertible type 'float'." )
                 
         if argument_name in [
                 
@@ -1145,7 +1146,7 @@ class MeteoProfile:
             try:
                 value = str( value )
             except: 
-                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
                 
         if argument_name in [
                 
@@ -1159,19 +1160,19 @@ class MeteoProfile:
             try:
                 value = str( value )
             except: 
-                raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
+                raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be convertible type 'str'." )
                 
         if argument_name == "elevation":
             
             try:
                 value = float( value )
             except:
-                raise ValueError( "Class MeteoProfile: Argument 'elevation' must be convertible type 'float'." )
+                raise ValueError( "MeteoProfile: Argument 'elevation' must be convertible type 'float'." )
                 
         if argument_name == "solar_field":
             
             if not isinstance( value, SolarField ):
-                raise ValueError( "Class MeteoProfile: Argument 'solar_field' must be a SolarField instance." )
+                raise ValueError( "MeteoProfile: Argument 'solar_field' must be a SolarField instance." )
                 
         if argument_name in [
                 
@@ -1188,7 +1189,7 @@ class MeteoProfile:
                 try:
                     value = str( value )
                 except:
-                    raise ValueError( f"Class MeteoProfile: Argument '{argument_name}' must be either str (time zone name) or int/float (utc offset)." )
+                    raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be either str (time zone name) or int/float (utc offset)." )
         
         return value
     
@@ -1561,8 +1562,8 @@ class MeteoProfile:
 
         Parameters
         ----------
-        solar_field : solar_field.SolarField instance
-            Solar field for which the aforementioned results are computed
+        solar_field : sercpy.solar.SolarField instance
+            Solar field for which the aforementioned results are computed.
 
         Returns
         -------
@@ -1572,24 +1573,27 @@ class MeteoProfile:
         
         self._solar_field = self._validate_argument("solar_field", solar_field)
         
-        coll_tilt_deg = solar_field._coll_tilt
-        coll_azimuth_deg = solar_field._coll_azimuth
-        coll_IAM = solar_field._coll_IAM
-        ground_fraction_covered = solar_field._ground_fraction_covered
-        row_width_to_coll_length_ratio = solar_field._row_width_to_coll_length_ratio
+        coll_tilt_auto = abs( self._latitude )
+        if self._latitude > 0:
+            coll_azimuth_auto = 180
+        else:
+            coll_azimuth_auto = 0
+        
+        self._solar_field.set_auto_orientation( coll_tilt = coll_tilt_auto, coll_azimuth = coll_azimuth_auto )
+        
+        coll_tilt_deg = solar_field.coll_tilt
+        coll_azimuth_deg = solar_field.coll_azimuth
+        coll_IAM = solar_field.coll_IAM
+        ground_fraction_covered = solar_field.ground_fraction_covered
+        row_width_to_coll_length_ratio = solar_field.row_width_to_coll_length_ratio
         
         coll_tilt_rad = coll_tilt_deg*pi/180
         coll_azimuth_rad = coll_azimuth_deg*pi/180
         
         ground_albedo = self._ground_albedo
         
-        
-        # assert coll_tilt_deg >= 0 and coll_tilt_deg <= 90
-        # assert coll_azimuth_deg >= 0 and coll_azimuth_deg < 360
-        
-        # assert ground_fraction_covered > 0
-        # assert ground_fraction_covered*cos( coll_tilt_rad ) < 1
-        
+        if not ( ground_fraction_covered*cos( coll_tilt_rad ) < 1 ):
+            raise ValueError("MeteoProfile.compute_poa_irradiance: Collector rows are overlapped. Ground factor covered must be reduced, or row spacing must be increased.")
         
         def dblquad(func, a, b, gfun, hfun, args=()):
             def temp_ranges(*args):
@@ -1626,6 +1630,8 @@ class MeteoProfile:
                     def IAM_func(theta, phi):
                         transverse_angle = arctan(tan(theta)*sin(phi))
                         longitudinal_angle = arctan(tan(theta)*cos(phi))
+                        if solar_field.tube_direction == 'HORIZONTAL':
+                            transverse_angle, longitudinal_angle = longitudinal_angle, transverse_angle
                         return Kt_interp(transverse_angle)*Kl_interp(longitudinal_angle)
                 else:
                     IAM[0] = 1
@@ -1636,7 +1642,7 @@ class MeteoProfile:
                     IAM_interp = interp1d(angles, IAMs)
                     def IAM_func(theta, phi):
                         return IAM_interp(theta)
-            if type(IAM) == float or type(IAM) == int:
+            if type(IAM) is float or type(IAM) is int:
                 b0 = IAM
                 def IAM_func(theta, phi):
                     if theta <= 85*pi/180:
@@ -1806,13 +1812,15 @@ class MeteoProfile:
                 return 1
             if coll_type == 'monoaxial_b':
                 if aoi <= 85*pi/180:
-                    result = 1 - sum([ IAM_dict['b' + str(i)]*(1/cos(aoi) - 1)**(i + 1) for i in range(len(IAM_dict)) ])
+                    result = 1 - sum([ IAM_dict[ 'b' + str( i ) ]*( 1 / cos( aoi ) - 1)**( i + 1 ) for i in range(len(IAM_dict)) ])
                     return max([result, 0])
                 else:
                     return 0
             if coll_type == 'monoaxial_angle_list':
                 return IAM_func(aoi)
             if coll_type == 'biaxial':
+                if solar_field.tube_direction == 'HORIZONTAL':
+                    trans, longi = longi, trans
                 return Kt_func(trans)*Kl_func(longi)
             
         def visible_sky_fraction( x ):
@@ -1889,7 +1897,7 @@ class MeteoProfile:
             horizon_irradiance = float( horizon_irradiance_array[ time_step ] )
             ref_irradiance = reflected_irradiance_fraction*ground_albedo*max([GHI, 0] )
             
-            if np.isnan(aoi):
+            if np.isnan( aoi ):
                 
                 beam_irradiance = 0
                 beam_IAM = 0
@@ -1970,19 +1978,19 @@ class MeteoProfile:
         
         if month == 2 and day == 29:
             day = 28
-            raise ValueError("Class MeteoProfile._instant_to_index: Data for February 29 was requested. Leap years are not supported.")
+            raise ValueError("MeteoProfile._instant_to_index: Data for February 29 was requested. Leap years are not supported.")
             
         if month < 1 or month > 12:
-            raise ValueError("Class MeteoProfile._instant_to_index: Month number not valid.")
+            raise ValueError("MeteoProfile._instant_to_index: Month number not valid.")
             
         if day < 1 or day > month_days[ month - 1 ]:
-            raise ValueError("Class MeteoProfile._instant_to_index: Day number not valid.")
+            raise ValueError("MeteoProfile._instant_to_index: Day number not valid.")
             
         if hour < 0 or hour > 23:
-            raise ValueError("Class MeteoProfile._instant_to_index: Hour number not valid.")
+            raise ValueError("MeteoProfile._instant_to_index: Hour number not valid.")
             
         if minute < 0 or minute > 59:
-            raise ValueError("Class MeteoProfile._instant_to_index: Minute number not valid.")
+            raise ValueError("MeteoProfile._instant_to_index: Minute number not valid.")
         
         mask = (
             
@@ -2027,7 +2035,7 @@ class MeteoProfile:
             - `"Tamb"`: Ambient temperature.
             - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `paper by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
             
-        Only if a `solar_field.SolarField` instance has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
+        Only if a `sercpy.solar.SolarField` instance has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
             
             - `"aoi"`: Angle of incidence on the solar field array. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
             - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).

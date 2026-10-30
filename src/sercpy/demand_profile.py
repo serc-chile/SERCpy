@@ -357,7 +357,7 @@ class DemandProfile:
         if T_set is None or T_in is None:
             raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
         
-        self._monthly_T_set = self.validate_argument("T_set", T_set)
+        self._monthly_T_set = self._validate_argument("T_set", T_set)
         if temp_units is not None:
             self._monthly_T_set = convert_units( self._monthly_T_set, temp_units, "C" )
         elif T_units is not None:
@@ -366,12 +366,12 @@ class DemandProfile:
         if not all( [ T >= demand_Tset_limits[0] and T <= demand_Tset_limits[1] for T in self._monthly_T_set ] ):
             raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tset_limits[0]} °C <= T_set <= {demand_Tset_limits[1]} °C.")        
         
-        T_in = self.validate_argument("T_in", T_in)
+        T_in = self._validate_argument("T_in", T_in)
         
         if T_in == 'mains':
             if meteo_profile is None:
                 raise ValueError("Class DemandProfile: The argument 'meteo_profile' must be provided if the value of 'T_in' is the string 'mains'.")
-            meteo_profile = self.validate_argument("meteo_profile", meteo_profile)
+            meteo_profile = self._validate_argument("meteo_profile", meteo_profile)
             self._monthly_T_in = self._Tin_from_meteo_profile( meteo_profile )
         else:
             self._monthly_T_in = T_in
@@ -385,7 +385,7 @@ class DemandProfile:
         if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
             raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
         
-        self._fluid = self.validate_argument("fluid", fluid)
+        self._fluid = self._validate_argument("fluid", fluid)
         if self._fluid == "WATER":
             self._fluid_cp = 4184
             self._fluid_density = 1000
@@ -396,11 +396,11 @@ class DemandProfile:
             self._fluid_cp = 2000
             self._fluid_density = 920
         if fluid_cp is not None:
-            self._fluid_cp = self.validate_argument("fluid_cp", fluid_cp)
+            self._fluid_cp = self._validate_argument("fluid_cp", fluid_cp)
             if fluid_cp_units is not None:
                 self._fluid_cp = convert_units(self._fluid_cp, fluid_cp_units, 'J/kg K')
         if fluid_density is not None:
-            self._fluid_density = self.validate_argument("fluid_density", fluid_density)
+            self._fluid_density = self._validate_argument("fluid_density", fluid_density)
             if fluid_density_units is not None:
                 self._fluid_density = convert_units( self._fluid_density, fluid_density_units, 'kg/m3' )
             
@@ -408,8 +408,8 @@ class DemandProfile:
             raise ValueError("Class DemandProfile: 'fluid_cp' and 'fluid_density' must be provided, either directly or indirectly through the heat transfer fluid's name." )
             
         if monthly_heat_demand is not None:
-            self._monthly_heat_demand = self.validate_argument("monthly_heat_demand", monthly_heat_demand)
-            heat_demand_units = self.validate_argument("heat_demand_units", heat_demand_units)
+            self._monthly_heat_demand = self._validate_argument("monthly_heat_demand", monthly_heat_demand)
+            heat_demand_units = self._validate_argument("heat_demand_units", heat_demand_units)
             if heat_demand_units is None:
                 warnings.warn("Class DemandProfile: 'monthly_heat_demand' argument was provided but no 'heat_demand_units'. Joule is assumed as default.")
             else:
@@ -418,27 +418,27 @@ class DemandProfile:
                 except UnitsError:
                     raise ValueError( f"Class DemandProfile: monthly_heat_demand could not be converted from the energy units provided: {heat_demand_units}." )
         elif monthly_consumption is not None:
-            monthly_consumption = self.validate_argument("monthly_consumption", monthly_consumption)
+            monthly_consumption = self._validate_argument("monthly_consumption", monthly_consumption)
             if consumption_units is None:
                 raise ValueError("Class DemandProfile: Argument 'consumption_units' must be provided along with 'monthly_consumption'.")
-            consumption_units = self.validate_argument("consumption_units", consumption_units)
+            consumption_units = self._validate_argument("consumption_units", consumption_units)
             if heater_efficiency is None:
                 heater_efficiency = 0.8
             else:
-                heater_efficiency = self.validate_argument("heater_efficiency", heater_efficiency)
+                heater_efficiency = self._validate_argument("heater_efficiency", heater_efficiency)
             
-            heat_source = self.validate_argument("heat_source", heat_source)
+            heat_source = self._validate_argument("heat_source", heat_source)
             
             if heat_source == "ELECTRICITY":
                 self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
                 self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency)
                 return
             
-            heat_source_density = self.validate_argument("heat_source_density", heat_source_density)
-            heat_source_density_units = self.validate_argument("heat_source_density_units", heat_source_density_units)
+            heat_source_density = self._validate_argument("heat_source_density", heat_source_density)
+            heat_source_density_units = self._validate_argument("heat_source_density_units", heat_source_density_units)
             
-            heat_source_heating_value = self.validate_argument("heat_source_heating_value", heat_source_heating_value)
-            heat_source_heating_value_units = self.validate_argument("heat_source_heating_value_units", heat_source_heating_value_units)
+            heat_source_heating_value = self._validate_argument("heat_source_heating_value", heat_source_heating_value)
+            heat_source_heating_value_units = self._validate_argument("heat_source_heating_value_units", heat_source_heating_value_units)
             
             if heat_source_density is not None and heat_source_density_units is not None:
                 try:
@@ -455,7 +455,7 @@ class DemandProfile:
                     raise ValueError( "Class DemandProfile: heat_source_heating_value could not be converted from the units specified: {heat_source_heating_value_units}." )
             elif heat_source_heating_value is None and heat_source in Energy_Sources_Database:
                 if condensation_boiler is not None:
-                    condensation_boiler = self.validate_argument("condensation_boiler", condensation_boiler)
+                    condensation_boiler = self._validate_argument("condensation_boiler", condensation_boiler)
                 else:
                     condensation_boiler = False
                 if condensation_boiler:
@@ -482,59 +482,59 @@ class DemandProfile:
             raise ValueError("Class DemandProfile: Either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
 
         if weekly_demand_profile is not None:
-            weekly_demand_profile = self.validate_argument("weekly_demand_profile", weekly_demand_profile)
+            weekly_demand_profile = self._validate_argument("weekly_demand_profile", weekly_demand_profile)
             self._weekly_demand_profile = self._extend_profile(weekly_demand_profile, 48*7)
             
         elif daily_demand_profiles is not None:
-            self._daily_demand_profiles = self.validate_argument("daily_demand_profiles", daily_demand_profiles)
-            self._weekly_demand_factors = self.validate_argument("weekly_demand_factors", weekly_demand_factors)
+            self._daily_demand_profiles = self._validate_argument("daily_demand_profiles", daily_demand_profiles)
+            self._weekly_demand_factors = self._validate_argument("weekly_demand_factors", weekly_demand_factors)
             self._week_constructor_1()
             
         elif daily_demand_profile is not None:
             
-            self._daily_demand_profile = self.validate_argument("daily_demand_profile", daily_demand_profile)
-            self._daily_demand_profile_saturday = self.validate_argument("daily_demand_profile_saturday", daily_demand_profile_saturday)
-            self._daily_demand_profile_sunday = self.validate_argument("daily_demand_profile_sunday", daily_demand_profile_sunday)
-            self._weekly_demand_factors = self.validate_argument("weekly_demand_factors", weekly_demand_factors)
-            self._daily_demand_ratio_saturday = self.validate_argument("daily_demand_ratio_saturday", daily_demand_ratio_saturday)
-            self._peak_demand_ratio_saturday = self.validate_argument("peak_demand_ratio_saturday", peak_demand_ratio_saturday)
-            self._daily_demand_ratio_sunday = self.validate_argument("daily_demand_ratio_sunday", daily_demand_ratio_sunday)
-            self._peak_demand_ratio_sunday = self.validate_argument("peak_demand_ratio_sunday", peak_demand_ratio_sunday)
+            self._daily_demand_profile = self._validate_argument("daily_demand_profile", daily_demand_profile)
+            self._daily_demand_profile_saturday = self._validate_argument("daily_demand_profile_saturday", daily_demand_profile_saturday)
+            self._daily_demand_profile_sunday = self._validate_argument("daily_demand_profile_sunday", daily_demand_profile_sunday)
+            self._weekly_demand_factors = self._validate_argument("weekly_demand_factors", weekly_demand_factors)
+            self._daily_demand_ratio_saturday = self._validate_argument("daily_demand_ratio_saturday", daily_demand_ratio_saturday)
+            self._peak_demand_ratio_saturday = self._validate_argument("peak_demand_ratio_saturday", peak_demand_ratio_saturday)
+            self._daily_demand_ratio_sunday = self._validate_argument("daily_demand_ratio_sunday", daily_demand_ratio_sunday)
+            self._peak_demand_ratio_sunday = self._validate_argument("peak_demand_ratio_sunday", peak_demand_ratio_sunday)
             self._week_constructor_2()
             
         elif op_start is not None:
             
-            self._op_start = self.validate_argument("op_start", op_start)
-            self._op_end = self.validate_argument("op_end", op_end)
-            self._op_start_saturday = self.validate_argument("op_start_saturday", op_start_saturday)
-            self._op_end_saturday = self.validate_argument("op_end_saturday", op_end_saturday)
-            self._op_start_sunday = self.validate_argument("op_start_sunday", op_start_sunday)
-            self._op_end_sunday = self.validate_argument("op_end_sunday", op_end_sunday)
-            self._weekly_demand_factors = self.validate_argument("weekly_demand_factors", weekly_demand_factors)
-            self._daily_demand_ratio_saturday = self.validate_argument("daily_demand_ratio_saturday", daily_demand_ratio_saturday)
-            self._peak_demand_ratio_saturday = self.validate_argument("peak_demand_ratio_saturday", peak_demand_ratio_saturday)
-            self._daily_demand_ratio_sunday = self.validate_argument("daily_demand_ratio_sunday", daily_demand_ratio_sunday)
-            self._peak_demand_ratio_sunday = self.validate_argument("peak_demand_ratio_sunday", peak_demand_ratio_sunday)
+            self._op_start = self._validate_argument("op_start", op_start)
+            self._op_end = self._validate_argument("op_end", op_end)
+            self._op_start_saturday = self._validate_argument("op_start_saturday", op_start_saturday)
+            self._op_end_saturday = self._validate_argument("op_end_saturday", op_end_saturday)
+            self._op_start_sunday = self._validate_argument("op_start_sunday", op_start_sunday)
+            self._op_end_sunday = self._validate_argument("op_end_sunday", op_end_sunday)
+            self._weekly_demand_factors = self._validate_argument("weekly_demand_factors", weekly_demand_factors)
+            self._daily_demand_ratio_saturday = self._validate_argument("daily_demand_ratio_saturday", daily_demand_ratio_saturday)
+            self._peak_demand_ratio_saturday = self._validate_argument("peak_demand_ratio_saturday", peak_demand_ratio_saturday)
+            self._daily_demand_ratio_sunday = self._validate_argument("daily_demand_ratio_sunday", daily_demand_ratio_sunday)
+            self._peak_demand_ratio_sunday = self._validate_argument("peak_demand_ratio_sunday", peak_demand_ratio_sunday)
             self._week_constructor_3()
             
         else:
             self._weekly_demand_profile = [ 1 ]*48*7
             
-        self._Tamb_dependence = self.validate_argument("Tamb_dependence", Tamb_dependence)
+        self._Tamb_dependence = self._validate_argument("Tamb_dependence", Tamb_dependence)
             
         if Tamb_dependence is not None:
             self._Tamb_dependence_mode = "manual"
         else:
             self._Tamb_dependence_mode = "auto"
                 
-        self._monthly_production = self.validate_argument("monthly_production", monthly_production)
+        self._monthly_production = self._validate_argument("monthly_production", monthly_production)
         
         if Tamb_profile is None and meteo_profile is not None:
-            meteo_profile = self.validate_argument("meteo_profile", meteo_profile)
+            meteo_profile = self._validate_argument("meteo_profile", meteo_profile)
             meteo_df = meteo_profile.get_conditions()
             self._Tamb_profile = meteo_df[ "Tamb" ].values.astype(float).tolist()
         else:
-            self._Tamb_profile = self.validate_argument("Tamb_profile", Tamb_profile)
+            self._Tamb_profile = self._validate_argument("Tamb_profile", Tamb_profile)
             
             if self._Tamb_profile is not None:
                 if Tamb_units is not None:
@@ -545,7 +545,7 @@ class DemandProfile:
                     self._Tamb_profile = convert_units( self._Tamb_profile, T_units, 'C' )
             
         if smooth_Tamb_profile is not None:
-            self._smooth_Tamb_profile = self.validate_argument( "smooth_Tamb_profile", smooth_Tamb_profile )
+            self._smooth_Tamb_profile = self._validate_argument( "smooth_Tamb_profile", smooth_Tamb_profile )
         else:
             self._smooth_Tamb_profile = True
             
@@ -1124,7 +1124,7 @@ class DemandProfile:
         self._weekly_demand_profile = list( np.concatenate( daily_demand_profiles ).astype(float) )
     
     @staticmethod
-    def validate_argument(argument_name, value):
+    def _validate_argument(argument_name, value):
         """
         Static mathod that takes an argument received by the initializing method (`__init__`) and checks whether its type and value match the expected format.
         
@@ -1153,7 +1153,7 @@ class DemandProfile:
         """
         
         if type(argument_name) is not str:
-            raise TypeError("DemandProfile.validate_attribute: Argument 'argument_name' must be a string.")
+            raise TypeError("DemandProfile._validate_argument: Argument 'argument_name' must be a string.")
         
         if not argument_name in DemandProfile_accepted_args:
             raise ValueError(f"Class DemandProfile: Unexpected argument name: {argument_name}")

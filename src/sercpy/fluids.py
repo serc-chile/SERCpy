@@ -74,7 +74,6 @@ class FluidState:
         Alias for Q.
     
     """
-    
     def __init__( 
             
             self,
@@ -85,7 +84,10 @@ class FluidState:
         
         if not isinstance(fluid, Fluid):
             raise TypeError("FluidState: Argument 'fluid' must be an instance of sercpy.fluids.Fluid.")
-        
+            
+        if sum( [ variable in kwargs for variable in [ 'h', 'H', 'T' ] ] ) != 1:
+            raise StateError( "FluidState: One and only one of the keyword arguments 'h', 'H' and 'T' must be provided." )
+            
         self._fluid = fluid
         
         if 'h' in kwargs or 'H' in kwargs:
@@ -94,21 +96,22 @@ class FluidState:
             elif 'H' in kwargs:
                 enthalpy_name = 'H'
             if kwargs[ enthalpy_name ] < self._fluid.h_min:
-                warnings.warn(f"Fluid.state: An enthalpy value below the minimum available ({self._fluid.h_min} J/kg) was provided. Minimum value available will be considered.")
+                if abs( kwargs[ enthalpy_name ] - self._fluid.h_min ) > 0.005*(self._fluid.h_max - self._fluid.h_min):
+                    warnings.warn(f"FluidState: An enthalpy value below the minimum available ({self._fluid.h_min} J/kg) was provided. Minimum value available will be considered.")
                 kwargs[ enthalpy_name ] = self._fluid.h_min
             elif kwargs[ enthalpy_name ] > self._fluid.h_max:
-                warnings.warn(f"Fluid.state: An enthalpy value above the maximum available ({self._fluid.h_max} J/kg) was provided. Maximum value available will be considered.")
+                if abs( kwargs[ enthalpy_name ] - self._fluid.h_max ) > 0.005*(self._fluid.h_max - self._fluid.h_min):
+                    warnings.warn(f"FluidState: An enthalpy value above the maximum available ({self._fluid.h_max} J/kg) was provided. Maximum value available will be considered.")
                 kwargs[ enthalpy_name ] = self._fluid.h_max
         elif 'T' in kwargs:
             if kwargs[ 'T' ] < self._fluid.T_min:
-                warnings.warn(f"Fluid.state: A temperature value below the minimum available ({self._fluid.T_min} J/kg) was provided. Minimum value available will be considered.")
+                if abs( kwargs[ 'T' ] - self._fluid.T_min ) > 0.005*(self._fluid.T_max - self._fluid.T_min):
+                    warnings.warn(f"FluidState: A temperature value below the minimum available ({self._fluid.T_min} °C) was provided. Minimum value available will be considered.")
                 kwargs[ 'T' ] = self._fluid.T_min
             elif kwargs[ 'T' ] > self._fluid.T_max:
-                warnings.warn(f"Fluid.state: A temperature value above the maximum available ({self._fluid.T_max} J/kg) was provided. Maximum value available will be considered.")
+                if abs( kwargs[ 'T' ] - self._fluid.T_max ) > 0.005*(self._fluid.T_max - self._fluid.T_min):
+                    warnings.warn(f"FluidState: A temperature value above the maximum available ({self._fluid.T_max} °C) was provided. Maximum value available will be considered.")
                 kwargs[ 'T' ] = self._fluid.T_max
-            
-        if sum( [ variable in kwargs for variable in [ 'h', 'H', 'T' ] ] ) != 1:
-            raise StateError( "FluidState: One and only one of the keyword arguments 'h', 'H' and 'T' must be provided." )
             
         if 'h' in kwargs:
             self._h = kwargs[ 'h' ]
@@ -862,7 +865,7 @@ class Fluid:
                 raise TypeError( "Fluid.h_to_T: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
-            if abs( h - self.h_min ) > 0.005*(self._h_max - self._h_min):
+            if abs( h - self._h_min ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_T: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Minimum temperature value ({self._T_min} °C) is returned.")
             return self._T_min
         if h > self._h_max:
@@ -1111,12 +1114,12 @@ class Fluid:
             raise ValueError(f"Fluid.T_to_D: Temperature provided ({T} °C) is less than 1e-8 °C from saturation temperature ({self._Tsat} °C).")
         
         if T < self._T_min:
-            if abs( T - self.T_min ) > 0.005*(self._T_max - self._T_min):
-                warnings.warn(f"Fluid.T_to_D: A temperature value below the minimum available ({self._T_min} J/kg) was provided. Density for minimum temperature available is returned ({self._D_min} kg/m3).")
+            if abs( T - self._T_min ) > 0.005*(self._T_max - self._T_min):
+                warnings.warn(f"Fluid.T_to_D: A temperature value below the minimum available ({self._T_min} °C) was provided. Density for minimum temperature available is returned ({self._D_min} kg/m3).")
             return self._D_min
         if T > self._T_max:
             if abs( T - self._T_max ) > 0.005*(self._T_max - self._T_min):
-                warnings.warn(f"Fluid.T_to_D: A temperature value above the maximum available ({self._T_max} J/kg) was provided. Density for maximum temperature available is returned ({self._D_max} kg/m3).")
+                warnings.warn(f"Fluid.T_to_D: A temperature value above the maximum available ({self._T_max} °C) was provided. Density for maximum temperature available is returned ({self._D_max} kg/m3).")
             return self._D_max
         
         if self._can_boil:
@@ -1159,7 +1162,7 @@ class Fluid:
                 raise TypeError( "Fluid.h_to_D: Value 'h' must be numeric or array-like." )
         
         if h < self._h_min:
-            if abs( h - self.h_min ) > 0.005*(self._h_max - self._h_min):
+            if abs( h - self._h_min ) > 0.005*(self._h_max - self._h_min):
                 warnings.warn(f"Fluid.h_to_D: An enthalpy value below the minimum available ({self._h_min} J/kg) was provided. Density for minimum enthalpy available is returned ({self._D_min} kg/m3).")
             return self._D_min
         if h > self._h_max:
