@@ -55,7 +55,7 @@ class SolarCollector:
         Second order (quadratic) loss coefficient (W/m2 K2). If not provided, it is assumed to be null.
     
     IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </solar/IAM>` to learn the possible formats of this parameter.
+        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
     
     test_flowrate_per_m2 : float, optional
         Flowrate per area unit with wich the collector has been tested (kg/m2 s). It is used to correct the efficiency of the collector considering the operation flowrate. If not provided, its value is assumed to be 0.02.
@@ -87,7 +87,7 @@ class SolarCollector:
         Second order (quadratic) loss coefficient (W/m2 K2).
     
     IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </solar/IAM>` to learn the possible formats of this parameter.
+        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
     
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
@@ -166,6 +166,11 @@ class SolarCollector:
             self._test_fluid = self._validate_argument( "test_fluid", test_fluid )
         else:
             self._test_fluid = Fluid( 'water', p = 300000, T_ref = 60 )
+            
+        test_flow = self._test_flowrate_per_m2*self._area
+        test_fluid_cp = self._test_fluid.cp_ref
+        self._FpUL = -( test_flow * test_fluid_cp / self._area )*log( 1 - self._a1*self._area / ( test_flow*test_fluid_cp ) )
+        self._test_conditions = ( test_flow*test_fluid_cp / ( self._area * self._FpUL ) ) * ( 1 - exp( - self._area * self._FpUL / ( test_flow * test_fluid_cp ) ) )
             
     @property
     def model_name(self):
@@ -329,6 +334,55 @@ class SolarCollector:
                 value = Fluid( value, p = 300000, T_ref = 60 )
                 
         return value
+    
+    def compute_flowrate_correction_factor( self, fluid, flowrate ):
+        
+        if not hasattr( fluid, 'cp_ref' ):
+            if not isinstance(fluid, Fluid):
+                raise TypeError("SolarCollector.compute_flowrate_correction_factor: Argument 'fluid' must be an instance of sercpy.fluids.Fluid.")
+            raise AttributeError("SolarCollector.compute_flowrate_correction_factor: Argument 'fluid' does not have the attribute 'cp_ref'. In order for the object to have this attribute, the argument 'T_ref' must be provided at initialization.")
+        
+        use_conditions = ( flowrate*fluid.cp_ref/(self._area*self._FpUL) )*( 1 - exp( - self._area*self._FpUL/( flowrate*fluid.cp_ref ) ) )
+        flowrate_correction_factor = use_conditions/self._test_conditions
+        
+        return flowrate_correction_factor
+    
+    def compute_outlet_state(self, flowrate, state_in, irradiance, IAM_factor, Tamb, flowrate_correction_factor):
+        """
+        Function that computes the power of an individual solar collector and returns the state of the fluid leaving it.
+        
+        Parameters
+        ----------
+        flowrate : float
+            Mass flowrate entering the collector (kg/s).
+        
+        state_in : sercpy.fluids.FluidState
+            State of the fluid as it enters the collector.
+        
+        irradiance : float
+            Solar irradiance on the collector's plane (W/m2).
+        
+        IAM_factor : float
+            Dimensionless quantity defining the correction factor associated to IAM (Incidence Angle Modifier).
+        
+        Tamb : float
+            Ambient temperature (°C).
+        
+        flowrate_correction_factor : float
+            Dimensionless quantity defining the correction factor associated to the flowrate.
+        
+        Returns
+        -------
+        state_out : sercpy.fluids.FluidState
+            State of the fluid leaving the collector.
+        """
+        
+        T_in = state_in.T
+        h_in = state_in.h
+        efficiency = flowrate_correction_factor*max( [ self._n0*IAM_factor - self._a1*( T_in - Tamb )/irradiance - self._a2*(T_in - Tamb)*abs( T_in - Tamb )/irradiance , 0 ] )
+        power = efficiency*irradiance*self._area
+        h_out = h_in + power/flowrate
+        return state_in.fluid.state( h = h_out )
 
 field_allowed_arguments = [
     
@@ -433,7 +487,7 @@ class SolarField:
         Second order (quadratic) loss coefficient (W/m2 K2).
     
     IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </solar/IAM>` to learn the possible formats of this parameter.
+        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
     
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
@@ -600,11 +654,6 @@ class SolarField:
                 self._coll_IAM = self._collector.IAM.copy()
             except AttributeError:
                 self._coll_IAM = self._collector.IAM
-        
-        test_flow = self._collector.test_flowrate_per_m2*self._coll_area
-        test_fluid_cp = self._collector.fluid.cp_ref
-        self._FpUL = -( test_flow * test_fluid_cp / self._coll_area )*log( 1 - self._coll_a1*self._coll_area / ( test_flow*test_fluid_cp ) )
-        self._test_conditions = ( test_flow*test_fluid_cp / ( self._coll_area * self.FpUL ) ) *( 1 - exp( - self._coll_area * self.FpUL / ( test_flow * test_fluid_cp ) ) )
         
         self._outlet = Outlet()
     
@@ -804,45 +853,8 @@ class SolarField:
                 raise ValueError("SolarField: Argument 'max_iterations' must be in the range 3 <= max_iterations <= 300.")
         
         return value
-    
-    def _compute_collector(self, flowrate, state_in, irradiance, IAM_factor, Tamb, flow_correction_factor):
-        """
-        Function that computes the power of an individual solar collector and returns the state of the fluid leaving it.
-        
-        Parameters
-        ----------
-        flowrate : float
-            Mass flowrate entering the collector (kg/s).
-        
-        state_in : sercpy.fluids.FluidState
-            State of the fluid as it enters the collector.
-        
-        irradiance : float
-            Solar irradiance on the collector's plane (W/m2).
-        
-        IAM_factor : float
-            Dimensionless quantity defining the correction factor associated to IAM (Incidence Angle Modifier).
-        
-        Tamb : float
-            Ambient temperature (°C).
-        
-        flow_correction_factor : float
-            Dimensionless quantity defining the correction factor associated to the flowrate.
-        
-        Returns
-        -------
-        state_out : sercpy.fluids.FluidState
-            State of the fluid leaving the collector.
-        """
-        
-        T_in = state_in.T
-        h_in = state_in.h
-        efficiency = flow_correction_factor*max( [ self._coll_n0*IAM_factor - self._coll_a1*( T_in - Tamb )/irradiance - self._coll_a2*(T_in - Tamb)*abs( T_in - Tamb )/irradiance , 0 ] )
-        power = efficiency*irradiance*self.coll_area
-        h_out = h_in + power/flowrate
-        return state_in.fluid.state( h = h_out )
 
-    def _compute_row( self, flowrate_in, state_in, T_mains, irradiance, IAM_factor, Tamb, flow_correction_factor ):
+    def _compute_row( self, flowrate_in, state_in, T_mains, irradiance, IAM_factor, Tamb, flowrate_correction_factor ):
         """
         Function that computes the power of a collector row and returns the state of the fluid leaving it.
         
@@ -866,7 +878,7 @@ class SolarField:
         Tamb : float
             Ambient temperature (°C).
             
-        flow_correction_factor : float
+        flowrate_correction_factor : float
             Dimensionless quantity defining the correction factor associated to the flowrate.
         
         Returns
@@ -904,9 +916,9 @@ class SolarField:
                 
                 if self._row_mode == 'SERIES':
                     for i in range( self._colls_per_row ):
-                        mixture_state = self._compute_collector(flowrate_mix, mixture_state, irradiance, IAM_factor, Tamb, flow_correction_factor)
+                        mixture_state = self._collector.compute_outlet_state(flowrate_mix, mixture_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor)
                 else:
-                    mixture_state = self._compute_collector( flowrate_mix / self._colls_per_row , mixture_state, irradiance, IAM_factor, Tamb, flow_correction_factor)
+                    mixture_state = self._collector.compute_outlet_state( flowrate_mix / self._colls_per_row , mixture_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor)
                 
                 vapor_flowrate = mixture_state.Q*flowrate_mix
                 
@@ -935,9 +947,9 @@ class SolarField:
             fluid_state = state_in
             if self._row_mode == 'SERIES':
                 for i in range(self._colls_per_row):
-                    fluid_state = self._compute_collector( flowrate_in, fluid_state, irradiance, IAM_factor, Tamb, flow_correction_factor )
+                    fluid_state = self._collector.compute_outlet_state( flowrate_in, fluid_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor )
             else:
-                fluid_state = self._compute_collector( flowrate_in / self._colls_per_row , fluid_state, irradiance, IAM_factor, Tamb, flow_correction_factor )
+                fluid_state = self._collector.compute_outlet_state( flowrate_in / self._colls_per_row , fluid_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor )
             return fluid_state, 0, 0, 0, True
         
     def set_connections( self, *, inlet ):
@@ -1091,12 +1103,16 @@ class SolarField:
         flowrate_each_row = flowrate/self._coll_rows
         fluid = state_in.fluid
         
-        use_conditions = ( flowrate_each_row*fluid.cp_ref/(self._coll_area*self._FpUL) )*( 1 - exp( - self._coll_area*self._FpUL/( flowrate_each_row*fluid.cp_ref ) ) )
-        flow_correction_factor = use_conditions/self._test_conditions
+        if self._row_mode == 'PARALLEL':
+            flowrate_each_collector = flowrate_each_row / self._colls_per_row
+        else:
+            flowrate_each_collector = flowrate_each_row
+            
+        flowrate_correction_factor = self._collector.compute_flowrate_correction_factor( flowrate_each_collector )
         
         # Suffix "NS" for NON-shadeable rows
         if irradiance_first_row > 0:
-            state_out_NS, Q_waste_NS, vap_flow_NS, iterations_NS, convergence_NS = self._compute_row(flowrate_each_row, state_in, Tmains, irradiance_first_row, IAM_first_row, Tamb, flow_correction_factor)
+            state_out_NS, Q_waste_NS, vap_flow_NS, iterations_NS, convergence_NS = self._compute_row(flowrate_each_row, state_in, Tmains, irradiance_first_row, IAM_first_row, Tamb, flowrate_correction_factor)
         else:
             state_out_NS = state_in.h
             Q_waste_NS = 0
@@ -1106,7 +1122,7 @@ class SolarField:
         
         # Suffix "Sh" for shadeable rows
         if irradiance_shadeable_rows > 0:
-            state_out_Sh, Q_waste_Sh, vap_flow_Sh, iterations_Sh, convergence_Sh = self._compute_row(flowrate_each_row, state_in, Tmains, irradiance_shadeable_rows, IAM_shadeable_rows, Tamb, flow_correction_factor)
+            state_out_Sh, Q_waste_Sh, vap_flow_Sh, iterations_Sh, convergence_Sh = self._compute_row(flowrate_each_row, state_in, Tmains, irradiance_shadeable_rows, IAM_shadeable_rows, Tamb, flowrate_correction_factor)
         else:
             state_out_Sh = state_in.h
             Q_waste_Sh = 0
