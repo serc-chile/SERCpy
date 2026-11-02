@@ -11,6 +11,38 @@ from .fluids import Fluid
 from .devices import Outlet
 import warnings
 from math import log, exp
+from scipy.interpolate import RegularGridInterpolator
+from scipy.integrate import quad, nquad
+from pvlib.irradiance import perez, get_extra_radiation
+from pvlib.atmosphere import get_relative_airmass
+
+def _dblquad(func, a, b, gfun, hfun, args=()):
+    """Modified version of dblquad by scipy (scipy.integrate.dblquad). URL: https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.dblquad.html
+    
+    LICENSE
+    -------
+    
+    Copyright © 2001, 2002 Enthought, Inc.
+    All rights reserved.
+    
+    Copyright © 2003-2019 SciPy Developers.
+    All rights reserved.
+    
+    Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+    
+    - Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    
+    - Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    
+    - Neither the name of Enthought nor the names of the SciPy Developers may be used to endorse or promote products derived from this software without specific prior written permission.
+    
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+    """
+    def temp_ranges(*args):
+        return [gfun(args[0]) if callable(gfun) else gfun,
+                hfun(args[0]) if callable(hfun) else hfun]
+    return nquad(func, [temp_ranges, [a, b]], args=args,
+                  opts={"epsabs": 1e-3, "limit": 200, "epsrel": 1e-3})[0]
 
 collector_allowed_arguments = [
     
@@ -26,6 +58,43 @@ collector_allowed_arguments = [
     "test_fluid",
     
     ]
+
+class NonConvertibleToArray(Exception):
+    pass
+
+def _to_array( array_like_or_number ):
+    """
+    Function that converts scalar numbers and lists to 1-dimensional numpy arrays.
+
+    Parameters
+    ----------
+    array_like_or_number : float or array-like
+        Value to convert.
+
+    Returns
+    -------
+    array : np.array
+        Converted value.
+
+    """
+    
+    try:
+        array_like_or_number_float = float( array_like_or_number )
+        array = np.array([ array_like_or_number_float ])
+    except:
+        try:
+            array = np.array( array_like_or_number )
+            assert len( array ) >= 1
+        except:
+            raise NonConvertibleToArray("_to_array: 'array_like_or_number' could not be interpreted as a number nor as an array.")
+    if array.ndim > 1:
+        shape = array.shape
+        if sum([ dim > 1 for dim in shape ]) > 1:
+            raise ValueError("The resulting array has more than one dimension larger than 1.")
+        index_len = [ dim > 1 for dim in shape ].index( True )
+        len_array = shape[ index_len ]
+        array = np.reshape( array, shape = ( len_array, ) )
+    return array
 
 class SolarCollector:
     """
@@ -49,7 +118,7 @@ class SolarCollector:
         Intercept efficiency, sometimes referred to as 'optical efficiency'. Valid range: 0.1 - 0.99. It is the nominal efficiency with which the collector operates when (1) the angle of incidence of the irradiance is null, and (2) the heat transfer fluid enters the collector with the same temperature as the environment surroinding the collector.
     
     a1 : float
-        First order (linear) loss coefficient (W/m2 K).
+        First order (linear) loss coefficient (W/m2 K). Valid range: 1e-3 to 1e3.
     
     a2 : float, optional
         Second order (quadratic) loss coefficient (W/m2 K2). If not provided, it is assumed to be null.
@@ -86,7 +155,7 @@ class SolarCollector:
     a2 : float
         Second order (quadratic) loss coefficient (W/m2 K2).
     
-    IAM : float, list, or dict
+    IAM : float, list, dict, or None
         Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
     
     test_flowrate_per_m2 : float
@@ -105,7 +174,7 @@ class SolarCollector:
                  n0: float,
                  a1: float,
                  a2: Optional[ float ] = None,
-                 IAM: float | list | dict,
+                 IAM: float | list | dict | None,
                  test_flowrate_per_m2: Optional[ float ] = None,
                  test_fluid: Optional[ str ]  = None,
                  
@@ -169,8 +238,15 @@ class SolarCollector:
             
         test_flow = self._test_flowrate_per_m2*self._area
         test_fluid_cp = self._test_fluid.cp_ref
-        self._FpUL = -( test_flow * test_fluid_cp / self._area )*log( 1 - self._a1*self._area / ( test_flow*test_fluid_cp ) )
-        self._test_conditions = ( test_flow*test_fluid_cp / ( self._area * self._FpUL ) ) * ( 1 - exp( - self._area * self._FpUL / ( test_flow * test_fluid_cp ) ) )
+        
+        log_argument = 1 - self._a1 / ( self._test_flowrate_per_m2*test_fluid_cp )
+        
+        if log_argument >= 0.5:
+            self._FpUL = -( test_flow * test_fluid_cp / self._area )*log( log_argument )
+            self._test_conditions = ( test_flow*test_fluid_cp / ( self._area * self._FpUL ) ) * ( 1 - exp( - self._area * self._FpUL / ( test_flow * test_fluid_cp ) ) )
+        else:
+            warnings.warn("SolarCollector: The flowrate correction algorithm cannot be applied because (1) the loss coefficient a1 is too big, or (2) the test flowrate is too small.")
+            self._test_conditions = None
             
     @property
     def model_name(self):
@@ -213,6 +289,29 @@ class SolarCollector:
         return self._test_fluid
     
     def _validate_argument( self, argument_name, value ):
+        """
+        Private method to confirm that a certain argument provided by the user matches the expected type and other restrictions such as range, in the case of numeric values.
+        
+        In some cases, this method modifies the argument so that it matches the expected format.
+        
+        Parameters
+        ----------
+        argument_name : str
+            Name to identify the argument.
+        value : any
+            Argument value.
+
+        Raises
+        ------
+        ValueError
+            Any discrepancy between the expected value and the value provided.
+
+        Returns
+        -------
+        value : any
+            Processed value. In most cases, the value returned is the same as the input.
+        
+        """
         
         if type(argument_name) is not str:
             raise TypeError("SolarCollector._validate_argument: Argument 'argument_name' must be a string.")
@@ -253,7 +352,7 @@ class SolarCollector:
                 value = float( value )
             except:
                 raise TypeError("SolarCollector: Argument 'a1' must be convertible to type 'float'.")
-            if not ( value >= 0.01 and value <= 100 ):
+            if not ( value >= 1e-3 and value <= 1e3 ):
                 raise ValueError("SolarCollector: Argument 'a1' is out of the allowed range: 0.01 <= a1 <= 100.")
                 
         if argument_name == 'a2':
@@ -336,16 +435,146 @@ class SolarCollector:
         return value
     
     def compute_flowrate_correction_factor( self, fluid, flowrate ):
+        """
+        Method to compute the flowrate correction factor.
+
+        Parameters
+        ----------
+        fluid : sercpy.fluids.Fluid instance
+            Fluid being used as heat transfer fluid.
+        flowrate : float
+            Flowrate flowing through the collector.
+
+        Returns
+        -------
+        float
+            Correction factor for the efficiency of the collector.
+
+        """
         
         if not hasattr( fluid, 'cp_ref' ):
             if not isinstance(fluid, Fluid):
                 raise TypeError("SolarCollector.compute_flowrate_correction_factor: Argument 'fluid' must be an instance of sercpy.fluids.Fluid.")
             raise AttributeError("SolarCollector.compute_flowrate_correction_factor: Argument 'fluid' does not have the attribute 'cp_ref'. In order for the object to have this attribute, the argument 'T_ref' must be provided at initialization.")
         
+        if self._test_conditions is None:
+            return 1
+        
         use_conditions = ( flowrate*fluid.cp_ref/(self._area*self._FpUL) )*( 1 - exp( - self._area*self._FpUL/( flowrate*fluid.cp_ref ) ) )
         flowrate_correction_factor = use_conditions/self._test_conditions
         
         return flowrate_correction_factor
+    
+    def compute_IAM( self, *, aoi = None, longi = None, trans = None ):
+        """
+        Compute the IAM (Incidence Angle Modifier) correction factor.
+
+        Parameters
+        ----------
+        aoi : float, optional
+            aoi: Angle of indicence with respect to a vector normal to the collector's plane. Only needed for collectors with monoaxial IAM functions. If not provided, it can be derived from `longi` and `trans`. The default is None.
+        longi : float, optional
+            Projection of aoi on a plane that is perpendicular to the collector's plane and parallel to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
+        trans : float, optional
+            Projection of aoi on a plane that normal to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
+
+        Returns
+        -------
+        float
+            IAM correction factor.
+
+        """
+        
+        if aoi is not None:
+            try:
+                aoi = _to_array( aoi )
+            except NonConvertibleToArray:
+                raise TypeError("SolarCollector.compute_IAM: 'aoi' could not be interpreted as a number nor as an array.")
+                
+        if trans is not None:
+            try:
+                trans = _to_array( trans )
+            except NonConvertibleToArray:
+                raise TypeError("SolarCollector.compute_IAM: 'trans' could not be interpreted as a number nor as an array.")
+                
+        if longi is not None:
+            try:
+                longi = _to_array( longi )
+            except NonConvertibleToArray:
+                raise TypeError("SolarCollector.compute_IAM: 'longi' could not be interpreted as a number nor as an array.")
+        
+        if not hasattr( self, "_IAM_type" ):
+            if self._IAM is None:
+                self._IAM_type = 0
+            elif type( self._IAM ) is list:
+                self._IAM_type = 1
+                self._K_values = self._IAM
+            elif type( self._IAM ) is dict and 'b0' in self._IAM:
+                self._IAM_type = 2
+            elif type( self._IAM ) is float:
+                self._IAM_type = 3
+            elif type( self._IAM ) is dict and 'Kl' in self._IAM:
+                self._IAM_type = 4
+                self._Kl_values = self._IAM[ 'Kl' ]
+                self._Kt_values = self._IAM[ 'Kt' ]
+            else:
+                raise ValueError("SolarCollector.compute_IAM: IAM format coud not be identified.")
+        
+        if aoi is None and trans is None and longi is None:
+            raise ValueError("SolarCollector.compute_IAM: No angle data was provided.")
+        
+        lengths = { len( x ) for x in [ aoi, trans, longi ] if x is not None }
+        if len( lengths ) != 1:
+            raise ValueError("SolarCollector.compute_IAM: All arrays must have the same length.")
+        
+        if self._IAM_type == 0:
+            return np.ones( lengths.pop() )
+        
+        elif self._IAM_type in [ 1, 2, 3 ]:
+            
+            if aoi is None:
+                if ( trans is None or longi is None ):
+                    raise ValueError("SolarCollector.compute_IAM: transversal and longitudinal angle data is needed if aoi is not provided.")
+                
+                trans_rad = ( np.pi/180 )*trans
+                longi_rad = ( np.pi/180 )*longi
+                
+                tg2_aoi = np.tan( trans_rad ) ** 2 + np.tan( longi_rad ) ** 2
+                aoi_rad = np.arctan( np.sqrt( tg2_aoi ) )
+                aoi = ( 180/np.pi )*aoi_rad
+                
+            if self._IAM_type == 1:
+                
+                result = np.interp( aoi, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._K_values )
+            
+            else: 
+                
+                aoi_masked = np.asarray( aoi, dtype=float ).copy()
+                aoi_masked[ aoi_masked > 85 ] = np.nan
+                aoi_masked_rad = ( np.pi/180 )*aoi_masked
+                
+                if self._IAM_type == 2:
+                    result = 1 - sum( [ self._IAM[ 'b' + str( index ) ] * ( 1/np.cos( aoi_masked_rad ) - 1 ) ** ( index + 1 )  for index in range( len( self._IAM ) ) ] )
+                elif self._IAM_type == 3:
+                    result = 1 - self._IAM * ( 1/np.cos( aoi_masked_rad ) - 1 )
+                else:
+                    raise Exception("SolarCollector.compute_IAM: Unexpected error.")
+                
+                result[ np.isnan( result ) | ( result < 0 ) ] = 0                
+                
+        elif self._IAM_type == 4:
+            if trans is None or longi is None:
+                raise ValueError("SolarCollector.compute_IAM: 'trans' and 'longi'. must be provided for biaxial IAM functions.")
+            
+            result = np.interp( trans, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._Kt_values ) * np.interp( longi, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._Kl_values )
+            
+        else:
+            raise Exception("SolarCollector.compute_IAM: Unexpected error: _IAM_type not valid.")
+        
+        if len( result ) == 1:
+            result = float( result[0] )
+        
+        return result
     
     def compute_outlet_state(self, flowrate, state_in, irradiance, IAM_factor, Tamb, flowrate_correction_factor):
         """
@@ -388,7 +617,7 @@ field_allowed_arguments = [
     
     "collector",
     "coll_tilt",
-    "coll_azmiuth",
+    "coll_azimuth",
     "total_colls",
     "coll_rows",
     "colls_per_row",
@@ -398,6 +627,7 @@ field_allowed_arguments = [
     "non_shadeable_colls",
     "ground_fraction_covered",
     "row_spacing",
+    "clear_horizon",
     "row_mode",
     "release_vapor",
     "tolerance",
@@ -417,8 +647,8 @@ class SolarField:
     coll_tilt : float, optional
         Tilt angle of each collector with respect to the ground. If not provided, it will be set automatically by a `MeteoProfile` instance when the method `compute_poa_irradiance` gets called using the `SolarField` instance.
     
-    coll_azmiuth : float, optional
-        Azimuthal angle of the collectors with respect to the ground. If not provided, it will be set automatically by a `MeteoProfile` instance when the method `compute_poa_irradiance` gets called using the `SolarField` instance.
+    coll_azimuth : float, optional
+        Azimuthal angle of the collectors. If not provided, it will be set automatically by a `MeteoProfile` instance when the method `compute_poa_irradiance` gets called using the `SolarField` instance.
     
     total_colls : int, optional
         Number of collectors that make up the solar field. If not provided, it can be computed as `coll_rows*colls_per_row`.
@@ -500,7 +730,7 @@ class SolarField:
             
             collector: SolarCollector,
             coll_tilt: Optional[ float ] = None,
-            coll_azmiuth: Optional[ float ] = None,
+            coll_azimuth: Optional[ float ] = None,
             total_colls: Optional[ int ] = None,
             coll_rows: Optional[ int ] = None,
             colls_per_row: Optional[ int ] = None,
@@ -511,20 +741,27 @@ class SolarField:
             non_shadeable_colls: Optional[ int ] = None,
             ground_fraction_covered: Optional[ float ] = None,
             row_spacing: Optional[ float ] = None,
+            clear_horizon: Optional[ bool ] = None,
             release_vapor: Optional[ bool ] = None,
             tolerance: Optional[ float ] = None,
             max_iterations: Optional[ int ] = None, ):
         
         self._collector = self._validate_argument("collector", collector)
         self._coll_tilt = self._validate_argument("coll_tilt", coll_tilt)
-        self._coll_azmiuth = self._validate_argument("coll_azmiuth", coll_azmiuth)
+        self._coll_azimuth = self._validate_argument("coll_azimuth", coll_azimuth)
+        
+        if self._coll_tilt is not None and self._coll_azimuth is not None:
+            self._compute_rotation_matrix()
+        if self._coll_tilt is not None:
+            self._compute_diffuse_IAM()
+            self._compute_shadeable_rows_visible_sky_dome_fraction()
         
         if self._coll_tilt is None:
             self._tilt_mode = 'auto'
         else:
             self._tilt_mode = 'manual'
         
-        if self._coll_azmiuth is None:
+        if self._coll_azimuth is None:
             self._azimuth_mode = 'auto'
         else:
             self._azimuth_mode = 'manual'
@@ -584,15 +821,21 @@ class SolarField:
             self._tube_direction = 'VERTICAL'
             
         if non_shadeable_rows is not None and non_shadeable_colls is not None:
-            raise ValueError( "SolarField: Only one of the arguments 'non_shadeable_rows' and 'non_shadeable_colls' must be provided." )
+            raise ValueError( "SolarField: The arguments 'non_shadeable_rows' and 'non_shadeable_colls' cannot be provided together." )
         elif non_shadeable_rows is not None:
             self._non_shadeable_rows = self._validate_argument("non_shadeable_rows", non_shadeable_rows)
+            if self._non_shadeable_rows > self._coll_rows:
+                raise ValueError(f"SolarField: 'non_shadeable_rows' ({self._non_shadeable_rows}) cannot be larger than 'coll_rows' ({self._coll_rows}).")
         elif non_shadeable_colls is not None:
+            non_shadeable_colls = self._validate_argument("non_shadeable_colls", non_shadeable_colls)
             if not non_shadeable_colls%self._colls_per_row == 0:
                 raise ValueError(f"SolarField: 'non_shadeable_colls' must correspond to an entire number of rows (i.e. it must be a multiple of 'colls_per_row' which is { self._colls_per_row }).")
             self._non_shadeable_rows = non_shadeable_colls // self._colls_per_row
+            if self._non_shadeable_rows > self._coll_rows:
+                raise ValueError(f"SolarField: 'non_shadeable_rows' ({self._non_shadeable_rows}) cannot be larger than 'coll_rows' ({self._coll_rows}).")
         else:
-            self._non_shadeable_rows = max( [ int( self._coll_rows*0.2 ), 1 ] )
+            warnings.warn("SolarField: Self-shading will not be modeled because neither of the arguments 'non_shadeable_rows' and 'non_shadeable_colls' was provided.")
+            self._non_shadeable_rows = self._coll_rows
             
         self._shadeable_rows = self._coll_rows - self._non_shadeable_rows
             
@@ -607,9 +850,12 @@ class SolarField:
                       coll_disposition == 'HORIZONTAL' and self._collector.width is None,
                       coll_disposition == 'VERTICAL' and self._collector.length is None ] ):
                 
-                warnings.warn("SolarField: Not enough data was provided to determine parameters for self-shading modeling. Default values are assumed.")
-                self._ground_fraction_covered = 0.7
-            
+                if self._non_shadeable_rows == self._coll_rows:
+                    self._ground_fraction_covered = None
+                else:
+                    warnings.warn("SolarField: Not enough data was provided to determine parameters for self-shading modeling. As default, ground fraction covered is assumed to be 0.7.")
+                    self._ground_fraction_covered = 0.7
+        
             else:
                 
                 if coll_disposition == 'HORIZONTAL':
@@ -617,10 +863,21 @@ class SolarField:
                 else:
                     self._ground_fraction_covered = self._collector.length / row_spacing
                     
+        elif self._non_shadeable_rows == self._coll_rows:
+            self._ground_fraction_covered = None
+            
         else:
             self._ground_fraction_covered = 0.7
+        
+        if self._coll_tilt is not None and self._ground_fraction_covered is not None and self._ground_fraction_covered * np.cos( ( np.pi/180 )*self._coll_tilt ) >= 1:
+            raise ValueError("SolarField: Collector rows are overlapped. Ground factor covered must be reduced, or row spacing must be increased.")
             
         self._coll_disposition = self._validate_argument("coll_disposition", coll_disposition)
+        
+        if clear_horizon is not None:
+            self._clear_horizon = self._validate_argument("clear_horizon", clear_horizon)
+        else:
+            self._clear_horizon = True
             
         if release_vapor is not None:
             self._release_vapor = self._validate_argument("release_vapor", release_vapor)
@@ -636,11 +893,6 @@ class SolarField:
             self._max_iterations = self._validate_argument("max_iterations", max_iterations)
         else:
             self._max_iterations = 100
-        
-        self._coll_area = self._collector.area
-        self._coll_n0 = self._collector.n0
-        self._coll_a1 = self._collector.a1
-        self._coll_a2 = self._collector.a2
         
         if type( self._collector.IAM ) is list:
             self._coll_IAM = { [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ][i] : self._collector.IAM[i] for i in range( len( self._collector.IAM ) ) }
@@ -740,15 +992,464 @@ class SolarField:
     @property
     def row_width_to_coll_length_ratio(self):
         return 100
-        
+    
+    @property
+    def ready_to_simulate(self):
+        return all( [
+            
+            self._coll_tilt is not None,
+            self._coll_azimuth is not None,
+            hasattr( self, "_h_tolerance" ) or hasattr( self, "_temp_tolerance" ),
+            hasattr( self, "_flowrate_tolerance" ),
+            hasattr( self, "_inlet" ),
+            
+            ] )
+    
+    @coll_tilt.setter
+    def coll_tilt(self, value):
+        if value is None:
+            raise TypeError("SolarField: 'coll_tilt' must be a floating point number in the range: 0 <= coll_tilt <= 90.")
+        self._coll_tilt = self._validate_argument("coll_tilt", value)
+        self._compute_diffuse_IAM()
+        self._compute_shadeable_rows_visible_sky_dome_fraction()
+        if self._coll_azimuth is not None:
+            self._compute_rotation_matrix()
+    
+    @coll_azimuth.setter
+    def coll_azimuth(self, value):
+        if value is None:
+            raise TypeError("SolarField: 'coll_azimuth' must be a floating point number in the range: 0 <= coll_tilt < 360.")
+        self._coll_azimuth = self._validate_argument("coll_azimuth", value)
+    
     def set_auto_orientation( self, *, coll_tilt, coll_azimuth ):
+        if self._tilt_mode == 'auto':
+            if coll_tilt is None:
+                raise ValueError("SolarField.set_auto_orientation: 'coll_tilt' was expected to be defined.")
+            self._coll_tilt = self._validate_argument( "coll_tilt", coll_tilt )
+            if self._ground_fraction_covered is not None and self._ground_fraction_covered * np.cos( ( np.pi/180 )*self._coll_tilt ) >= 1:
+                raise ValueError("SolarField: Collector rows are overlapped. Ground factor covered must be reduced, or row spacing must be increased.")
+        if self._azimuth_mode == 'auto':
+            if coll_azimuth is None:
+                raise ValueError("SolarField.set_auto_orientation: 'coll_azimuth' was expected to be defined.")
+            self._coll_azimuth = self._validate_argument( "coll_azimuth", coll_azimuth )
+            
+        if self._tilt_mode == 'auto' or self._azimuth_mode == 'auto':
+            self._compute_rotation_matrix()
         
         if self._tilt_mode == 'auto':
-            self._coll_tilt = self._validate_argument( "coll_tilt", coll_tilt )
-        if self._azimuth_mode == 'auto':
-            self._coll_azimuth = self._validate_argument( "coll_azimuth", coll_azimuth )
+            self._compute_diffuse_IAM()
+            self._compute_shadeable_rows_visible_sky_dome_fraction()
+    
+    def _compute_rotation_matrix( self ):
         
+        if self._coll_tilt is None:
+            raise AttributeError("SolarField._compute_rotation_matrix: Rotation matrix cannot be computed because coll_tilt is not defined.")
+        if self._coll_azimuth is None:
+            raise AttributeError("SolarField._compute_rotation_matrix: Rotation matrix cannot be computed because coll_azimuth is not defined.")
+        
+        coll_tilt_rad = self._coll_tilt*np.pi/180
+        coll_azimuth_rad = self._coll_azimuth*np.pi/180
+            
+        self._rotation_matrix = np.linalg.inv(np.array([[  np.cos( coll_azimuth_rad )*np.cos( coll_tilt_rad ), -np.sin( coll_azimuth_rad ), np.cos( coll_azimuth_rad )*np.sin( coll_tilt_rad ) ],
+                                                        [  np.sin( coll_azimuth_rad )*np.cos( coll_tilt_rad ),  np.cos( coll_azimuth_rad ), np.sin( coll_azimuth_rad )*np.sin( coll_tilt_rad ) ],
+                                                        [ -np.sin( coll_tilt_rad ),                             0,                          np.cos( coll_tilt_rad )         ] ] ) )
+    
+    def compute_poa_irradiance( self, GHI, DNI, DHI, apparent_solar_zenith, solar_azimuth, ground_albedo = None, doy = None, dni_extra = None, diffuse_irradiance_model = None  ):
+        """
+        Compute the irradiance on the plane of the collectors and the IAM (Incidence Angle Modifier) correction factors.
+        
+        The method can compute the results for single values and for data arrays.
+        
+        For both 
+
+        Parameters
+        ----------
+        GHI : float or array-like
+            Global horizontal irradiance data (W/m2).
+        DNI : float or array-like
+            Direct normal irradiance data (W/m2).
+        DHI : float or array-like
+            Diffuse horizontal irradiance data (W/m2).
+        apparent_solar_zenith : float or array-like
+            Zenithal angle of the solar position (degree, °).
+        solar_azimuth : float or array-like
+            Azimuthal angle of the solar position (degree, °).
+        ground_albedo : float, optional
+            DESCRIPTION. The default is 0.2.
+        doy : int or array-like, optional
+            DESCRIPTION. The default is None.
+        dni_extra : TYPE, optional
+            DESCRIPTION. The default is 1366.1.
+        diffuse_irradiance_model : TYPE, optional
+            DESCRIPTION. The default is 'perez'.
+
+        Returns
+        -------
+        irradiance_first_row : float or np.array
+            Irradiance on the collector rows that are not subject to self-shading.
+        irradiance_shadeable_rows : float or np.array
+            Irradiance on the collector rows that are subject to self-shading.
+        IAM_first_row : float or np.array
+            IAM correction factor for the collector rows that are not subject to self-shading.
+        IAM_shadeable_rows : float or np.array
+            IAM correction factor for the collector rows that are subject to self-shading.
+
+        """
+        if not hasattr(self, "_coll_tilt"):
+            raise AttributeError("SolarField.compute_poa_irradiance: coll_tilt has not been defined yet.")
+            
+        if not hasattr(self, "_coll_azimuth"):
+            raise AttributeError("SolarField.compute_poa_irradiance: coll_azimuth has not been defined yet.")
+            
+        if ground_albedo is None:
+            ground_albedo = 0.2
+        
+        if dni_extra is None:
+            dni_extra = 1366.1
+            
+        if diffuse_irradiance_model is None:
+            diffuse_irradiance_model = 'perez'
+        
+        try:
+            GHI = _to_array( GHI )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'GHI' could not be interpreted as a number nor as an array.")
+            
+        try:
+            DNI = _to_array( DNI )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'DNI' could not be interpreted as a number nor as an array.")
+            
+        try:
+            DHI = _to_array( DHI )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'DHI' could not be interpreted as a number nor as an array.")
+            
+        try:
+            solar_zenith = _to_array( apparent_solar_zenith )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'apparent_solar_zenith' could not be interpreted as a number nor as an array.")
+            
+        try:
+            solar_azimuth = _to_array( solar_azimuth )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'solar_azimuth' could not be interpreted as a number nor as an array.")
+        
+        if type(diffuse_irradiance_model) is not str:
+            raise TypeError("SolarField.compute_poa_irradiance: 'diffuse_irradiance_model' must be a string.")
+        
+        diffuse_irradiance_model = diffuse_irradiance_model.upper()
+        
+        if not diffuse_irradiance_model in [ 'PEREZ', 'ISOTROPIC' ]:
+            raise TypeError("SolarField.compute_poa_irradiance: 'diffuse_irradiance_model' must be either 'perez' or 'isotropic'.")
+            
+        lengths = { len( x ) for x in [ GHI, DNI, DHI, solar_zenith, solar_azimuth ] if x is not None }
+        if len( lengths ) != 1:
+            raise ValueError("SolarCollector.compute_poa_irradiance: All arrays must have the same length.")
+            
+        array_length = lengths.pop()
+        
+        try:
+            ground_albedo = _to_array( ground_albedo )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_poa_irradiance: 'ground_albedo' could not be interpreted as a number nor as an array.")
+        
+        if len( ground_albedo ) == 1:
+            ground_albedo = np.full( array_length, ground_albedo[0] )
+        elif len( ground_albedo ) != array_length:
+                ValueError("SolarField.compute_poa_irradiance: 'ground_albedo' must be either a single number or an array with the same length as the other ones.")
+        
+        if doy is not None:
+            
+            try:
+                doy = _to_array( doy )
+            except NonConvertibleToArray:
+                TypeError("SolarField.compute_poa_irradiance: 'doy' could not be interpreted as a number nor as an array.")
+            
+            if len( doy ) != array_length:
+                    ValueError("SolarField.compute_poa_irradiance: 'doy' must have the same length as the irradiance and solar position data.")
+            
+            dni_extra = get_extra_radiation( doy )
+        
+        else:
+            
+            try:
+                dni_extra = _to_array( dni_extra )
+            except NonConvertibleToArray:
+                TypeError("SolarField.compute_poa_irradiance: 'dni_extra' could not be interpreted as a number nor as an array.")
+            
+            if len( dni_extra ) == 1:
+                dni_extra = np.full( array_length, dni_extra[0] )
+            elif len( dni_extra ) != array_length:
+                    ValueError("SolarField.compute_poa_irradiance: 'dni_extra' must be either a single number or an array with the same length as the other ones.")
+            
+        solar_zenith = ( np.pi/180 )*solar_zenith
+        solar_azimuth = ( np.pi/180 )*solar_azimuth
+        coll_tilt = ( np.pi/180 )*self._coll_tilt
+        coll_azimuth = ( np.pi/180 )*self._coll_azimuth
+        
+        if diffuse_irradiance_model == 'ISOTROPIC':
+            diff_isotropic = 0.5*( 1 + np.cos( coll_tilt ) )*np.maximum( DHI, 0 )
+            diff_circumsolar = np.zeros( array_length )
+            diff_horizon = np.zeros( array_length )
+        else:
+            relative_airmass = get_relative_airmass( solar_zenith, model = 'kastenyoung1989'  )
+            diff_irradiance = perez( ( 180/np.pi )*coll_tilt,
+                                     ( 180/np.pi )*coll_azimuth,
+                                      DHI,
+                                      DNI,
+                                      dni_extra,
+                                      ( 180/np.pi )*solar_zenith,
+                                      ( 180/np.pi )*solar_azimuth,
+                                      relative_airmass,
+                                      model = 'allsitescomposite1990',
+                                      return_components = True )
+            
+            try:
+                diff_isotropic = diff_irradiance[ 'isotropic' ]
+                diff_circumsolar = diff_irradiance['circumsolar']
+                diff_horizon = diff_irradiance[ 'horizon' ]
+            except KeyError:
+                diff_isotropic = diff_irradiance[ 'poa_isotropic' ]
+                diff_circumsolar = diff_irradiance['poa_circumsolar']
+                diff_horizon = diff_irradiance[ 'poa_horizon' ]
+            
+            if self._clear_horizon is False:
+                diff_horizon = np.zeros( array_length )
+        
+        aoi, longi, trans = self.compute_incidence_angles( ( 180/np.pi )*solar_zenith, ( 180/np.pi )*solar_azimuth )
+        
+        if self._tube_direction == 'HORIZONTAL':
+            iam_beam = self._collector.compute_IAM( aoi = aoi, longi = trans, trans = np.abs( longi ) )
+        else:
+            iam_beam = self._collector.compute_IAM( aoi = aoi, longi = np.abs( longi ), trans = trans )
+        
+        aoi, longi, trans = ( np.pi/180 )*aoi, ( np.pi/180 )*longi, ( np.pi/180 )*trans
+        
+        beam = np.maximum( DNI + diff_circumsolar , 0 ) * np.cos( aoi )
+        reflected = 0.5*( 1 - np.cos( coll_tilt ) )*ground_albedo*np.maximum( GHI, 0 )
+        
+        irradiance_first_row = beam + diff_isotropic + diff_horizon + reflected
+        numerator = beam*iam_beam + self._diffuse_IAM[ 'isotropic_first_row' ]*diff_isotropic + self._diffuse_IAM[ 'horizon' ]*diff_horizon + self._diffuse_IAM[ 'ground' ]*reflected
+        IAM_first_row = np.divide( numerator, irradiance_first_row, out = np.zeros_like(numerator, dtype=float), where = irradiance_first_row != 0 )
+        
+        if self._ground_fraction_covered is None:
+            
+            return irradiance_first_row, IAM_first_row, None, None
+        
+        diff_isotropic_shadeable_rows = self._visible_sky_dome_fraction_shadeable_rows*diff_isotropic / ( 0.5*( 1 + np.cos( coll_tilt ) ) )
+        
+        F1 = ( np.cos( coll_tilt ) + np.sin( coll_tilt )*np.tan( longi ) )/self._ground_fraction_covered
+        F2 = np.sin( coll_tilt ) * np.tan( trans )*( 1 - F1 )/( self.row_width_to_coll_length_ratio*self._ground_fraction_covered )
+        shading_factor =  F1 + F2
+        
+        shading_factor = np.maximum( np.minimum( shading_factor, 1 ) , 0 )
+        
+        beam_shadeable_rows = beam*shading_factor
+        
+        irradiance_shadeable_rows = beam_shadeable_rows + diff_isotropic_shadeable_rows
+        numerator = beam_shadeable_rows*iam_beam + self._diffuse_IAM[ 'isotropic_shadeable_rows' ]*diff_isotropic_shadeable_rows
+        IAM_shadeable_rows = np.divide( numerator, irradiance_shadeable_rows, out = np.zeros_like(numerator, dtype=float), where = irradiance_shadeable_rows != 0 )
+        
+        return irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows
+        
+    def _compute_shadeable_rows_visible_sky_dome_fraction( self ):
+        """
+        Private method that computes an attribute of the object called '_visible_sky_dome_fraction_shadeable_rows'.
+        
+        This attribute corresponds to the fraction of a complete, half-spherical sky dome that is actually visible from a collector that has another collector in front of it, blocking a part of the sky.
+        
+        Since the visible fraction of the sky dome varies across the tilted direction of the collector, the value returned by this function is an average value.
+        
+        Returns
+        -------
+        float
+            Visible sky dome fraction for a collector subject to self-shading.
+        
+        """
+        
+        if not hasattr(self, "_coll_tilt"):
+            raise AttributeError("SolarField._compute_shadeable_rows_visible_sky_dome_fraction: coll_tilt has not been defined yet.")
+        if not hasattr(self, "_ground_fraction_covered"):
+            raise AttributeError("SolarField._compute_shadeable_rows_visible_sky_dome_fraction: ground_fraction_covered is not defined.")
+            
+        if self._ground_fraction_covered is None:
+            self._visible_sky_dome_fraction_shadeable_rows = None
+            return
+            
+        coll_tilt = ( np.pi/180 )*self.coll_tilt
+            
+        def visible_sky_fraction( x ):
+            """
+            Local function that computes the portion of the sky dome that is visible from a certain position of the solar collector, considering that another row is covering part of the sky.
+            
+            x = 0 corresponds to the upper part of the collector.
+            
+            x = 1 corresponds to the lower part of the collector.
+            
+            Parameters
+            ----------
+            x : float
+                Number in the range 0 - 1 defining the position in the collector.
+
+            Returns
+            -------
+            float
+                Portion of the sky dome that is visible from the position of the collector defined by x.
+
+            """
+            delta = np.arctan( x*self._ground_fraction_covered*np.sin( coll_tilt )/( 1 - x*self._ground_fraction_covered*np.cos( coll_tilt ) ) )
+            rho = coll_tilt + delta
+            if rho >= np.pi/2:
+                return ( 1 - np.cos( np.pi - rho ) )/2
+            else:
+                return ( 1 + np.cos( rho ) )/2
+        
+        self._visible_sky_dome_fraction_shadeable_rows = float( quad( visible_sky_fraction, 0, 1 )[0] )
+        
+    def compute_incidence_angles( self, solar_zenith, solar_azimuth ):
+        """
+        Method to compute the angles of incidence of direct irradiance from the solar position.
+        
+        The orientation of the solar field (coll_tilt, coll_azimuth) must be already defined.
+        
+        The values returned by this method are:
+            
+            - aoi: Angle of indicence with respect to a vector normal to the collector's plane.
+            - longi: Longitudinal angle. It corresponds to the projection of aoi onto a plane that is normal to the collector's horizontal (i.e. non-tilted) sides.
+            - trans: Transversal angle. It corresponds to the projection of aoi onto a plane that is normal to the collector's tilted sides.
+        
+        A subtlety needs to be clarified: The names 'longi' and 'trans' may suggest a relationship to the angles that are used to compute the IAM correction factor for tubular collectors.
+        This is true, and it is the origin of the names that were given to these results.
+        **Nevertheless, the names of the results returned by this method only match the transversal and longitudinal angles relative to a tubular collector when the tubes are tilted in the same direction as the collector.**
+        When the tubes of the collector are horizontal, the values returned by this method must be swapped when used to call the method `SolarCollector.compute_IAM` factor.
+        This is done internally by this class if the parameter `tube_direction` is set to `"horizontal"`.
+        
+        Parameters
+        ----------
+        solar_zenith : float or array-like
+            Zenithal angle of the solar position (degree, °). Valid range: `0 <= solar_zenith <= 180`.
+        solar_azimuth : float or array-like
+            Azimuthal angle of the solar position (degree, °). Valid range: `0 <= solar_azimuth < 360`.
+        
+        Raises
+        ------
+        AttributeError
+            If the attributes coll_tilt and coll_azimuth have not been defined yet.
+        TypeError
+            If the arguments cannot be interpreted as numbers or as arrays.
+        ValueError
+            If the arguments are outside of the allowed ranges.
+        
+        Returns
+        -------
+        aoi : float or np.array
+            Angle of incidence (degree, °). See description of the method.
+        longi : float or np.array
+            Longitudinal angle of incidence (degree, °). See description of the method.
+        trans : floar or np.array
+            Transversal angle of incidence (degree, °). See description of the method.
+        
+        """
+        
+        if self._coll_tilt is None:
+            raise AttributeError("SolarField._compute_rotation_matrix: Rotation matrix cannot be computed because coll_tilt is not defined.")
+        if self._coll_azimuth is None:
+            raise AttributeError("SolarField._compute_rotation_matrix: Rotation matrix cannot be computed because coll_azimuth is not defined.")
+        
+        try:
+            solar_zenith = _to_array( solar_zenith )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_incidence_angles: 'solar_zenith' could not be interpreted as a number nor as an array.")
+            
+        try:
+            solar_azimuth = _to_array( solar_azimuth )
+        except NonConvertibleToArray:
+            TypeError("SolarField.compute_incidence_angles: 'solar_azimuth' could not be interpreted as a number nor as an array.")
+        
+        if len( solar_zenith ) != len( solar_azimuth ):
+            raise ValueError("SolarField.compute_incidence_angles: Both arguments must have the same length.")
+        
+        if np.max( solar_zenith ) > 180 or np.min( solar_zenith ) < 0:
+            raise ValueError("SolarField.compute_incidence_angles: 'solar_zenith' must be in the range 0 <= solar_zenith <= 180.")
+        
+        if np.max( solar_azimuth ) >= 360 or np.min( solar_azimuth ) < 0:
+            raise ValueError("SolarField.compute_incidence_angles: 'solar_azimuth' must be in the range 0 <= solar_zenith < 360.")
+        
+        solar_N = np.cos( ( np.pi/180 )*solar_azimuth ) * np.sin( ( np.pi/180 )*solar_zenith )
+        solar_E = np.sin( ( np.pi/180 )*solar_azimuth ) * np.sin( ( np.pi/180 )*solar_zenith )
+        solar_Z = np.cos( ( np.pi/180 )*solar_zenith )
+        
+        vectors = np.stack([solar_N, solar_E, solar_Z], axis = 1)[:, :, np.newaxis]
+        
+        coll_coordinates = np.matmul( self._rotation_matrix, vectors )
+        
+        coll_N, coll_E, coll_Z = coll_coordinates[:, :, 0].T
+        
+        valid = coll_Z > 0
+        north = coll_N > 0
+        
+        # Avoid division warnings where Z <= 0; those elements become NaN below.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            trans = np.arctan( np.abs( coll_E ) / coll_Z )
+            longi = np.arctan( np.abs( coll_N ) / coll_Z )
+            
+        coll_tilt_rad = ( np.pi/180 )*self._coll_tilt
+     
+        # Clip longi where it exceeds the limit and N > 0
+        limit = np.pi / 2 - coll_tilt_rad
+        longi = np.where( ( longi > limit ) & north, limit, longi )
+     
+        # Angle of incidence (computed after clipping, as in the original)
+        tg2_aoi = np.tan( trans ) ** 2 + np.tan( longi ) ** 2
+        aoi = np.arctan( np.sqrt( tg2_aoi ) )
+     
+        # Sign convention: negative longi when N > 0
+        longi = np.where( north, -longi, longi )
+     
+        # Invalid elements (Z <= 0) -> NaN
+        aoi = np.where( valid, aoi, np.nan )
+        longi = np.where( valid, longi, np.nan )
+        trans = np.where( valid, trans, np.nan )
+        
+        assert len( aoi ) == len( longi )
+        assert len( aoi ) == len( trans )
+        
+        aoi = ( 180/np.pi )*aoi
+        longi = ( 180/np.pi )*longi
+        trans = ( 180/np.pi )*trans
+        
+        if len( aoi ) == 1:
+            aoi = float( aoi[0] )
+            longi = float( longi[0] )
+            trans = float( trans[0] )
+        
+        return aoi, longi, trans
+    
     def _validate_argument(self, argument_name, value ):
+        """
+        Private method to confirm that a certain argument provided by the user matches the expected type and other restrictions such as range, in the case of numeric values.
+        
+        In some cases, this method modifies the argument so that it matches the expected format.
+        
+        Parameters
+        ----------
+        argument_name : str
+            Name to identify the argument.
+        value : any
+            Argument value.
+
+        Raises
+        ------
+        ValueError
+            Any discrepancy between the expected value and the value provided.
+
+        Returns
+        -------
+        value : any
+            Processed value. In most cases, the value returned is the same as the input.
+        
+        """
         
         if type(argument_name) is not str:
             raise TypeError("SolarField._validate_argument: Argument 'argument_name' must be a string.")
@@ -771,13 +1472,13 @@ class SolarField:
             if not ( value >= 0 and value <= 90 ):
                 raise ValueError("SolarField: Argument 'coll_tilt' must be in the range 0 <= coll_tilt <= 90.")
                 
-        if argument_name == 'coll_azmiuth':
+        if argument_name == 'coll_azimuth':
             try:
                 value = float( value )
             except:
-                raise TypeError("SolarField: Argument 'coll_azmiuth' must be converible to type 'float'.")
+                raise TypeError("SolarField: Argument 'coll_azimuth' must be converible to type 'float'.")
             if not ( value >= 0 and value < 360 ):
-                raise ValueError("SolarField: Argument 'coll_azmiuth' must be in the range 0 <= coll_azmiuth < 360.")
+                raise ValueError("SolarField: Argument 'coll_azimuth' must be in the range 0 <= coll_azimuth < 360.")
         
         if argument_name in [ 'total_colls',
                               'coll_rows',
@@ -828,6 +1529,12 @@ class SolarField:
             if not value in [ 'SERIES', 'PARALLEL' ]:
                 raise ValueError("SolarField: Argument 'row_mode' must be one of the strings: 'series', or 'parallel'.")
                 
+        if argument_name == 'clear_horizon':
+            try:
+                value = bool(value)
+            except:
+                raise TypeError("SolarField: Argument 'clear_horizon' must be convertible to a boolean value.")
+                
         if argument_name == 'release_vapor':
             try:
                 value = bool( value )
@@ -853,7 +1560,131 @@ class SolarField:
                 raise ValueError("SolarField: Argument 'max_iterations' must be in the range 3 <= max_iterations <= 300.")
         
         return value
-
+    
+    def _compute_diffuse_IAM( self ):
+        """
+        Private method that computes an attribute of the object called '_diffuse_IAM'.
+        
+        This attribute is a dictionary that stores the IAM correction value associated to each diffuse irradiance component.
+        
+        The dictionary has the following components:
+            
+            - 'isotropic_first_row': Correction factor for the collectors that are not subject to self-shading, associated to isotropic diffuse irradiance.
+            - 'isotropic_shadeable_rows': Correction factor for the collectors that are subject to self-shading, associated to isotropic diffuse irradiance. This component is only computed is the attribute 'ground_fraction_covered' has been provided at initialization, either directly or through the arguments 'row_spacing' and 'coll_disposition'.
+            - 'ground': Correction factor associated to ground-reflected irradiance. It only applies to the non-shadeable collectors.
+            - 'horizon': Correction factor associated to horizon diffuse irradiance. It only applies to the non-shadeable collectors.
+        
+        Raises
+        ------
+        Exception
+            When the attribute _coll_tilt has not been defined.
+        
+        Returns
+        -------
+        None
+        """
+        
+        if not hasattr( self, "_coll_tilt" ):
+            raise Exception("SolarField._compute_diffuse_IAM: coll_tilt has not been defined yet.")
+        
+        arrays_length = 30
+        trans_array = np.linspace( 0, 90, arrays_length )
+        longi_array = np.linspace( 0, 90, arrays_length )
+        
+        TRANS, LONGI = np.meshgrid(trans_array, longi_array, indexing="ij")
+        TRANS_flat = TRANS.ravel()
+        LONGI_flat = LONGI.ravel()
+        
+        IAM_array_flat = self._collector.compute_IAM( trans = TRANS_flat, longi = LONGI_flat )
+        
+        IAM_array = IAM_array_flat.reshape(TRANS.shape)
+        
+        trans_array = ( np.pi/180 )*trans_array
+        longi_array = ( np.pi/180 )*longi_array
+        
+        interpolator = RegularGridInterpolator(
+            
+            (trans_array, longi_array), IAM_array, method = "linear", bounds_error = False, fill_value = np.nan )
+        
+        def IAM_func(theta, phi):
+            
+            trans = np.arctan( np.tan( theta ) * np.sin( phi ) )
+            longi = np.arctan( np.tan( theta ) * np.cos( phi ) )
+            
+            if self._tube_direction == 'HORIZONTAL':
+                trans, longi = longi, trans
+                
+            return interpolator( [ trans, longi ] )[0]
+        
+        def function_to_integrate(theta, phi, mode):
+            if mode == 'numerator':
+                return IAM_func( theta, phi )*np.cos( theta )*np.sin( theta )
+            if mode == 'denominator':
+                return np.cos(theta)*np.sin(theta)
+            
+        coll_tilt_rad = ( np.pi / 180 ) * self._coll_tilt
+        
+        def integration_limit_first_row( phi ):
+            return np.arctan( np.tan( np.pi/2 - coll_tilt_rad )/np.cos( phi ) )
+        
+        
+        self._diffuse_IAM = {}
+        if self._coll_tilt == 0 or self._coll_tilt == 90:
+            numerator = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('numerator',) )
+            denominator = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('denominator',) )
+            self._diffuse_IAM[ 'isotropic_first_row' ] = numerator/denominator
+            self._diffuse_IAM[ 'ground' ] = (self._coll_tilt == 90)*numerator/denominator
+        else:
+            numerator_sky_1 = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('numerator',) )
+            denominator_sky_1 = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('denominator',) )
+            numerator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_first_row, args = ('numerator',) )
+            denominator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_first_row, args = ('denominator',) )
+            numerator_ground = _dblquad( function_to_integrate, 0, np.pi/2, integration_limit_first_row, np.pi/2, args = ('numerator',) )
+            denominator_ground = _dblquad( function_to_integrate, 0, np.pi/2, integration_limit_first_row, np.pi/2, args = ('denominator',) )
+            self._diffuse_IAM[ 'isotropic_first_row' ] = (numerator_sky_1 + numerator_sky_2)/(denominator_sky_1 + denominator_sky_2)
+            self._diffuse_IAM[ 'ground' ] = numerator_ground/denominator_ground
+            
+        if self._ground_fraction_covered is not None:
+            delta_rad = np.arctan( self._ground_fraction_covered*np.sin( coll_tilt_rad )/( 2 - self._ground_fraction_covered*np.cos( coll_tilt_rad ) ) )
+            if coll_tilt_rad + delta_rad >= np.pi/2:
+                def integration_limit_shadeable_rows( phi ):
+                    return np.arctan( np.tan( coll_tilt_rad + delta_rad - np.pi/2 )/np.cos( phi ) )
+                numerator_sky = _dblquad( function_to_integrate, 0, np.pi/2, integration_limit_shadeable_rows, np.pi/2, args = ('numerator',) )
+                denominator_sky = _dblquad( function_to_integrate, 0, np.pi/2, integration_limit_shadeable_rows, np.pi/2, args = ('denominator',) )
+                self._diffuse_IAM[ 'isotropic_shadeable_rows' ] = numerator_sky/denominator_sky
+            else:
+                def integration_limit_shadeable_rows( phi ):
+                    return np.arctan( np.tan( np.pi/2 - coll_tilt_rad - delta_rad )/np.cos( phi ) )
+                numerator_sky_1 = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('numerator',) )
+                denominator_sky_1 = _dblquad( function_to_integrate, 0, np.pi/2, 0, np.pi/2, args = ('denominator',) )
+                numerator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_shadeable_rows, args = ('numerator',) )
+                denominator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_shadeable_rows, args = ('denominator',) )
+                self._diffuse_IAM[ 'isotropic_shadeable_rows' ] = (numerator_sky_1 + numerator_sky_2)/(denominator_sky_1 + denominator_sky_2)
+            
+            
+        if self._coll_tilt == 90:
+            def function_to_integrate(theta, mode):
+                phi = np.pi/2
+                if mode == 'numerator':
+                    return IAM_func(theta, phi)*np.cos(theta)*np.sin(theta)
+                if mode == 'denominator':
+                    return np.cos(theta)*np.sin(theta)
+            numerator = quad( function_to_integrate, 0, np.pi/2, args = ('numerator',), epsabs = 1e-3, limit = 200, epsrel = 1e-3 )[0]
+            denominator = quad( function_to_integrate, 0, np.pi/2, args = ('denominator',), epsabs = 1e-3, limit = 200, epsrel = 1e-3 )[0]
+            self._diffuse_IAM[ 'horizon' ] = numerator/denominator
+        elif self._coll_tilt == 0:
+            self._diffuse_IAM[ 'horizon' ] = 0
+        else:
+            def function_to_integrate(phi, mode):
+                theta = np.arctan( np.tan( np.pi/2 - coll_tilt_rad )/np.cos( phi ) )
+                if mode == 'numerator':
+                    return IAM_func(theta, phi)*np.cos(theta)*np.sin(theta)
+                if mode == 'denominator':
+                    return np.cos(theta)*np.sin(theta)
+            numerator = quad( function_to_integrate, 0, np.pi/2, args = ('numerator',), epsabs = 1e-3, limit = 200, epsrel = 1e-3 )[0]
+            denominator = quad( function_to_integrate, 0, np.pi/2, args = ('denominator',), epsabs = 1e-3, limit = 200, epsrel = 1e-3 )[0]
+            self._diffuse_IAM[ 'horizon' ] = numerator/denominator
+            
     def _compute_row( self, flowrate_in, state_in, T_mains, irradiance, IAM_factor, Tamb, flowrate_correction_factor ):
         """
         Function that computes the power of a collector row and returns the state of the fluid leaving it.
@@ -953,9 +1784,24 @@ class SolarField:
             return fluid_state, 0, 0, 0, True
         
     def set_connections( self, *, inlet ):
+        """
+        Method to specify the device to which the solar field's flow inlet is connected.
+        
+        The single argument of this method has to be an instance of `sercpy.devices.Outlet`, which is expected to belong to another device of the thermal system.
+        
+        Parameters
+        ----------
+        inlet : sercpy.devices.Outlet
+            Outlet from which the flowrate that enters the solar field comes.
+        
+        Returns
+        -------
+        None.
+
+        """
         
         if not isinstance( inlet, Outlet ):
-            raise ValueError("SolarField.set_inputs: 'outlet' must be an instance of sercpy.devices.outlet.")
+            raise ValueError("SolarField.set_inputs: 'outlet' must be an instance of sercpy.devices.Outlet.")
         
         self._inlet = inlet
     
@@ -964,7 +1810,45 @@ class SolarField:
                                   temp_tolerance: Optional[ float ] = None,
                                   h_tolerance: Optional[ float ] = None,
                                   temp_normalization_range: Optional[ float ] = None,
-                                  h_normalization_range: Optional[ float ] = None, ):
+                                  h_normalization_range: Optional[ float ] = None ):
+        """
+        Method for the user to establish the convergence criteria of the SolarField instance.
+        
+        When used in the context of a simulation, a `SolarField` instance determines that convergence has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
+        The aforementioned "margin" or "tolerance" is set by this method.
+        When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
+        
+        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
+        
+        For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
+        Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
+        
+        There are two ways of setting the tolerances for temperature and specific enthalpy:
+            
+            - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
+            - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
+        
+        Parameters
+        ----------
+        
+        Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion for more details.
+        
+        relative_tolerance : float
+            Maximum relative difference allowed for all input types except temperature and specific enthalpy.
+        temp_tolerance : float, optional
+            Absolute temperature difference allowed (°C). The default is None.
+        h_tolerance : float, optional
+            Absolute enthalpy difference allowed (J/kg). The default is None.
+        temp_normalization_range : float, optional
+            Normalization range for temperature. See the description above for more details. The default is None.
+        h_normalization_range : float, optional
+            Normalization range for specific enthalpy. See the description above for more details. The default is None.
+        
+        Returns
+        -------
+        None.
+
+        """
         
         try:
             relative_tolerance = float( relative_tolerance )
@@ -984,71 +1868,110 @@ class SolarField:
             
             raise ValueError("SolarField.set_convergence_criteria: One and only one of the optional arguments must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
         
-        
+        if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
+            raise ValueError("SolarField.set_convergence_criteria: At least one of the following arguments must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
+        elif temp_tolerance is not None and temp_normalization_range is not None:
+            raise ValueError("SolarField.set_convergence_criteria: Arguments 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
+        elif h_tolerance is not None and h_normalization_range is not None:
+            raise ValueError("SolarField.set_convergence_criteria: Arguments 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
+            
         if temp_tolerance is not None:
             try:
                 temp_tolerance = float( temp_tolerance )
             except:
                 raise TypeError("SolarField.set_convergence_criteria: 'temp_tolerance' must be convertible to type 'float'.")
             self._temp_tolerance = temp_tolerance
-            self._h_tolerance = None
+            
         elif temp_normalization_range is not None:
             try:
                 temp_normalization_range = float( temp_normalization_range )
             except:
                 raise TypeError("SolarField.set_convergence_criteria: 'temp_normalization_range' must be convertible to type 'float'.")
             self._temp_tolerance = relative_tolerance*temp_normalization_range
-            self._h_tolerance = None
-        elif h_tolerance is not None:
+        
+        else:
+            self._temp_tolerance = None
+        
+        
+        if h_tolerance is not None:
             try:
                 h_tolerance = float( h_tolerance )
             except:
                 raise TypeError("SolarField.set_convergence_criteria: 'h_tolerance' must be convertible to type 'float'.")
             self._h_tolerance = h_tolerance
-            self._temp_tolerance = None
         elif h_normalization_range is not None:
             try:
                 h_normalization_range = float( h_normalization_range )
             except:
                 raise TypeError("SolarField.set_convergence_criteria: 'h_normalization_range' must be convertible to type 'float'.")
             self._h_tolerance = relative_tolerance*h_normalization_range
-            self._temp_tolerance = None
+        
         else:
-            raise Exception("SolarField.set_convergence_criteria: Unexpected error.")
+            self._h_tolerance = None
             
     def _set_last_inputs( self, flowrate, state_in ):
+        """
+        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether convergence is achieved.
+
+        Parameters
+        ----------
+        flowrate : float
+            Flowrate received by the solar field (kg/s).
+        state_in : sercpy.fluids.FluidState
+            State of the fluid received by the solar field.
+
+        Returns
+        -------
+        None.
+
+        """
         
         self._flowrate_last = flowrate
         self._state_in_last = state_in
         
     def _compute_convergence(self, flowrate, state_in ):
-        
+        """
+        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
+
+        Parameters
+        ----------
+        flowrate : float
+            Flowrate received by the solar field (kg/s).
+        state_in : sercpy.fluids.FluidState
+            State of the fluid received by the solar field.
+
+        Returns
+        -------
+        None.
+
+        """
         convergence = True
         if flowrate == 0 or self._flowrate_last == 0:
             convergence = convergence and flowrate == self._flowrate_last
         elif flowrate != self._flowrate_last:
-            convergence = convergence and abs( flowrate - self._flowrate_last ) / min( [ flowrate  , self._flowrate_last ] ) < self._relative_tolerance
+            convergence = convergence and abs( flowrate - self._flowrate_last ) / min( [ flowrate  , self._flowrate_last ] ) <= self._relative_tolerance
         
         if self._h_tolerance is not None:
-            convergence = convergence and abs( state_in.h - self._state_in_last.h ) < self._h_tolerance
-        elif self._temp_tolerance is not None:
-            convergence = convergence and abs( state_in.T - self._state_in_last.T ) < self._temp_tolerance
-        else:
-            raise Exception("SolarField._compute_convergence: Unexpected error.")
+            convergence = convergence and abs( state_in.h - self._state_in_last.h ) <= self._h_tolerance
         
-        return convergence
+        if self._temp_tolerance is not None:
+            convergence = convergence and abs( state_in.T - self._state_in_last.T ) <= self._temp_tolerance
+            
+        self._convergence = convergence
 
-    def compute_outputs( self, operating_conditions, iteration_number ):
+    def compute_outputs( self, operating_conditions, iteration_number , *, 
+                         GHI = None, DNI = None, DHI = None,
+                         solar_apparent_zenith = None, solar_azimuth = None, ):
         """
         Method to compute the outputs of the solar field.
-
+        
         Parameters
         ----------
         operating_conditions : dict
             Dictionary returned by an instance of `sercpy.operating_conditions.OperatingConditions` when its method `get_conditions` is called.
         iteration_number : int
             Number of the iteration
-
+        
         Returns
         -------
         None
@@ -1060,8 +1983,8 @@ class SolarField:
             raise TypeError("SolarField.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
         
         try:
-            flowrate = self.inlet.flowrate
-            state_in = self.inlet.state
+            flowrate = self._inlet.flowrate
+            state_in = self._inlet.state
         except AttributeError:
             return
         
@@ -1069,7 +1992,7 @@ class SolarField:
             self._set_last_inputs(flowrate, state_in)
             self._convergence = False
         else:
-            self._convergence = self._compute_convergence(flowrate, state_in)
+            self._compute_convergence(flowrate, state_in)
             if self._convergence:
                 return
             else:
@@ -1100,7 +2023,7 @@ class SolarField:
         except:
             raise KeyError("Ambient temperature and mains water temperature could not be extracted from 'operating_conditions'.")
         
-        flowrate_each_row = flowrate/self._coll_rows
+        flowrate_each_row = flowrate / self._coll_rows
         fluid = state_in.fluid
         
         if self._row_mode == 'PARALLEL':
@@ -1108,11 +2031,11 @@ class SolarField:
         else:
             flowrate_each_collector = flowrate_each_row
             
-        flowrate_correction_factor = self._collector.compute_flowrate_correction_factor( flowrate_each_collector )
+        flowrate_correction_factor = self._collector.compute_flowrate_correction_factor( fluid, flowrate_each_collector )
         
         # Suffix "NS" for NON-shadeable rows
         if irradiance_first_row > 0:
-            state_out_NS, Q_waste_NS, vap_flow_NS, iterations_NS, convergence_NS = self._compute_row(flowrate_each_row, state_in, Tmains, irradiance_first_row, IAM_first_row, Tamb, flowrate_correction_factor)
+            state_out_NS, Q_waste_NS, vap_flow_NS, iterations_NS, convergence_NS = self._compute_row( flowrate_each_row, state_in, Tmains, irradiance_first_row, IAM_first_row, Tamb, flowrate_correction_factor )
         else:
             state_out_NS = state_in.h
             Q_waste_NS = 0
@@ -1130,7 +2053,7 @@ class SolarField:
             iterations_Sh = 1
             convergence_Sh = True
             
-        h_out = min([ ( state_out_NS.h*self._non_shadeable_rows + state_out_Sh.h*self._shadeable_rows ) / self.coll_rows , fluid.h_sat_liq ])
+        h_out = min([ ( state_out_NS.h*self._non_shadeable_rows + state_out_Sh.h*self._shadeable_rows ) / self._coll_rows , fluid.h_sat_liq ])
         state_out = fluid.state( h = h_out )
         
         Q_useful = max ( [ flowrate*( h_out - state_in.h ) , 0 ] )
@@ -1140,7 +2063,7 @@ class SolarField:
         if irradiance_first_row <= 0:
             efficiency = None
         else:
-            efficiency = Q_useful/( irradiance_first_row*self.coll_area*self.coll_rows*self.colls_per_row )
+            efficiency = Q_useful/( irradiance_first_row*self._collector.area*self._coll_rows*self._colls_per_row )
         
         total_iterations = iterations_NS + iterations_Sh
         vapor_release_convergence = convergence_NS and convergence_Sh
@@ -1199,3 +2122,4 @@ def example_solar_field(
         row_width_to_coll_length_ratio = row_width_to_coll_length_ratio,
         
         )
+    

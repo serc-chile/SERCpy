@@ -42,6 +42,9 @@ class OperatingConditions:
     
     time_step_min : int
         Alias for `time_step`.
+        
+    time_steps_per_year : int
+        Number of time steps per year. E.g. with a 6-minute time step, this value would be `87600`.
     
     time_steps_per_day : int
         Number of time steps per day. E.g. with a 6-minute time step, this value would be `240`.

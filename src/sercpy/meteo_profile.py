@@ -23,9 +23,9 @@ from scipy.interpolate import interp1d
 from .config import get_api_key
 from .units import convert_units
 from timezonefinder import timezone_at
-from .solar import SolarField
 import warnings
 from zoneinfo import ZoneInfo
+from .solar import SolarField
 
 class TMYError(Exception):
     pass
@@ -1169,11 +1169,6 @@ class MeteoProfile:
             except:
                 raise ValueError( "MeteoProfile: Argument 'elevation' must be convertible type 'float'." )
                 
-        if argument_name == "solar_field":
-            
-            if not isinstance( value, SolarField ):
-                raise ValueError( "MeteoProfile: Argument 'solar_field' must be a SolarField instance." )
-                
         if argument_name in [
                 
                 "tz",
@@ -1190,6 +1185,11 @@ class MeteoProfile:
                     value = str( value )
                 except:
                     raise ValueError( f"MeteoProfile: Argument '{argument_name}' must be either str (time zone name) or int/float (utc offset)." )
+                    
+        if argument_name == "solar_field":
+            
+            if not isinstance( value, SolarField ):
+                raise ValueError( "MeteoProfile: Argument 'solar_field' must be an instance of sercpy.solar.SolarField." )
         
         return value
     
@@ -1555,20 +1555,20 @@ class MeteoProfile:
             - Plane-of-array irradiance
             - Incidence angle modifier (IAM) factors
             - Self-shading effects
-            
+        
         This is not a static method and should be called for an already-defined MeteoProfile instance.
         
         The results obtained by this method can then be retrieved with `MeteoProfile.get_conditions`.
-
+        
         Parameters
         ----------
         solar_field : sercpy.solar.SolarField instance
             Solar field for which the aforementioned results are computed.
-
+        
         Returns
         -------
         None
-
+        
         """
         
         self._solar_field = self._validate_argument("solar_field", solar_field)
@@ -1581,373 +1581,23 @@ class MeteoProfile:
         
         self._solar_field.set_auto_orientation( coll_tilt = coll_tilt_auto, coll_azimuth = coll_azimuth_auto )
         
-        coll_tilt_deg = solar_field.coll_tilt
-        coll_azimuth_deg = solar_field.coll_azimuth
-        coll_IAM = solar_field.coll_IAM
-        ground_fraction_covered = solar_field.ground_fraction_covered
-        row_width_to_coll_length_ratio = solar_field.row_width_to_coll_length_ratio
-        
-        coll_tilt_rad = coll_tilt_deg*pi/180
-        coll_azimuth_rad = coll_azimuth_deg*pi/180
-        
-        ground_albedo = self._ground_albedo
-        
-        if not ( ground_fraction_covered*cos( coll_tilt_rad ) < 1 ):
-            raise ValueError("MeteoProfile.compute_poa_irradiance: Collector rows are overlapped. Ground factor covered must be reduced, or row spacing must be increased.")
-        
-        def dblquad(func, a, b, gfun, hfun, args=()):
-            def temp_ranges(*args):
-                return [gfun(args[0]) if callable(gfun) else gfun,
-                        hfun(args[0]) if callable(hfun) else hfun]
-            return nquad(func, [temp_ranges, [a, b]], args=args,
-                          opts={"epsabs": 1e-3, "limit": 200, "epsrel": 1e-3})[0]
-        
-        def diffuse_iam(IAM, coll_tilt, ground_fraction_covered):
-            assert type(IAM) in [ dict, int, float ]
-            if type(IAM) == dict:
-                if 'b0' in IAM:
-                    IAM_dict = IAM
-                    def IAM_func(theta, phi):
-                        aoi = theta
-                        if aoi <= 85*pi/180:
-                            result = 1 - sum([ IAM_dict['b' + str(i)]*(1/cos(aoi) - 1)**(i + 1) for i in range(len(IAM_dict)) ])
-                            return  max([result, 0]) 
-                        else:
-                            return 0
-                elif 'Kl' in IAM:
-                    IAM['Kt'][0] = 1
-                    IAM['Kt'][90] = 0
-                    IAM['Kl'][0] = 1
-                    IAM['Kl'][90] = 0
-                    angles_Kt = sorted([ angle for angle in IAM['Kt'] ])
-                    IAMs_Kt = [ IAM['Kt'][angle] for angle in angles_Kt ]
-                    angles_Kl = sorted([ angle for angle in IAM['Kl']  ])
-                    IAMs_Kl = [ IAM['Kl'][angle] for angle in angles_Kl ]
-                    angles_Kt = [ angle*pi/180 for angle in angles_Kt ]
-                    angles_Kl = [ angle*pi/180 for angle in angles_Kl ]
-                    Kt_interp = interp1d(angles_Kt, IAMs_Kt)
-                    Kl_interp = interp1d(angles_Kl, IAMs_Kl)
-                    def IAM_func(theta, phi):
-                        transverse_angle = arctan(tan(theta)*sin(phi))
-                        longitudinal_angle = arctan(tan(theta)*cos(phi))
-                        if solar_field.tube_direction == 'HORIZONTAL':
-                            transverse_angle, longitudinal_angle = longitudinal_angle, transverse_angle
-                        return Kt_interp(transverse_angle)*Kl_interp(longitudinal_angle)
-                else:
-                    IAM[0] = 1
-                    IAM[90] = 0
-                    angles = sorted([ angle for angle in IAM ])
-                    IAMs = [ IAM[angle] for angle in angles ]
-                    angles = [ angle*pi/180 for angle in angles ]
-                    IAM_interp = interp1d(angles, IAMs)
-                    def IAM_func(theta, phi):
-                        return IAM_interp(theta)
-            if type(IAM) is float or type(IAM) is int:
-                b0 = IAM
-                def IAM_func(theta, phi):
-                    if theta <= 85*pi/180:
-                        result = 1 - b0*(1/cos(theta) - 1)
-                        return max([result, 0])
-                    else:
-                        return 0
-            def function_to_integrate(theta, phi, mode):
-                if mode == 'numerator':
-                    return IAM_func(theta, phi)*cos(theta)*sin(theta)
-                if mode == 'denominator':
-                    return cos(theta)*sin(theta)
-            assert coll_tilt >= 0 and coll_tilt <= 90
-            coll_tilt_rad = coll_tilt*pi/180
-            def integration_limit_first_row( phi ):
-                return arctan( tan( pi/2 - coll_tilt_rad )/cos( phi ) )
-            Results_Dict = {}
-            if coll_tilt == 0 or coll_tilt == 90:
-                numerator = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('numerator',) )
-                denominator = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('denominator',) )
-                Results_Dict[ 'isotropic_first_row' ] = numerator/denominator
-                Results_Dict[ 'ground' ] = (coll_tilt == 90)*numerator/denominator
-            else:
-                numerator_sky_1 = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('numerator',) )
-                denominator_sky_1 = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('denominator',) )
-                numerator_sky_2 = dblquad( function_to_integrate, 0, pi/2, 0, integration_limit_first_row, args = ('numerator',) )
-                denominator_sky_2 = dblquad( function_to_integrate, 0, pi/2, 0, integration_limit_first_row, args = ('denominator',) )
-                numerator_ground = dblquad( function_to_integrate, 0, pi/2, integration_limit_first_row, pi/2, args = ('numerator',) )
-                denominator_ground = dblquad( function_to_integrate, 0, pi/2, integration_limit_first_row, pi/2, args = ('denominator',) )
-                Results_Dict[ 'isotropic_first_row' ] = (numerator_sky_1 + numerator_sky_2)/(denominator_sky_1 + denominator_sky_2)
-                Results_Dict[ 'ground' ] = numerator_ground/denominator_ground
-            delta_rad = arctan( ground_fraction_covered*sin( coll_tilt_rad )/( 2 - ground_fraction_covered*cos( coll_tilt_rad ) ) )
-            if coll_tilt_rad + delta_rad >= pi/2:
-                def integration_limit_shadeable_rows( phi ):
-                    return arctan( tan( coll_tilt_rad + delta_rad - pi/2 )/cos( phi ) )
-                numerator_sky = dblquad( function_to_integrate, 0, pi/2, integration_limit_shadeable_rows, pi/2, args = ('numerator',) )
-                denominator_sky = dblquad( function_to_integrate, 0, pi/2, integration_limit_shadeable_rows, pi/2, args = ('denominator',) )
-                Results_Dict[ 'isotropic_shadeable_rows' ] = numerator_sky/denominator_sky
-            else:
-                def integration_limit_shadeable_rows( phi ):
-                    return arctan( tan( pi/2 - coll_tilt_rad - delta_rad )/cos( phi ) )
-                numerator_sky_1 = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('numerator',) )
-                denominator_sky_1 = dblquad( function_to_integrate, 0, pi/2, 0, pi/2, args = ('denominator',) )
-                numerator_sky_2 = dblquad( function_to_integrate, 0, pi/2, 0, integration_limit_shadeable_rows, args = ('numerator',) )
-                denominator_sky_2 = dblquad( function_to_integrate, 0, pi/2, 0, integration_limit_shadeable_rows, args = ('denominator',) )
-                Results_Dict[ 'isotropic_shadeable_rows' ] = (numerator_sky_1 + numerator_sky_2)/(denominator_sky_1 + denominator_sky_2)
-            if coll_tilt == 90:
-                def function_to_integrate(theta, mode):
-                    phi = pi/2
-                    if mode == 'numerator':
-                        return IAM_func(theta, phi)*cos(theta)*sin(theta)
-                    if mode == 'denominator':
-                        return cos(theta)*sin(theta)
-                numerator = quad( function_to_integrate, 0, pi/2, args = ('numerator',) )[0]
-                denominator = quad( function_to_integrate, 0, pi/2, args = ('denominator',) )[0]
-                Results_Dict[ 'horizon' ] = numerator/denominator
-            elif coll_tilt == 0:
-                Results_Dict[ 'horizon' ] = 0
-            else:
-                def function_to_integrate(phi, mode):
-                    theta = arctan( tan( pi/2 - coll_tilt_rad )/cos( phi ) )
-                    if mode == 'numerator':
-                        return IAM_func(theta, phi)*cos(theta)*sin(theta)
-                    if mode == 'denominator':
-                        return cos(theta)*sin(theta)
-                numerator = quad( function_to_integrate, 0, pi/2, args = ('numerator',) )[0]
-                denominator = quad( function_to_integrate, 0, pi/2, args = ('denominator',) )[0]
-                Results_Dict[ 'horizon' ] = numerator/denominator
-            return Results_Dict
-        
-        rotation_matrix = np.linalg.inv(np.array([[  cos( coll_azimuth_rad )*cos( coll_tilt_rad ), -sin( coll_azimuth_rad ), cos( coll_azimuth_rad )*sin( coll_tilt_rad ) ],
-                                                  [  sin( coll_azimuth_rad )*cos( coll_tilt_rad ),  cos( coll_azimuth_rad ), sin( coll_azimuth_rad )*sin( coll_tilt_rad ) ],
-                                                  [ -sin( coll_tilt_rad ),                          0,                       cos( coll_tilt_rad )         ] ] ) )
-        
-        def incidence_angles(solar_zenith_series, solar_azimuth_series):
-            
-            solar_N = cos( (pi/180)*solar_azimuth_series )*sin( (pi/180)*solar_zenith_series )
-            
-            solar_E = sin( (pi/180)*solar_azimuth_series )*sin( (pi/180)*solar_zenith_series )
-            
-            solar_Z = cos( (pi/180)*solar_zenith_series )
-            
-            vectors = np.stack([solar_N, solar_E, solar_Z], axis = 1)[:, :, np.newaxis]
-            
-            coll_coordinates = np.matmul(rotation_matrix, vectors)
-            
-            aoi_array = []
-            longi_array = []
-            trans_array = []
-            
-            for vector in coll_coordinates:
-                coll_N = vector[0][0]
-                coll_E = vector[1][0]
-                coll_Z = vector[2][0]
-                if coll_Z <= 0:
-                    aoi_array.append( np.nan )
-                    longi_array.append( np.nan )
-                    trans_array.append( np.nan )
-                    continue
-                trans = arctan(abs(coll_E)/coll_Z)
-                longi = arctan(abs(coll_N)/coll_Z)
-                tg2_aoi = (tan(trans))**2 + (tan(longi))**2
-                aoi = arctan(tg2_aoi**(1/2))
-                if longi > pi/2 - coll_tilt_rad and coll_N > 0:
-                    longi = pi/2 - coll_tilt_rad
-                    tg2_aoi = (tan(trans))**2 + (tan(longi))**2
-                    aoi = arctan(tg2_aoi**(1/2))
-                if coll_N > 0:
-                    longi = -longi
-                aoi_array.append( aoi )
-                longi_array.append( longi )
-                trans_array.append( trans )
-            return np.array( aoi_array ), np.array( longi_array ), np.array( trans_array )
-        
-        if type(coll_IAM) == dict:
-            assert 'b0' in coll_IAM or 'Kl' in coll_IAM or all([ (type(key) == int or type(key) == float) for key in coll_IAM])
-            if 'b0' in coll_IAM:
-                assert all(['b' + str(i) in coll_IAM for i in range(len(coll_IAM)) ])
-                coll_type = 'monoaxial_b'
-                IAM_dict = coll_IAM
-            elif 'Kl' in coll_IAM:
-                assert 'Kt' in coll_IAM and len(coll_IAM) == 2
-                coll_type = 'biaxial'
-                coll_IAM['Kt'][0] = 1
-                coll_IAM['Kt'][90] = 0
-                coll_IAM['Kl'][0] = 1
-                coll_IAM['Kl'][90] = 0
-                angles_Kt = sorted([ angle for angle in coll_IAM['Kt'] ])
-                IAMs_Kt = [ coll_IAM['Kt'][angle] for angle in angles_Kt ]
-                angles_Kl = sorted([ angle for angle in coll_IAM['Kl']  ])
-                IAMs_Kl = [ coll_IAM['Kl'][angle] for angle in angles_Kl ]
-                assert all([ angles_Kt[i]>= 0 and angles_Kt[i]<= 90 for i in range(len(angles_Kt)) ])
-                assert all([ angles_Kl[i]>= 0 and angles_Kl[i]<= 90 for i in range(len(angles_Kl)) ])
-                angles_Kt = [ angle*pi/180 for angle in angles_Kt ]
-                angles_Kl = [ angle*pi/180 for angle in angles_Kl ]
-                Kt_func = interp1d(angles_Kt, IAMs_Kt)
-                Kl_func = interp1d(angles_Kl, IAMs_Kl)
-            else:
-                assert all( [ key >= 0 and key <= 90 for key in coll_IAM ] )
-                coll_type = 'monoaxial_angle_list'
-                coll_IAM[0] = 1
-                coll_IAM[90] = 0
-                angles = sorted([ angle for angle in coll_IAM ])
-                IAMs = [ coll_IAM[angle] for angle in angles ]
-                angles = [ angle*pi/180 for angle in angles ]
-                IAM_func = interp1d(angles, IAMs)
-        elif type(coll_IAM) == float or type(coll_IAM) == int:
-            coll_type = 'monoaxial_b'
-            IAM_dict = {'b0': coll_IAM}
-        else:
-            assert coll_IAM is None
-            coll_type = 'no_IAM'
-        if coll_type == 'no_IAM':
-            isotropic_iam_first_row = 1
-            isotropic_iam_shadeable_rows = 1
-            horizon_iam = 1
-            ground_iam = 1
-        else:
-            diff_IAM = diffuse_iam(coll_IAM, coll_tilt_deg, ground_fraction_covered)
-            isotropic_iam_first_row = diff_IAM['isotropic_first_row']
-            isotropic_iam_shadeable_rows = diff_IAM['isotropic_shadeable_rows']
-            horizon_iam = diff_IAM['horizon']
-            ground_iam = diff_IAM['ground']
-        
-        def compute_beam_IAM(aoi, longi, trans):
-            if coll_type == 'no_IAM':
-                return 1
-            if coll_type == 'monoaxial_b':
-                if aoi <= 85*pi/180:
-                    result = 1 - sum([ IAM_dict[ 'b' + str( i ) ]*( 1 / cos( aoi ) - 1)**( i + 1 ) for i in range(len(IAM_dict)) ])
-                    return max([result, 0])
-                else:
-                    return 0
-            if coll_type == 'monoaxial_angle_list':
-                return IAM_func(aoi)
-            if coll_type == 'biaxial':
-                if solar_field.tube_direction == 'HORIZONTAL':
-                    trans, longi = longi, trans
-                return Kt_func(trans)*Kl_func(longi)
-            
-        def visible_sky_fraction( x ):
-            delta = arctan( x*ground_fraction_covered*sin( coll_tilt_rad )/( 1 - x*ground_fraction_covered*cos( coll_tilt_rad ) ) )
-            rho = coll_tilt_rad + delta
-            if rho >= pi/2:
-                return ( 1 - cos( pi - rho ) )/2
-            else:
-                return ( 1 + cos( rho ) )/2
-        
-        diffuse_irradiance_fraction_non_shadeable_rows = 0.5*(1 + cos(coll_tilt_rad))
-        diffuse_irradiance_fraction_shadeable_rows = quad( visible_sky_fraction, 0, 1 )[0]
-        reflected_irradiance_fraction = 0.5*( 1 - cos(coll_tilt_rad) )
-        
-        First_Row_Irradiance_Profile = []
-        Shadeable_Rows_Irradiance_Profile = []
-        First_Row_IAM_Profile = []
-        Shadeable_Rows_IAM_Profile = []
-        
-        
         date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ] )
-        GHI_array = np.max( [ self._df_tmy[ 'GHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
-        DNI_array = np.max( [ self._df_tmy[ 'DNI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
-        DHI_array = np.max( [ self._df_tmy[ 'DHI' ].values, [ 0 ]*len( self._df_tmy ) ], axis = 0 )
+        dni_extra = get_extra_radiation( date_times )
         
-        zenith_array = self._df_tmy[ 'apparent_zenith' ].values
-        azimuth_array = self._df_tmy[ 'azimuth' ].values
+        irradiance_first_row, irradiance_shadeable_rows, IAM_first_row, IAM_shadeable_rows = self.solar_field.compute_poa_irradiance(
+            
+            GHI = self._df_tmy[ 'GHI' ].values,
+            DNI = self._df_tmy[ 'DNI' ].values,
+            DHI = self._df_tmy[ 'DHI' ].values,
+            apparent_solar_zenith = self._df_tmy[ 'apparent_zenith' ].values,
+            solar_azimuth = self._df_tmy[ 'azimuth' ].values,
+            ground_albedo =  self._ground_albedo,
+            dni_extra = dni_extra )
         
-        relative_airmass_array = get_relative_airmass( zenith_array  )
-        dni_extra_array = get_extra_radiation( date_times )
-        
-        diff_irradiance = perez( coll_tilt_deg,
-                                 coll_azimuth_deg,
-                                 DHI_array,
-                                 DNI_array,
-                                 dni_extra_array,
-                                 zenith_array,
-                                 azimuth_array,
-                                 relative_airmass_array,
-                                 return_components = True )
-        
-        try:
-            isotropic_irradiance_array = diff_irradiance[ 'isotropic' ].values
-            circumsolar_irradiance_array = diff_irradiance['circumsolar'].values
-            horizon_irradiance_array = diff_irradiance[ 'horizon' ].values
-        except KeyError:
-            isotropic_irradiance_array = diff_irradiance[ 'poa_isotropic' ].values
-            circumsolar_irradiance_array = diff_irradiance['poa_circumsolar'].values
-            horizon_irradiance_array = diff_irradiance[ 'poa_horizon' ].values
-        
-        aoi_array, longi_array, trans_array = incidence_angles(zenith_array, azimuth_array)
-        
-        for time_step in range( len( self._df_tmy ) ):
-            
-            GHI = GHI_array[time_step]
-            DNI = DNI_array[time_step]
-            DHI = DHI_array[time_step]
-            
-            if DHI <= 0 and DNI <= 0:
-                
-                First_Row_Irradiance_Profile.append( 0 )
-                Shadeable_Rows_Irradiance_Profile.append( 0 )
-                First_Row_IAM_Profile.append( 0 )
-                Shadeable_Rows_IAM_Profile.append( 0 )
-                continue
-            
-            aoi = aoi_array[ time_step ]
-            longi = longi_array[ time_step ]
-            trans = trans_array[ time_step ]
-            
-            isotropic_irradiance_first_row = float( isotropic_irradiance_array[ time_step ] )
-            isotropic_irradiance_shadeable_rows = isotropic_irradiance_first_row*diffuse_irradiance_fraction_shadeable_rows/diffuse_irradiance_fraction_non_shadeable_rows
-            circumsolar_irradiance = float( circumsolar_irradiance_array[ time_step ] )
-            horizon_irradiance = float( horizon_irradiance_array[ time_step ] )
-            ref_irradiance = reflected_irradiance_fraction*ground_albedo*max([GHI, 0] )
-            
-            if np.isnan( aoi ):
-                
-                beam_irradiance = 0
-                beam_IAM = 0
-                shading_factor = 0
-                
-            else:
-                
-                beam_irradiance = max( [ DNI*cos(aoi), 0 ] ) + max( [ circumsolar_irradiance, 0 ] )
-                beam_IAM = compute_beam_IAM(aoi, abs(longi), trans)
-                
-                if longi < 0 and abs(longi) >= pi/2 - coll_tilt_rad:
-                    shading_factor = 0
-                
-                elif ( cos( coll_tilt_rad ) + sin( coll_tilt_rad )*tan( longi ) )/ground_fraction_covered >= 1 or sin( coll_tilt_rad )*tan( trans )/( row_width_to_coll_length_ratio*ground_fraction_covered ) >= 1:
-                    shading_factor = 1
-                    
-                else:
-                    F1 = ( cos( coll_tilt_rad ) + sin( coll_tilt_rad )*tan( longi ) )/ground_fraction_covered
-                    F2 = sin( coll_tilt_rad )*tan( trans )*( 1 - F1 )/( row_width_to_coll_length_ratio*ground_fraction_covered )
-                    shading_factor =  F1 + F2
-            
-            first_row_irradiance = beam_irradiance + isotropic_irradiance_first_row + horizon_irradiance + ref_irradiance
-            shadeable_rows_irradiance = shading_factor*beam_irradiance + isotropic_irradiance_shadeable_rows
-            
-            if first_row_irradiance > 0:
-                first_row_IAM = ( beam_irradiance*beam_IAM + isotropic_irradiance_first_row*isotropic_iam_first_row + horizon_irradiance*horizon_iam + ref_irradiance*ground_iam )/first_row_irradiance
-            else:
-                first_row_IAM = 0
-            if shadeable_rows_irradiance > 0:
-                shadeable_rows_IAM = ( shading_factor*beam_irradiance*beam_IAM + isotropic_irradiance_shadeable_rows*isotropic_iam_shadeable_rows )/shadeable_rows_irradiance
-            else:
-                shadeable_rows_IAM = 0
-            
-            First_Row_Irradiance_Profile.append( first_row_irradiance )
-            Shadeable_Rows_Irradiance_Profile.append( shadeable_rows_irradiance )
-            First_Row_IAM_Profile.append( first_row_IAM )
-            Shadeable_Rows_IAM_Profile.append( shadeable_rows_IAM )
-            
-        aoi_array = (180/pi)*aoi_array
-        longi_array = (180/pi)*longi_array
-        trans_array = (180/pi)*trans_array
-        
-        self._df_tmy[ 'aoi' ] = aoi_array
-        self._df_tmy[ 'aoi_l' ] = longi_array
-        self._df_tmy[ 'aoi_t' ] = trans_array
-        
-        self._df_tmy[ 'irradiance_first_row' ] = First_Row_Irradiance_Profile
-        self._df_tmy[ 'irradiance_shadeable_rows' ] = Shadeable_Rows_Irradiance_Profile
-        self._df_tmy[ 'IAM_first_row' ] = First_Row_IAM_Profile
-        self._df_tmy[ 'IAM_shadeable_rows' ] = Shadeable_Rows_IAM_Profile
+        self._df_tmy[ 'irradiance_first_row' ] = irradiance_first_row
+        self._df_tmy[ 'irradiance_shadeable_rows' ] = irradiance_shadeable_rows
+        self._df_tmy[ 'IAM_first_row' ] = IAM_first_row
+        self._df_tmy[ 'IAM_shadeable_rows' ] = IAM_shadeable_rows
         
     def _instant_to_index( self, month, day, hour, minute ):
         """
@@ -2035,7 +1685,7 @@ class MeteoProfile:
             - `"Tamb"`: Ambient temperature.
             - `"Tmains"`: Mains water temperature, computed with the algorithm described in the `paper by Burch and Christensen <https://www.osti.gov/biblio/981988>`_.
             
-        Only if a `sercpy.solar.SolarField` instance has been used to compute the results relative to that solar field, either by providing the solar field when constructiing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
+        Only if a `sercpy.solar.SolarField` instance has been used to compute the results relative to that solar field, either by providing the solar field when constructing the `MeteoProfile` instance, or by calling the method :meth:`MeteoProfile.compute_poa_irradiance` for an already-defined instance, the following columns are also included in the `DataFrame`:
             
             - `"aoi"`: Angle of incidence on the solar field array. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).
             - `"aoi_l"`: Angle of incidence in the transversal plane. The value is `np.nan` for values outside of the sky dome visible from the plane of the array (i.e., values larger than 90°).

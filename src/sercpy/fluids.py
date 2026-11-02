@@ -361,6 +361,8 @@ class Fluid:
     mixture_type : str
         Only for water-glycol mixtures. Either `"mass-based"` or "`volume-based`".
         
+    can_boil : bool
+        Boolean value identifying whether the phenomenon of boiling is supported for the fluid. If its value is `False`, the fluid is assumed to be liquid up to the maximum temperature supported by the model. This attribute is only `True` for pure water.
         
     Methods
     -------
@@ -416,7 +418,7 @@ class Fluid:
             mixture_type = 'm',
             
             ):
-        # ' -_.,:;%'
+        
         try:
             fluid_name_corrected = str( fluid_name ).upper().translate(str.maketrans( '', '', ' -_%' ) )
         except:
@@ -814,6 +816,10 @@ class Fluid:
             return self._mixture_type
         else:
             raise FluidError("Fluid is not a water-glycol mixture.")
+            
+    @property
+    def can_boil(self):
+        return self._can_boil
     
     def _process_array( self, method, array ):
         """
