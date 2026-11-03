@@ -128,8 +128,6 @@ class SolarCollector:
         - :math:`A` is the area of the collector.
     
     Moreover, the efficiency is corrected considering the flowrate that the collector is operating with. See :meth:`SolarCollector.compute_flowrate_correction_factor` for more information.
-       
-    This is....
     
     Parameters
     ----------
@@ -149,10 +147,10 @@ class SolarCollector:
         Intercept efficiency, sometimes referred to as 'optical efficiency'. Valid range: 0.1 - 0.99. It is the nominal efficiency with which the collector operates when (1) the angle of incidence of the irradiance is null, and (2) the heat transfer fluid enters the collector with the same temperature as the environment surroinding the collector.
     
     a1 : float
-        First order (linear) loss coefficient (W/m2 K). Valid range: 1e-3 to 1e3.
+        First order (linear) loss coefficient (W/m2 K). Valid range: `1e-2` to `1e2`.
     
     a2 : float, optional
-        Second order (quadratic) loss coefficient (W/m2 K2). If not provided, it is assumed to be null.
+        Second order (quadratic) loss coefficient (W/m2 K2). If not provided, it is assumed to be null. Valid range: `0.0` to `1.0`.
     
     IAM : float, list, or dict
         Object defining the shape of the IAM (Incidence Angle Modifier) curve of the collector. See the section :ref:`iam_argument` for information on the possible formats of this argument.
@@ -166,7 +164,7 @@ class SolarCollector:
     Attributes
     ----------
     model_name : str
-        String identifying the collector model.
+        String identifying the collector model. Only available if the user provides it when initializing the class instance.
     
     area : float
         Area of the collector. If not provided by the user as initialization argument, it is computed from `length` and `width`.
@@ -178,7 +176,7 @@ class SolarCollector:
         Short side of the collector (m). Only available if enough data is provided at initialization.
     
     n0 : float
-        Adimensional value in the range 0.1 - 0.99 identifying the intercept efficiency, sometimes referred to as 'optical efficiency'. 
+        Intercept efficiency, sometimes referred to as 'optical efficiency'. 
     
     a1 : float
         First order (linear) loss coefficient (W/m2 K).
@@ -187,7 +185,7 @@ class SolarCollector:
         Second order (quadratic) loss coefficient (W/m2 K2).
     
     IAM : float, list, dict, or None
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
+        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. It is the same object provided as `IAM` argument at initialization.
     
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
@@ -281,42 +279,52 @@ class SolarCollector:
             
     @property
     def model_name(self):
+        "String identifying the collector model. Only available if the user provides it when initializing the class instance."
         return self._model_name
             
     @property
     def area(self):
+        "Area of the collector. If not provided by the user as initialization argument, it is computed from `length` and `width`."
         return self._area
     
     @property
     def length(self):
+        "Long side of the collector (m). Only available if enough data is provided at initialization."
         return self._length
     
     @property
     def width(self):
+        "Short side of the collector (m). Only available if enough data is provided at initialization."
         return self._width
     
     @property
     def n0(self):
+        "Intercept efficiency, sometimes referred to as 'optical efficiency'."
         return self._n0
     
     @property
     def a1(self):
+        "First order (linear) loss coefficient (W/m2 K)."
         return self._a1
     
     @property
     def a2(self):
+        "Second order (quadratic) loss coefficient (W/m2 K2)."
         return self._a2
     
     @property
     def IAM(self):
+        "Object specifying the shape of the IAM (Incidence Angle Modifier) curve. It is the same object provided as `IAM` argument at initialization."
         return self._IAM
     
     @property
     def test_flowrate_per_m2(self):
+        "Flowrate per area unit with wich the collector has been tested (kg/m2 s)."
         return self._test_flowrate_per_m2
     
     @property
     def test_fluid(self):
+        "sercpy.fluids.Fluid` instance that models the fluid used to test the collector."
         return self._test_fluid
     
     def _validate_argument( self, argument_name, value ):
@@ -383,7 +391,7 @@ class SolarCollector:
                 value = float( value )
             except:
                 raise TypeError("SolarCollector: Argument 'a1' must be convertible to type 'float'.")
-            if not ( value >= 1e-3 and value <= 1e3 ):
+            if not ( value >= 1e-2 and value <= 1e2 ):
                 raise ValueError("SolarCollector: Argument 'a1' is out of the allowed range: 0.01 <= a1 <= 100.")
                 
         if argument_name == 'a2':
@@ -391,7 +399,7 @@ class SolarCollector:
                 value = float( value )
             except:
                 raise TypeError("SolarCollector: Argument 'a2' must be convertible to type 'float'.")
-            if not value >= 0:
+            if not ( value >= 0 and value <= 1 ):
                 raise ValueError("SolarCollector: Argument 'a2' must be >= 0.")
                 
         if argument_name == 'IAM':
@@ -467,13 +475,13 @@ class SolarCollector:
         """
         Method to compute the flowrate correction factor.
         
-        What does this value do?
+        **What does this value do?**
         
         The standard formula for the efficiency of the collector, based on the parameters `n0`, `a1`, and `a2`, does not take into account the flowrate that the collector is operating with.
         
         The aforementioned parameters were determined under a certain "test flowrate".
         
-        If the operation flowrate is larger than the test flowrate, the temperature change inside the collector decreases. Thus, the collector operates at a lower temperature. This increases its efficiency. The opposite happens when the operation flowrate
+        If the operation flowrate is larger than the test flowrate, the temperature change inside the collector decreases. Thus, the collector operates at a lower temperature. This increases its efficiency. The opposite happens when the operation flowrate is less than the test flowrate.
         
         To take this into account, the value returned by this method should be multiplied by the efficiency determined with the "standard formula" mentioned above.
         
@@ -490,7 +498,7 @@ class SolarCollector:
         -------
         float
             Correction factor for the efficiency of the collector.
-
+        
         """
         
         if not hasattr( fluid, 'cp_ref' ):
@@ -513,7 +521,7 @@ class SolarCollector:
         Parameters
         ----------
         aoi : float, optional
-            aoi: Angle of indicence with respect to a vector normal to the collector's plane. Only needed for collectors with monoaxial IAM functions. If not provided, it can be derived from `longi` and `trans`. The default is None.
+            aoi: Angle of indicence with respect to a vector that is normal to the collector's plane. Only needed for collectors with monoaxial IAM functions. If not provided, it can be derived from `longi` and `trans`. The default is None.
         longi : float, optional
             Projection of aoi on a plane that is perpendicular to the collector's plane and parallel to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
         trans : float, optional
@@ -684,7 +692,7 @@ class SolarField:
     
     Parameters
     ----------
-    collector : SolarCollector
+    collector : :doc:`SolarCollector <solar_collector_class>`
         `sercpy.solar.SolarCollector` instance defining the features of each individual collector of the field.
     
     coll_tilt : float, optional
@@ -709,11 +717,11 @@ class SolarField:
         The default value for this parameter is `"parallel"`.
     
     coll_disposition : str, optional
-        String identifying whether the tilted side of the collector is the short side or the long side. The former case can be identified with the strings 'horizontal' and 'landscape'. The latter case can be identified with the strings 'vertical' and 'portrait'.
+        String identifying whether the tilted side of the collector is the short side or the long side. The former case can be identified with the strings `"horizontal"` and `"landscape"`. The latter case can be identified with the strings `"vertical"` and `"portrait"`.
     
     tube_direction : str, optional
         This parameter only makes a difference for collectors that have biaxial IAM (Incidence Angle Modifier) functions, which in most cases are evacuated tube collectors.
-        This parameter can have the values 'vertical' and 'horizontal'. In the former case, the tubes point towards the ground (not perpendicularly; the angle depends on the tilt of the collector), whereas in the latter case, the tubes are parallel to the ground. 
+        This parameter can have the values `"vertical"`, `"tilted"`, or `"horizontal"`. In the two former cases (both are interpreted exactly the same way), the tubes point towards the ground (not perpendicularly; the angle depends on the tilt of the collector), whereas in the latter case, the tubes are parallel to the ground. 
     
     non_shadeable_rows : int, optional
         Number of collector rows that are not subject to self-shading. Note that more than one collector row may be in the front o the collector field, since a collector row may be defined as a group of collectors connected in series (see the argument `row_mode`).
@@ -890,8 +898,8 @@ class SolarField:
             
             if any( [ row_spacing is None,
                       coll_disposition is None,
-                      coll_disposition == 'HORIZONTAL' and self._collector.width is None,
-                      coll_disposition == 'VERTICAL' and self._collector.length is None ] ):
+                      coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ] and self._collector.width is None,
+                      coll_disposition in [ 'VERTICAL', 'PORTRAIT' ] and self._collector.length is None ] ):
                 
                 if self._non_shadeable_rows == self._coll_rows:
                     self._ground_fraction_covered = None
@@ -901,7 +909,7 @@ class SolarField:
         
             else:
                 
-                if coll_disposition == 'HORIZONTAL':
+                if coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ]:
                     self._ground_fraction_covered = self._collector.width / row_spacing
                 else:
                     self._ground_fraction_covered = self._collector.length / row_spacing
@@ -1014,16 +1022,19 @@ class SolarField:
     
     @property
     def coll_disposition(self):
+        "One of the following strings: 'HORIZONTAL', 'LANDSCAPE', 'VERTICAL', 'PORTRAIT'. See the argument with the same name in the class' documentation."
         if self._coll_disposition is None:
             raise AttributeError("SolarField: 'coll_disposition' has not been specified.")
         return self._coll_disposition
     
     @property
     def tube_direction(self):
+        "One of the following strings: 'HORIZONTAL', 'VERTICAL', 'TILTED'. See the argument with the same name in the class' documentation."
         return self._tube_direction
     
     @property
     def ground_fraction_covered(self):
+        "Ratio between the row spacing of the solar field and the length of the collectors' tilted size. It is used by the self-shading modeling algorithm."
         return self._ground_fraction_covered
     
     @property
@@ -1032,6 +1043,7 @@ class SolarField:
     
     @property
     def ready_to_simulate(self):
+        "Boolean value stating whether are attributes needed for the collector to be used in a simulation have been computed."
         return all( [
             
             self._coll_tilt is not None,
@@ -1057,6 +1069,8 @@ class SolarField:
         if value is None:
             raise TypeError("SolarField: 'coll_azimuth' must be a floating point number in the range: 0 <= coll_tilt < 360.")
         self._coll_azimuth = self._validate_argument("coll_azimuth", value)
+        if self._coll_tilt is not None:
+            self._compute_rotation_matrix()
     
     def set_auto_orientation( self, *, coll_tilt, coll_azimuth ):
         if self._tilt_mode == 'auto':
@@ -1569,8 +1583,8 @@ class SolarField:
             except:
                 raise TypeError("SolarField: Argument 'tube_direction' must a string.")
             
-            if not value in [ 'HORIZONTAL', 'VERTICAL' ]:
-                raise ValueError("SolarField: Argument 'tube_direction' must be one of the strings: 'horizontal', or 'vertical'.")
+            if not value in [ 'HORIZONTAL', 'VERTICAL', 'TILTED' ]:
+                raise ValueError("SolarField: Argument 'tube_direction' must be one of the strings: 'horizontal', 'vertical', or 'tilted'.")
         
         if argument_name in [ 'ground_fraction_covered', 'row_spacing' ]:
             try:
