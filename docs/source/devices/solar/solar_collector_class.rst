@@ -25,7 +25,7 @@ Providing the "Incidence Angle Modifier" curve
 
 The IAM (Incidence Angle Modifier) curve is a feature of solar collectors that is published in most performance test reports. It indicates how the efficiency of the collector changes as a function of the angle with which the irradiance reaches the collector.
 
-The IAM of the solar collector must be specified thourgh the initialization argument `IAM`. This section clarifies the formats that this parameter can have.
+The IAM of the solar collector must be specified through the initialization argument `IAM`. This section clarifies the formats that this parameter can have.
 
 Mono-axial IAM function
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,12 +35,30 @@ For most flat plate solar collectors, IAM can be considered to be a function of 
 IAM curve from a list of values
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-One of the most common ways of defining the IAM curve is to report the values of the IAM correction factor for different AOI values, e.g. every ten degrees from `AOI=0°` to `AOI=90°`. If this is the case, the `IAM` argument can simply be a list of the values reported. Some rules have to be taken into account:
+One of the most common ways of defining the IAM curve is to report the values of the IAM correction factor for different AOI values, e.g. every ten degrees from `AOI=0°` to `AOI=90°`. If this is the case, the `IAM` argument can simply be a `list <https://docs.python.org/3/builtins/stdtypes.html#typesseq-list>`_ of the values reported. Some rules have to be taken into account:
 
 - It is assumed that the first value of the list corresponds to `AOI=0` and the last one corresponds to `AOI=90`. Thus, the first value of the list is expected to be `1`, whereas the last value is expected to be `0`.
-- The list can have any number of values. It is assumed that the values correspond to evenly-spaced angles. This means that, for lists with ten values, the values should correspond to AOI values equal to 0°, 10°, 20°, 30°, etc.
+- The list can have any number of values. It is assumed that the values correspond to evenly-spaced angles. This means that, for a list with ten values, the values should correspond to AOI values equal to 0°, 10°, 20°, 30°, etc.
 
 ASHRAE IAM model
 ^^^^^^^^^^^^^^^^
 
-A common way of simplifying the definition  of the IAM curve is to define it from a single value
+A common way of simplifying the definition of the IAM curve is to define it from a single value, commonly denoted as :math:`b`, and the formula:
+
+.. math::
+
+   K = 1 - b \; \left ( \frac{1}{cos(\theta)} - 1 \right )
+
+where :math:`K` is the correction factor associated to IAM, and :math:`\theta` is the AOI.
+
+To apply this IAM model to the `SolarCollector` class, the value of the argument `IAM` has to be a floating point number (float) representing the value of :math:`b`.
+
+Extended ASHRAE model
+^^^^^^^^^^^^^^^^^^^^^
+
+A way to make the ASHRAE model more accurate is to extend the formula in the following way:
+
+.. math::
+
+   K = 1 - b_0 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) - b_1 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 3 ...
+
