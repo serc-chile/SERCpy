@@ -16,3 +16,4 @@ From these two classes, the only one that is properly a "device" is `SolarField`
 
   solar_collector_class
   solar_field_class
+  azimuthal_angle
