@@ -98,7 +98,31 @@ def _to_array( array_like_or_number ):
 
 class SolarCollector:
     """
-    Class that stores the features (area, parameters of the efficiency curve, etc.) of a solar thermal collector.
+    Class that models the performance of an individual solar collector.
+    
+    The collector's efficiency is computed with the formula:
+    
+    .. math::
+        
+       \eta = \eta_0 \cdot K( \, \theta, \, \theta_l , \, \theta_t \, )-a1 \frac{T_{in} - T_{amb}}{G} - a2 \frac{ \left ( T_{in} - T_{amb} \right ) ^2 }{G}
+       
+    where:
+    
+          - :math:`\eta_0` the nominal efficiency of the collector.
+          - :math:`K( \, \theta, \, \theta_l , \, \theta_t \, )` is the IAM (Incidence angle modifier) correction factor.
+          - :math:`\theta` is the incidence angle, and :math:`\theta_l` and :math:`\theta_t` are its longitudinal and transversal components, respectively.
+          - :math:`a_1` and :math:`a_2` are the linear and the quadratic heat loss coefficiencts of the collector, respectively.
+          - :math:`T_{in}` is the temperature with which the heat transfer fluid enters the solar collector.
+          - :math:`T_{amb}` is the temperature of the environment surroinding the collector.
+          - :math:`G` is the irradiance on the collector's plane.
+          
+    On the other hand, the efficiency :math:`\eta` is defined as:
+        
+    .. math::
+        
+       \eta =
+       
+    This is....
     
     Parameters
     ----------
