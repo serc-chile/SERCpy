@@ -104,23 +104,30 @@ class SolarCollector:
     
     .. math::
         
-       \eta = \eta_0 \cdot K( \, \theta, \, \theta_l , \, \theta_t \, )-a1 \frac{T_{in} - T_{amb}}{G} - a2 \frac{ \left ( T_{in} - T_{amb} \right ) ^2 }{G}
+       \eta = \eta_0 \cdot K \left( \, \theta, \, \theta_l , \, \theta_t \, \right )-a_1 \frac{T_{in} - T_{amb}}{G} - a_2 \frac{ \left ( T_{in} - T_{amb} \right ) ^2 }{G}
        
     where:
     
-          - :math:`\eta_0` the nominal efficiency of the collector.
-          - :math:`K( \, \theta, \, \theta_l , \, \theta_t \, )` is the IAM (Incidence angle modifier) correction factor.
-          - :math:`\theta` is the incidence angle, and :math:`\theta_l` and :math:`\theta_t` are its longitudinal and transversal components, respectively.
-          - :math:`a_1` and :math:`a_2` are the linear and the quadratic heat loss coefficiencts of the collector, respectively.
-          - :math:`T_{in}` is the temperature with which the heat transfer fluid enters the solar collector.
-          - :math:`T_{amb}` is the temperature of the environment surroinding the collector.
-          - :math:`G` is the irradiance on the collector's plane.
+        - :math:`\eta_0` the nominal efficiency of the collector.
+        - :math:`K( \, \theta, \, \theta_l , \, \theta_t \, )` is the IAM (Incidence angle modifier) correction factor.
+        - :math:`\theta` is the incidence angle, and :math:`\theta_l` and :math:`\theta_t` are its longitudinal and transversal components, respectively.
+        - :math:`a_1` and :math:`a_2` are the linear and the quadratic heat loss coefficiencts of the collector, respectively.
+        - :math:`T_{in}` is the temperature with which the heat transfer fluid enters the solar collector.
+        - :math:`T_{amb}` is the temperature of the environment surroinding the collector.
+        - :math:`G` is the irradiance on the collector's plane.
           
     On the other hand, the efficiency :math:`\eta` is defined as:
         
     .. math::
         
-       \eta =
+       \eta = \frac{ \dot{Q} }{A \, G}
+      
+    where:
+        
+        - :math:`\dot{Q}` is the thermal power produced by the collector.
+        - :math:`A` is the area of the collector.
+    
+    Moreover, the efficiency is corrected considering the flowrate that the collector is operating with. See :meth:`SolarCollector.compute_flowrate_correction_factor` for more information.
        
     This is....
     
