@@ -51,7 +51,7 @@ A common way of simplifying the definition of the IAM curve is to define it from
 
 where :math:`K` is the correction factor associated to IAM, and :math:`\theta` is the AOI.
 
-To apply this IAM model to the `SolarCollector` class, the value of the argument `IAM` has to be a floating point number (float) representing the value of :math:`b`.
+To apply this IAM model to the `SolarCollector` class, the value of the argument `IAM` has to be a floating point number (`float <https://docs.python.org/3/builtins/functions.html#float>`_) representing the value of :math:`b`.
 
 Extended ASHRAE model
 ^^^^^^^^^^^^^^^^^^^^^
@@ -62,3 +62,13 @@ A way to make the ASHRAE model more accurate is to extend the formula in the fol
 
    K = 1 - b_0 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) - b_1 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 3 ...
 
+To apply this model to the `SolarCollector` class, the argument `IAM` must be a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following format:
+
+`IAM = { "b0": b0_value, "b1": b1_value, "b2": b2_value, .... }`
+
+where `b0_value`, `b1_value`, `b2_value` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing :math:`b_0`, :math:`b_1`, and :math:`b_2` of the equation above. The dictionary can contain as many values as desired, but all indexes from `0` to the last index must be present in the dictionary.
+
+Bi-axial IAM function
+~~~~~~~~~~~~~~~~~~~~~
+
+For some collectors, particularly tubular ones, AOI is not enough to define the IAM correction factor, because the direction to which the sun is deviated from the normal makes a difference.
