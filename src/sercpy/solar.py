@@ -97,7 +97,7 @@ def _to_array( array_like_or_number ):
     return array
 
 class SolarCollector:
-    """
+    r"""
     Class that models the performance of an individual solar collector.
     
     The collector's efficiency is computed with the formula:
