@@ -124,7 +124,7 @@ class SolarCollector:
         Second order (quadratic) loss coefficient (W/m2 K2). If not provided, it is assumed to be null.
     
     IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
+        Object defining the shape of the IAM (Incidence Angle Modifier) curve of the collector. See the section :ref:`iam_argument` for information on the possible formats of this argument.
     
     test_flowrate_per_m2 : float, optional
         Flowrate per area unit with wich the collector has been tested (kg/m2 s). It is used to correct the efficiency of the collector considering the operation flowrate. If not provided, its value is assumed to be 0.02.
@@ -368,10 +368,9 @@ class SolarCollector:
             if type( value ) in [ list, np.ndarray ]:
                 
                 try:
-                    assert len( value ) == 10
                     value = [ float(v) for v in value ]
                     assert all( [ v >= 0 and v <= 1 for v in value ] )
-                    assert value[0] == 1 and value[9] == 0
+                    assert value[0] == 1 and value[-1] == 0
                 except:
                     raise ValueError("SolarCollector: If argument 'IAM' is a list, it must be a list of numeric values >= 0 and <= 1. The first value must be 1. The last value must be 0.")
             
@@ -385,10 +384,9 @@ class SolarCollector:
                     for component_name in [ 'Kl', 'Kt' ]:
                         IAM_list = value[ component_name ]
                         try:
-                            assert len( IAM_list ) == 10
                             IAM_list = [ float(v) for v in IAM_list ]
                             assert all( [ v >= 0 and v <= 1 for v in IAM_list ] )
-                            assert IAM_list[0] == 1 and IAM_list[9] == 0
+                            assert IAM_list[0] == 1 and IAM_list[-1] == 0
                         except:
                             raise ValueError("SolarCollector: If argument 'IAM' is a dictionary containing 'Kl' and 'Kt', both components must be lists of numeric values >= 0 and <= 1. The first value must be 1. The last value must be 0.")
                         value[ component_name ] = IAM_list
@@ -545,7 +543,7 @@ class SolarCollector:
                 
             if self._IAM_type == 1:
                 
-                result = np.interp( aoi, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._K_values )
+                result = np.interp( aoi, np.linspace( 0, 90, len( self._K_values ) ), self._K_values )
             
             else: 
                 
@@ -566,7 +564,7 @@ class SolarCollector:
             if trans is None or longi is None:
                 raise ValueError("SolarCollector.compute_IAM: 'trans' and 'longi'. must be provided for biaxial IAM functions.")
             
-            result = np.interp( trans, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._Kt_values ) * np.interp( longi, [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ], self._Kl_values )
+            result = np.interp( trans, np.linspace( 0, 90, len( self._Kt_values ) ), self._Kt_values ) * np.interp( longi, np.linspace( 0, 90, len( self._Kt_values ) ), self._Kl_values )
             
         else:
             raise Exception("SolarCollector.compute_IAM: Unexpected error: _IAM_type not valid.")
@@ -896,86 +894,80 @@ class SolarField:
         else:
             self._max_iterations = 100
         
-        if type( self._collector.IAM ) is list:
-            self._coll_IAM = { [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ][i] : self._collector.IAM[i] for i in range( len( self._collector.IAM ) ) }
-        elif type( self._collector.IAM ) is dict and 'Kl' in self._collector.IAM:
-            self._coll_IAM = {  }
-            for component_name in [ 'Kl', 'Kt' ]:
-                IAM_list = self._collector.IAM[ component_name ]
-                self._coll_IAM[ component_name ] = { [ 0, 10, 20, 30, 40, 50, 60, 70, 80, 90 ][i] : IAM_list[i] for i in range(len(IAM_list)) }
-        else:
-            try:
-                self._coll_IAM = self._collector.IAM.copy()
-            except AttributeError:
-                self._coll_IAM = self._collector.IAM
-        
         self._outlet = Outlet()
     
     @property
     def outlet(self):
+        "Instance of the class sercpy.devices.Outlet representing the main fluid outlet of the solar field."
         return self._outlet
     
     @property
     def collector(self):
+        "Instance of the class sercpy.solar.Collector. It models the individual collectors used to build the solar field."
         return self._collector
     
     @property
     def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a time step, so that no further computation is needed."
         if not hasattr( self, "_convergence" ):
             raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._convergence
     
     @property
     def useful_power(self):
+        "Useful power trasnferred to the heat transfer fluid (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_useful_power" ):
             raise AttributeError("SolarField: Attribute 'useful_power' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._useful_power
     
     @property
     def wasted_power(self):
+        "Thermal power used to generate undesired vapor that is then released (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_wasted_power" ):
             raise AttributeError("SolarField: Attribute 'wasted_power' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._wasted_power
     
     @property
     def vapor_flowrate(self):
+        "Undesired vapor being released from the solar field (kg/s). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_vapor_flowrate" ):
             raise AttributeError("SolarField: Attribute 'vapor_flowrate' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._vapor_flowrate
     
     @property
     def efficiency(self):
+        "Ratio between the useful power and the total available energy, which is computed as the irradiance on the collectors' plane, multiplied by the solar field's total area."
         if not hasattr( self, "_efficiency" ):
             raise AttributeError("SolarField: Attribute 'efficiency' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._efficiency
     
     @property
     def iterations(self):
+        "Number of iterations carried out the last time the method SolarField.compute_outputs was called. An iteration process is only necessary when undesired vapor is being produced and released due to overheating of the collectors."
         if not hasattr( self, "_iterations" ):
             raise AttributeError("SolarField: Attribute 'iterations' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._iterations
     
     @property
     def vapor_release_convergence(self):
+        "Boolean value stating whether convergence for the vapor release modeling was achieved the last time the method SolarField.compute_outputs was called. If no vapor is released, this value will be True."
         if not hasattr( self, "_vapor_release_convergence" ):
             raise AttributeError("SolarField: Attribute 'vapor_release_convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._vapor_release_convergence
     
     @property
     def coll_tilt(self):
+        "Tilt of the collectors with respect to the ground (degree, °)."
         if self._coll_tilt is None:
             raise AttributeError("SolarField: Attribute 'coll_tilt' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance.")
         return self._coll_tilt
     
     @property
     def coll_azimuth(self):
+        "Azimuthal angle of the collectors. Degrees east of north."
         if self._coll_azimuth is None:
             raise AttributeError("SolarField: Attribute 'coll_azimuth' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance.")
         return self._coll_azimuth
-    
-    @property
-    def coll_IAM(self):
-        return self._coll_IAM
     
     @property
     def coll_disposition(self):
