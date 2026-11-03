@@ -435,6 +435,18 @@ class SolarCollector:
     def compute_flowrate_correction_factor( self, fluid, flowrate ):
         """
         Method to compute the flowrate correction factor.
+        
+        What does this value do?
+        
+        The standard formula for the efficiency of the collector, based on the parameters `n0`, `a1`, and `a2`, does not take into account the flowrate that the collector is operating with.
+        
+        The aforementioned parameters were determined under a certain "test flowrate".
+        
+        If the operation flowrate is larger than the test flowrate, the temperature change inside the collector decreases. Thus, the collector operates at a lower temperature. This increases its efficiency. The opposite happens when the operation flowrate
+        
+        To take this into account, the value returned by this method should be multiplied by the efficiency determined with the "standard formula" mentioned above.
+        
+        The correction factor is obtained with the method discussed on page 307 (Section 6.20) of the book **Solar Engineering of Thermal Processes** by John A. Duffie and William A. Beckman. ISBN `978-0-471-69867-8 <https://openlibrary.org/isbn/9780471698678>`_.
 
         Parameters
         ----------
