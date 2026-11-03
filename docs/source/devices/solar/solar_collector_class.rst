@@ -68,7 +68,7 @@ To apply this model to the `SolarCollector` class, the argument `IAM` must be a 
 
 `IAM = { "b0": b0_value, "b1": b1_value, "b2": b2_value, .... }`
 
-where `b0_value`, `b1_value`, `b2_value` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing :math:`b_0`, :math:`b_1`, and :math:`b_2` of the equation above. The dictionary can contain as many values as desired, provided that all indexes from `0` to the last index must be present in the dictionary.
+where `b0_value`, `b1_value`, `b2_value` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing :math:`b_0`, :math:`b_1`, and :math:`b_2` of the equation above. The dictionary can contain as many values as desired, provided that all indexes from `0` to the last index are present in the dictionary.
 
 Bi-axial IAM function
 ~~~~~~~~~~~~~~~~~~~~~
