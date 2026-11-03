@@ -83,7 +83,7 @@ The IAM of collectors for which this angle decomposition is needed, is usually r
 - A curve typically denoted as :math:`K_t`, which represents the IAM curve for transversal angles.
 - A curve typically denoted as :math:`K_l`, which represents the IAM curve for longitudinal angles.
 
-To provide these two curves to the `SolarCollector` instance, a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ must be constructed which has the keys `"Kl"` and `"Kt"`. The value associated with each of these keys must be a `list <https://docs.python.org/3/builtins/stdtypes.html#typesseq-list>`_, with the same requirements that were stated in the previous section :ref:`iam_curve_from_list_of_values`. Thus, the dictionary should look as follows:
+To provide these two curves to the `SolarCollector` instance, a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ must be constructed which has the keys `"Kl"` and `"Kt"`. The variable associated with each of these keys must be a `list <https://docs.python.org/3/builtins/stdtypes.html#typesseq-list>`_, with the same requirements that were stated in the previous section :ref:`iam_curve_from_list_of_values`. Thus, the dictionary should look as follows:
 
 `IAM = { "Kl": [ l0, l1, l2, ... ] , "Kt": [ t0, t1, t2, ... ] }`
 
