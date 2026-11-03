@@ -49,7 +49,7 @@ A common way of simplifying the definition of the IAM curve is to define it from
 
 .. math::
 
-   K = 1 - b \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right )
+   K( \theta ) = 1 - b \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right )
 
 where :math:`K` is the correction factor associated to IAM, and :math:`\theta` is the AOI.
 
