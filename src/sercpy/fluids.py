@@ -52,28 +52,28 @@ class FluidState:
         Specific enthalpy in J/kg.
         
     H : float
-        Alias for h.
+        Alias for `h`.
         
     D : float
         Density in kg/m3.
         
     density : float
-        Alias for D.
+        Alias for `D`.
         
     d : float
-        Alias for D.
+        Alias for `D`.
         
     cp : float
         Specific heat capacity in J/kg °C.
         
     Cp : float
-        Alias for cp.
+        Alias for `cp`.
         
     Q : float
         Liquid-vapor mixture quality. It is a value in the range 0 - 1 representing the vapor fraction. It is 0 for completely liquid substances, and 1 for completely gaseous substances.
         
     quality : float
-        Alias for Q.
+        Alias for `Q`.
     
     """
     def __init__( 
