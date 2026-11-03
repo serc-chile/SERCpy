@@ -49,7 +49,7 @@ A common way of simplifying the definition of the IAM curve is to define it from
 
 .. math::
 
-   K = 1 - b \; \left ( \frac{1}{cos(\theta)} - 1 \right )
+   K = 1 - b \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right )
 
 where :math:`K` is the correction factor associated to IAM, and :math:`\theta` is the AOI.
 
@@ -62,7 +62,7 @@ A way to make the ASHRAE model more accurate is to extend the formula in the fol
 
 .. math::
 
-   K = 1 - b_0 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) - b_1 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{cos(\theta)} - 1 \right ) ^ 3 ...
+   K = 1 - b_0 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) - b_1 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 3 ...
 
 To apply this model to the `SolarCollector` class, the argument `IAM` must be a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following format:
 
