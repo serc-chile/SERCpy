@@ -10,7 +10,7 @@ Azimuthal angles alwatys have to be larger than or equal to zero, and less than 
 
 .. figure:: /images/azimuth.png
    :alt: Azimuthal angle convention used by SERCpy
-   :width: 600px
+   :width: 400px
    :align: center
 
    Azimuthal angles corresponding to each cardinal direction, according to the convention used by **SERCpy**
