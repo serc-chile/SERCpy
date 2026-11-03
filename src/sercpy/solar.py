@@ -525,7 +525,7 @@ class SolarCollector:
         longi : float, optional
             Projection of aoi on a plane that is perpendicular to the collector's plane and parallel to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
         trans : float, optional
-            Projection of aoi on a plane that normal to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
+            Projection of aoi on a plane that is normal to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
 
         Returns
         -------
