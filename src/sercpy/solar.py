@@ -129,7 +129,7 @@ class SolarCollector:
     test_flowrate_per_m2 : float, optional
         Flowrate per area unit with wich the collector has been tested (kg/m2 s). It is used to correct the efficiency of the collector considering the operation flowrate. If not provided, its value is assumed to be 0.02.
     
-    test_fluid : sercpy.fluids.Fluid or str, optional
+    test_fluid : :doc:`Fluid </fluids/fluid_class>` or str, optional
         Instance of :doc:`Fluid </fluids/fluid_class>`, or a valid name to initialize an instance of this class. If not provided, 'water' is assumed.
     
     Attributes
@@ -161,7 +161,7 @@ class SolarCollector:
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
     
-    test_fluid : sercpy.fluids.Fluid
+    test_fluid : :doc:`Fluid </fluids/fluid_class>`
         :doc:`Fluid </fluids/fluid_class>` instance that models the fluid used to test the collector.
     """
     
@@ -440,7 +440,7 @@ class SolarCollector:
 
         Parameters
         ----------
-        fluid : sercpy.fluids.Fluid instance
+        fluid : :doc:`Fluid </fluids/fluid_class>`
             Fluid being used as heat transfer fluid.
         flowrate : float
             Flowrate flowing through the collector.
@@ -578,14 +578,16 @@ class SolarCollector:
     
     def compute_outlet_state(self, flowrate, state_in, irradiance, IAM_factor, Tamb, flowrate_correction_factor):
         """
-        Function that computes the power of an individual solar collector and returns the state of the fluid leaving it.
+        Compute the state of the fluid leaving the collector.
+        
+        This method takes the operating conditions of the collector (irradiance, flowrate, inlet state, etc.) and computes the state of the fluid as it leaves the collector.
         
         Parameters
         ----------
         flowrate : float
             Mass flowrate entering the collector (kg/s).
         
-        state_in : sercpy.fluids.FluidState
+        state_in : :doc:`FluidState </fluids/fluid_state_class>`
             State of the fluid as it enters the collector.
         
         irradiance : float
@@ -602,7 +604,7 @@ class SolarCollector:
         
         Returns
         -------
-        state_out : sercpy.fluids.FluidState
+        state_out : :doc:`FluidState </fluids/fluid_state_class>`
             State of the fluid leaving the collector.
         """
         
@@ -722,7 +724,7 @@ class SolarField:
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
     
-    test_fluid : sercpy.fluids.Fluid
+    test_fluid : :doc:`Fluid </fluids/fluid_class>`
         :doc:`Fluid </fluids/fluid_class>` instance that models the fluid used to test the collector.
     """
     
@@ -1939,7 +1941,7 @@ class SolarField:
             Flowrate received by the solar field (kg/s).
         state_in : sercpy.fluids.FluidState
             State of the fluid received by the solar field.
-
+        
         Returns
         -------
         None.
