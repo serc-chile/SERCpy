@@ -19,7 +19,9 @@ class FluidError(Exception):
 
 class FluidState:
     """
-    Class that stores the properties of a fluid at a single temperature or specific enthalpy value.
+    Class that stores and yields the properties of a fluid at a fixed temperature or specific enthalpy value.
+    
+    Since a :doc:`Fluid </fluids/fluid_class>` instance stores the properties of a fluid at a fixed pressure, a temperature or enthalpy value is enough to define its thermodynamic state.
     
     Parameters
     ----------
@@ -285,7 +287,7 @@ class Fluid:
     Parameters
     ----------
     fluid_name : str
-        String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :ref:`section on fluid naming <fluid_naming>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
+        String defining the type of substance. For pure water, valid names are `"w"` and `"water"`. See the :ref:`section on fluid types <fluid_types>` for other options such as water-glycol mixtures and other commercial heat transfer fluids.
     
     p : float
         Absolute pressure in Pascal. Only needed for water. For the other substances, it is assumed that the pressure is enough so that they do not boil. Valid range: 20,000 to 4,000,000.

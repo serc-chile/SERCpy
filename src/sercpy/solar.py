@@ -1058,41 +1058,53 @@ class SolarField:
     
     def compute_poa_irradiance( self, GHI, DNI, DHI, apparent_solar_zenith, solar_azimuth, ground_albedo = None, doy = None, dni_extra = None, diffuse_irradiance_model = None  ):
         """
-        Compute the irradiance on the plane of the collectors and the IAM (Incidence Angle Modifier) correction factors.
+        Compute the irradiance on the plane of the collectors and the IAM (Incidence Angle Modifier) correction factor.
         
-        The method can compute the results for single values and for data arrays.
+        The method can compute the results for single numeric values and for data arrays.
         
-        For both 
-
+        Both irradiance and IAM are computed for the collector rows that are subject to self-shading, and the ones that are not.
+        If no enough data is provided at initialization for the self-shading algorithm to work, it is assumed that all collector rows are not subject to self-shading.
+        
         Parameters
         ----------
+        
+        The first four arguments (`GHI` to `solar_azimuth`) are not optional and must have the same length, in the case that they are arrays of data.
+        
         GHI : float or array-like
-            Global horizontal irradiance data (W/m2).
+            Global horizontal irradiance (W/m2).
+        
         DNI : float or array-like
-            Direct normal irradiance data (W/m2).
+            Direct normal irradiance (W/m2).
+        
         DHI : float or array-like
-            Diffuse horizontal irradiance data (W/m2).
+            Diffuse horizontal irradiance (W/m2).
+        
         apparent_solar_zenith : float or array-like
             Zenithal angle of the solar position (degree, °).
+        
         solar_azimuth : float or array-like
             Azimuthal angle of the solar position (degree, °).
-        ground_albedo : float, optional
-            DESCRIPTION. The default is 0.2.
+        
+        ground_albedo : float or array-like, optional
+            Albedo of the ground in front of the solar collector field. Unlike the previous arguments, `ground_albedo` can be a single numeric value despite the first four argument being data arrays. It can also be an array with the same length as the other arrays. If not provided, this argument defaults to 0.2.
+        
         doy : int or array-like, optional
-            DESCRIPTION. The default is None.
-        dni_extra : TYPE, optional
-            DESCRIPTION. The default is 1366.1.
-        diffuse_irradiance_model : TYPE, optional
-            DESCRIPTION. The default is 'perez'.
+            Integer value identifying the day of the year. If provided, it must have the same length as the irradiance and solar position data. The default is None.
+        
+        dni_extra : float or array-like, optional
+            Extraterrestrial normal irradiance. It can be a single numeric value or an array with the same length as the irradiance and solar position data. If not provided, it defaults to 1366.1.
+        
+        diffuse_irradiance_model : str, optional
+            Model used for computing the diffuse irradiance. Valid values: `"isotropic"`, `"perez"`. If not provided, it defaults to `"perez"`.
 
         Returns
         -------
         irradiance_first_row : float or np.array
             Irradiance on the collector rows that are not subject to self-shading.
-        irradiance_shadeable_rows : float or np.array
-            Irradiance on the collector rows that are subject to self-shading.
         IAM_first_row : float or np.array
             IAM correction factor for the collector rows that are not subject to self-shading.
+        irradiance_shadeable_rows : float or np.array
+            Irradiance on the collector rows that are subject to self-shading.
         IAM_shadeable_rows : float or np.array
             IAM correction factor for the collector rows that are subject to self-shading.
 
@@ -1184,7 +1196,18 @@ class SolarField:
                 dni_extra = np.full( array_length, dni_extra[0] )
             elif len( dni_extra ) != array_length:
                     ValueError("SolarField.compute_poa_irradiance: 'dni_extra' must be either a single number or an array with the same length as the other ones.")
-            
+                    
+        if np.min( GHI ) < 0:
+            raise ValueError("SolarField.compute_poa_irradiance: GHI cannot be negative.")
+        if np.min( DNI ) < 0:
+            raise ValueError("SolarField.compute_poa_irradiance: DNI cannot be negative.")
+        if np.min( DHI ) < 0:
+            raise ValueError("SolarField.compute_poa_irradiance: DHI cannot be negative.")
+        if not ( np.min( solar_zenith ) >= 0 and np.max( solar_zenith ) <= 180 ):
+            raise ValueError("SolarField.compute_poa_irradiance: solar_zenith must be in the range 0 - 180.")
+        if not ( np.min( solar_azimuth ) >= 0 and np.max( solar_azimuth ) < 360 ):
+            raise ValueError("SolarField.compute_poa_irradiance: solar_azimuth must be in the range 0 - 360 (360 not included).")
+    
         solar_zenith = ( np.pi/180 )*solar_zenith
         solar_azimuth = ( np.pi/180 )*solar_azimuth
         coll_tilt = ( np.pi/180 )*self._coll_tilt
