@@ -32,6 +32,8 @@ Mono-axial IAM function
 
 For most flat plate solar collectors, IAM can be considered to be a function of the angle of incidence (AOI), which is defined as the angle of the sun with respect to a vector which is normal to the collector's plane. In other words, when the sun is pointing "directly" to the collector, the AOI is zero, and any deviation from that direction corresponds to the AOI. With mono-axial IAM curves, the correction factor that must be applied is completely defined by the AOI.
 
+.. _iam_curve_from_list_of_values:
+
 IAM curve from a list of values
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -66,9 +68,23 @@ To apply this model to the `SolarCollector` class, the argument `IAM` must be a 
 
 `IAM = { "b0": b0_value, "b1": b1_value, "b2": b2_value, .... }`
 
-where `b0_value`, `b1_value`, `b2_value` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing :math:`b_0`, :math:`b_1`, and :math:`b_2` of the equation above. The dictionary can contain as many values as desired, but all indexes from `0` to the last index must be present in the dictionary.
+where `b0_value`, `b1_value`, `b2_value` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing :math:`b_0`, :math:`b_1`, and :math:`b_2` of the equation above. The dictionary can contain as many values as desired, provided that all indexes from `0` to the last index must be present in the dictionary.
 
 Bi-axial IAM function
 ~~~~~~~~~~~~~~~~~~~~~
 
-For some collectors, particularly tubular ones, AOI is not enough to define the IAM correction factor, because the direction to which the sun is deviated from the normal makes a difference.
+For some collectors, particularly tubular ones, AOI is not enough to define the IAM correction factor, because the direction to which the sun is deviated from the normal makes a difference. Therefore, the angle of incidence is decomposed into two angles:
+
+- The transversal angle is the projection of the incidence angle onto a plane that is normal to the tubes' direction.
+- The longitudinal angle is a projection of the angle of incidence onto a plane that is perpendicular to the last one defined, and also perpendicular to the collector's plane.
+
+The IAM of collectors for which this angle decomposition is needed, is usually reported with two curves:
+
+- A curve typically denoted as :math:`K_t`, which represents the IAM curve for transversal angles.
+- A curve typically denoted as :math:`K_l`, which represents the IAM curve for longitudinal angles.
+
+To provide these two curves to the `SolarCollector` isntance, a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ must be constructed which has the keys `"Kl"` and `"Kt"`. The value associated with each of these keys must be a `list <https://docs.python.org/3/builtins/stdtypes.html#typesseq-list>`_, with the same requirements that were stated in the previous section :ref:`_iam_curve_from_list_of_values`. Thus, the dictionary should look as follows:
+
+`IAM = { "Kl": [ l0, l1, l2, ... ] , "Kt": [ t0, t1, t2, ... ] }`
+
+where `l0`, `l1`, `l2`, `t0`, `t1`, `t2` are `float <https://docs.python.org/3/builtins/functions.html#float>`_ values representing the IAM curve associated to each component of the incidence angle.
