@@ -587,7 +587,7 @@ class SolarCollector:
         flowrate : float
             Mass flowrate entering the collector (kg/s).
         
-        state_in : :doc:`FluidState </fluids/fluid_state_class>`
+        state_in : :doc:`FluidState </fluids/fluidstate_class>`
             State of the fluid as it enters the collector.
         
         irradiance : float
@@ -604,7 +604,7 @@ class SolarCollector:
         
         Returns
         -------
-        state_out : :doc:`FluidState </fluids/fluid_state_class>`
+        state_out : :doc:`FluidState </fluids/fluidstate_class>`
             State of the fluid leaving the collector.
         """
         
