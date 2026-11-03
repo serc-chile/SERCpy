@@ -304,7 +304,8 @@ class Fluid:
         Accepted values for volume-based percentages are `"v"`, `"v/v"`, `"volume"`, and `"volume-based"`.
         Accepted values for mass-based percentages are `"m"`, `"m/m"`, `"mass"`, and `"mass-based"`.
         If not specified, this parameter defaults to `"m"`.
-        **Warning:** For volumetric percentage values close the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%. Therefore, in these cases, the mass-based percentage value is approximated to 60%, in order for the model to work.
+        **Warning:** For volumetric percentage values close the maximum allowed of 60%, the mass-based percentage, which must be computed internally, slightly surpasses 60%.
+        In order for `CoolProp <https://coolprop.org/>`_'s model to work, the mass-based percentage must be truncated to 60%.
         In the worst-case scenario of ethylene glycol with a volumetric percentage of 60%, this correction amounts to changing the mass-based percentage from 62.6% to 60%. A warning message is thrown when this correction is carried out.
     
     Attributes
