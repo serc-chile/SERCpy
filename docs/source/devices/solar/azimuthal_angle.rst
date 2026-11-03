@@ -12,3 +12,5 @@ Azimuthal angles alwatys have to be larger than or equal to zero, and less than 
    :alt: Azimuthal angle convention used by SERCpy
    :width: 600px
    :align: center
+
+   Azimuthal angles corresponding to each cardinal direction, according to the convention used by **SERCpy**
