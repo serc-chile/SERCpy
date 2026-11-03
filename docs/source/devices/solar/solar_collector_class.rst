@@ -62,7 +62,7 @@ A way to make the ASHRAE model more accurate is to extend the formula in the fol
 
 .. math::
 
-   K = 1 - b_0 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) - b_1 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 3 ...
+   K( \theta ) = 1 - b_0 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) - b_1 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 2 - b_2 \; \left ( \frac{1}{ \cos ( \theta ) } - 1 \right ) ^ 3 ...
 
 To apply this model to the `SolarCollector` class, the argument `IAM` must be a `dictionary <https://docs.python.org/3/tutorial/datastructures.html#dictionaries>`_ with the following format:
 
