@@ -693,17 +693,17 @@ class SolarField:
     Parameters
     ----------
     collector : :doc:`SolarCollector <solar_collector_class>`
-        `sercpy.solar.SolarCollector` instance defining the features
+        `SolarCollector` instance defining the features
         of each individual collector of the field.
     
     coll_tilt : float, optional
         Tilt angle of each collector with respect to the ground. If not provided,
-        it will be set automatically by a `MeteoProfile` instance when the
+        it will be set automatically by a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance when the
         method `compute_poa_irradiance` gets called using the `SolarField` instance.
     
     coll_azimuth : float, optional
         Azimuthal angle of the collectors. If not provided, it will be set
-        automatically by a `MeteoProfile` instance when the method
+        automatically by a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance when the method
         `compute_poa_irradiance` gets called using the `SolarField` instance.
     
     total_colls : int, optional
