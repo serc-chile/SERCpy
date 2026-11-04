@@ -1579,20 +1579,21 @@ class MeteoProfile:
         else:
             coll_azimuth_auto = 0
         
-        self._solar_field.set_auto_orientation( coll_tilt = coll_tilt_auto, coll_azimuth = coll_azimuth_auto )
+        self._solar_field.set_auto_attributes( coll_tilt = coll_tilt_auto, coll_azimuth = coll_azimuth_auto, ground_albedo = self._ground_albedo )
         
         date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ] )
         dni_extra = get_extra_radiation( date_times )
         
-        irradiance_first_row, irradiance_shadeable_rows, IAM_first_row, IAM_shadeable_rows = self.solar_field.compute_poa_irradiance(
+        doy = [ dt.day_of_year for dt in date_times ]
+        
+        irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows = self.solar_field.compute_poa_irradiance(
             
             GHI = self._df_tmy[ 'GHI' ].values,
             DNI = self._df_tmy[ 'DNI' ].values,
             DHI = self._df_tmy[ 'DHI' ].values,
             apparent_solar_zenith = self._df_tmy[ 'apparent_zenith' ].values,
             solar_azimuth = self._df_tmy[ 'azimuth' ].values,
-            ground_albedo =  self._ground_albedo,
-            dni_extra = dni_extra )
+            doy = doy, )
         
         self._df_tmy[ 'irradiance_first_row' ] = irradiance_first_row
         self._df_tmy[ 'irradiance_shadeable_rows' ] = irradiance_shadeable_rows

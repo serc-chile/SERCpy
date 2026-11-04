@@ -104,7 +104,7 @@ class SolarCollector:
     
     .. math::
         
-       \eta = \eta_0 \cdot K \left( \, \theta, \, \theta_l , \, \theta_t \, \right )-a_1 \frac{T_{in} - T_{amb}}{G} - a_2 \frac{ \left ( T_{in} - T_{amb} \right ) ^2 }{G}
+       \eta = \eta_0 \; K \left( \, \theta, \, \theta_l , \, \theta_t \, \right )-a_1 \frac{T_{in} - T_{amb}}{G} - a_2 \frac{ \left ( T_{in} - T_{amb} \right ) ^2 }{G}
        
     where:
     
@@ -669,6 +669,7 @@ field_allowed_arguments = [
     "collector",
     "coll_tilt",
     "coll_azimuth",
+    "ground_albedo",
     "total_colls",
     "coll_rows",
     "colls_per_row",
@@ -704,6 +705,12 @@ class SolarField( Device ):
         Azimuthal angle of the collectors. If not provided, it will be set
         automatically by a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance when the method
         `MeteoProfile.compute_poa_irradiance` gets called using the `SolarField` instance as argument.
+        
+    ground_albedo : float, optional
+        Albedo of the ground, i.e., irradiance fraction reflected by it.
+        The fraction is expressed as a decimal value in the range 0 - 1.
+        If not provided, this parameter will be automatically set by a
+        `MeteoProfile` instance when the method `MeteoProfile.compute_poa_irradiance` is called.
     
     total_colls : int, optional
         Number of collectors that make up the solar field. If not provided,
@@ -777,6 +784,9 @@ class SolarField( Device ):
     
     row_spacing : float, optional
         Distance between collector rows (m).
+        
+    clear_horizon : bool
+        Boolean value defining whether the non-shadeable rows receive diffuse irradiance from the horizon.
     
     release_vapor : bool, optional
         If this parameter is set to `True`, the vapor produced when the saturation
@@ -873,6 +883,7 @@ class SolarField( Device ):
             total_colls: Optional[ int ] = None,
             coll_rows: Optional[ int ] = None,
             colls_per_row: Optional[ int ] = None,
+            ground_albedo: Optional[ int ] = None,
             row_mode: Optional[ str ] = None,
             coll_disposition: Optional[ str ] = None,
             tube_direction: Optional[ str ] = None,
@@ -888,6 +899,7 @@ class SolarField( Device ):
         self._collector = self._validate_argument("collector", collector)
         self._coll_tilt = self._validate_argument("coll_tilt", coll_tilt)
         self._coll_azimuth = self._validate_argument("coll_azimuth", coll_azimuth)
+        self._ground_albedo = self._validate_argument( "ground_albedo", ground_albedo )
         
         if self._coll_tilt is not None and self._coll_azimuth is not None:
             self._compute_rotation_matrix()
@@ -904,6 +916,11 @@ class SolarField( Device ):
             self._azimuth_mode = 'auto'
         else:
             self._azimuth_mode = 'manual'
+            
+        if self._ground_albedo is None:
+            self._albedo_mode = 'auto'
+        else:
+            self._albedo_mode = 'manual'
         
         if row_mode is None:
             self._row_mode = 'PARALLEL'
@@ -973,40 +990,29 @@ class SolarField( Device ):
             if self._non_shadeable_rows > self._coll_rows:
                 raise ValueError(f"SolarField: 'non_shadeable_rows' ({self._non_shadeable_rows}) cannot be larger than 'coll_rows' ({self._coll_rows}).")
         else:
-            warnings.warn("SolarField: Self-shading will not be modeled because neither of the arguments 'non_shadeable_rows' and 'non_shadeable_colls' was provided.")
-            self._non_shadeable_rows = self._coll_rows
+            self._non_shadeable_rows = max( [ int( self._coll_rows * 0.5 ) , 1 ] )
             
         self._shadeable_rows = self._coll_rows - self._non_shadeable_rows
-            
+        
+        
+        ground_fraction_covered = self._validate_argument("ground_fraction_covered", ground_fraction_covered)
+        row_spacing = self._validate_argument("row_spacing", row_spacing)
+        coll_disposition = self._validate_argument("coll_disposition", coll_disposition)
+        
         if ground_fraction_covered is not None:
             self._ground_fraction_covered = self._validate_argument("ground_fraction_covered", ground_fraction_covered)
-        elif row_spacing is not None or coll_disposition is not None:
-            row_spacing = self._validate_argument("row_spacing", row_spacing)
-            coll_disposition = self._validate_argument("coll_disposition", coll_disposition)
-            
-            if any( [ row_spacing is None,
-                      coll_disposition is None,
-                      coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ] and self._collector.width is None,
-                      coll_disposition in [ 'VERTICAL', 'PORTRAIT' ] and self._collector.length is None ] ):
-                
-                if self._non_shadeable_rows == self._coll_rows:
-                    self._ground_fraction_covered = None
-                else:
-                    warnings.warn("SolarField: Not enough data was provided to determine parameters for self-shading modeling. As default, ground fraction covered is assumed to be 0.7.")
-                    self._ground_fraction_covered = 0.7
         
-            else:
-                
-                if coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ]:
-                    self._ground_fraction_covered = self._collector.width / row_spacing
-                else:
-                    self._ground_fraction_covered = self._collector.length / row_spacing
-                    
-        elif self._non_shadeable_rows == self._coll_rows:
-            self._ground_fraction_covered = None
+        elif row_spacing is not None and (  ( coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ] and self._collector.width  is not None )  or
+                                            ( coll_disposition in [ 'VERTICAL',   'PORTRAIT'  ] and self._collector.length is not None )      ):
             
+            if coll_disposition in [ 'HORIZONTAL', 'LANDSCAPE' ]:
+                self._ground_fraction_covered = self._collector.width / row_spacing
+            else:
+                self._ground_fraction_covered = self._collector.length / row_spacing
+        
         else:
-            self._ground_fraction_covered = 0.7
+            warnings.warn("SolarField: Not enough data was provided to determine parameters for self-shading modeling. Default conditions are assumed.")
+            self._ground_fraction_covered = 0.5
         
         if self._coll_tilt is not None and self._ground_fraction_covered is not None and self._ground_fraction_covered * np.cos( ( np.pi/180 )*self._coll_tilt ) >= 1:
             raise ValueError("SolarField: Collector rows are overlapped. Ground factor covered must be reduced, or row spacing must be increased.")
@@ -1017,7 +1023,7 @@ class SolarField( Device ):
             self._clear_horizon = self._validate_argument("clear_horizon", clear_horizon)
         else:
             self._clear_horizon = True
-            
+        
         if release_vapor is not None:
             self._release_vapor = self._validate_argument("release_vapor", release_vapor)
         else:
@@ -1098,15 +1104,22 @@ class SolarField( Device ):
     def coll_tilt(self):
         "Tilt of the collectors with respect to the ground (degree, °)."
         if self._coll_tilt is None:
-            raise AttributeError("SolarField: Attribute 'coll_tilt' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance.")
+            raise AttributeError("SolarField: Attribute 'coll_tilt' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance as argument.")
         return self._coll_tilt
     
     @property
     def coll_azimuth(self):
         "Azimuthal angle of the collectors. Degrees east of north."
         if self._coll_azimuth is None:
-            raise AttributeError("SolarField: Attribute 'coll_azimuth' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance.")
+            raise AttributeError("SolarField: Attribute 'coll_azimuth' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance as argument.")
         return self._coll_azimuth
+    
+    @property
+    def ground_albedo(self):
+        "Irradiance fraction reflected by the ground in front of the solar field."
+        if self._ground_albedo is None:
+            raise AttributeError("SolarField: Attribute 'ground_albedo' has not been defined yet. This attribute can be defined automatically with the method 'MeteoProfile.compute_poa_irradiance' using this SolarField instance as argument.")
+        return self._ground_albedo
     
     @property
     def coll_disposition(self):
@@ -1162,7 +1175,7 @@ class SolarField( Device ):
         if self._coll_tilt is not None:
             self._compute_rotation_matrix()
     
-    def set_auto_orientation( self, *, coll_tilt, coll_azimuth ):
+    def set_auto_attributes( self, *, coll_tilt, coll_azimuth, ground_albedo ):
         """
         Method used by :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` to set the attributes
         'coll_tilt' and 'coll_azimuth' based on the geographical location
@@ -1195,6 +1208,9 @@ class SolarField( Device ):
             if coll_azimuth is None:
                 raise ValueError("SolarField.set_auto_orientation: 'coll_azimuth' was expected to be defined.")
             self._coll_azimuth = self._validate_argument( "coll_azimuth", coll_azimuth )
+            
+        if self._albedo_mode == 'auto':
+            self._ground_albedo = ground_albedo
             
         if self._tilt_mode == 'auto' or self._azimuth_mode == 'auto':
             self._compute_rotation_matrix()
@@ -1278,7 +1294,9 @@ class SolarField( Device ):
             Unlike the previous arguments, `ground_albedo` can be a single numeric
             value despite the first four argument being data arrays. It can also
             be an array with the same length as the other arrays.
-            If not provided, this argument defaults to `0.2`.
+            If not provided, this argument defaults to the attrbiute
+            `ground_albedo` of the `SolarField` instance.
+            If this attribute has not been defined, it defaults to `0.2`.
         
         doy : int or array-like, optional
             Integer value identifying the day of the year. If provided, it must
@@ -1311,8 +1329,10 @@ class SolarField( Device ):
         if not hasattr(self, "_coll_azimuth"):
             raise AttributeError("SolarField.compute_poa_irradiance: coll_azimuth has not been defined yet.")
             
-        if ground_albedo is None:
+        if ground_albedo is None and self._ground_albedo is None:
             ground_albedo = 0.2
+        elif ground_albedo is None and self._ground_albedo is not None:
+            ground_albedo = self._ground_albedo
         
         if dni_extra is None:
             dni_extra = 1366.1
@@ -1454,9 +1474,12 @@ class SolarField( Device ):
         numerator = beam*iam_beam + self._diffuse_IAM[ 'isotropic_first_row' ]*diff_isotropic + self._diffuse_IAM[ 'horizon' ]*diff_horizon + self._diffuse_IAM[ 'ground' ]*reflected
         IAM_first_row = np.divide( numerator, irradiance_first_row, out = np.zeros_like(numerator, dtype=float), where = irradiance_first_row != 0 )
         
+        irradiance_first_row[ np.isnan(irradiance_first_row) ] = 0
+        IAM_first_row[ np.isnan(IAM_first_row) ] = 0
+        
         if self._ground_fraction_covered is None:
             
-            return irradiance_first_row, IAM_first_row, None, None
+            return irradiance_first_row, IAM_first_row, irradiance_first_row.copy(), IAM_first_row.copy()
         
         diff_isotropic_shadeable_rows = self._visible_sky_dome_fraction_shadeable_rows*diff_isotropic / ( 0.5*( 1 + np.cos( coll_tilt ) ) )
         
@@ -1472,6 +1495,9 @@ class SolarField( Device ):
         numerator = beam_shadeable_rows*iam_beam + self._diffuse_IAM[ 'isotropic_shadeable_rows' ]*diff_isotropic_shadeable_rows
         IAM_shadeable_rows = np.divide( numerator, irradiance_shadeable_rows, out = np.zeros_like(numerator, dtype=float), where = irradiance_shadeable_rows != 0 )
         
+        irradiance_shadeable_rows[ np.isnan(irradiance_shadeable_rows) ] = 0
+        IAM_shadeable_rows[ np.isnan(IAM_shadeable_rows) ] = 0
+        
         return irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows
         
     def _compute_shadeable_rows_visible_sky_dome_fraction( self ):
@@ -1480,7 +1506,7 @@ class SolarField( Device ):
         
         This attribute corresponds to the fraction of a complete, half-spherical sky dome that is actually visible from a collector that has another collector in front of it, blocking a part of the sky.
         
-        Since the visible fraction of the sky dome varies across the tilted direction of the collector, the value returned by this function is an average value.
+        Since the visible fraction of the sky dome varies along the tilted direction of the collector, the value returned by this function is an average value.
         
         Returns
         -------
@@ -1676,7 +1702,7 @@ class SolarField( Device ):
             raise TypeError("SolarField._validate_argument: Argument 'argument_name' must be a string.")
             
         if not argument_name in field_allowed_arguments:
-            raise ValueError( f"MeteoProfile: '{argument_name}' is not a valid argument." )
+            raise ValueError( f"SolarField: '{argument_name}' is not a valid argument." )
             
         if value is None:
             return None
@@ -1712,6 +1738,14 @@ class SolarField( Device ):
                 value = int( value )
             except:
                 raise ValueError(f"SolarField: Argument '{ argument_name }' must be an integer value.")
+                
+        if argument_name == 'ground_albedo':
+            try:
+                value = float( value )
+            except:
+                raise TypeError("SolarField: Argument 'ground_albedo' must be converible to type 'float'.")
+            if not ( value >= 0 and value <= 1):
+                raise TypeError("SolarField: Argument 'ground_albedo' must be in the range 0 <= ground_albedo <= 1.")
         
         if argument_name == 'coll_disposition':
             
@@ -1866,6 +1900,7 @@ class SolarField( Device ):
             self._diffuse_IAM[ 'ground' ] = numerator_ground/denominator_ground
             
         if self._ground_fraction_covered is not None:
+            
             delta_rad = np.arctan( self._ground_fraction_covered*np.sin( coll_tilt_rad )/( 2 - self._ground_fraction_covered*np.cos( coll_tilt_rad ) ) )
             if coll_tilt_rad + delta_rad >= np.pi/2:
                 def integration_limit_shadeable_rows( phi ):
@@ -1881,7 +1916,6 @@ class SolarField( Device ):
                 numerator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_shadeable_rows, args = ('numerator',) )
                 denominator_sky_2 = _dblquad( function_to_integrate, 0, np.pi/2, 0, integration_limit_shadeable_rows, args = ('denominator',) )
                 self._diffuse_IAM[ 'isotropic_shadeable_rows' ] = (numerator_sky_1 + numerator_sky_2)/(denominator_sky_1 + denominator_sky_2)
-            
             
         if self._coll_tilt == 90:
             def function_to_integrate(theta, mode):
@@ -1906,7 +1940,7 @@ class SolarField( Device ):
             denominator = quad( function_to_integrate, 0, np.pi/2, args = ('denominator',), epsabs = 1e-3, limit = 200, epsrel = 1e-3 )[0]
             self._diffuse_IAM[ 'horizon' ] = numerator/denominator
             
-    def _compute_row( self, flowrate_in, state_in, T_mains, irradiance, IAM_factor, Tamb, flowrate_correction_factor ):
+    def _compute_row( self, flowrate_in, state_in, Tmains, irradiance, IAM_factor, Tamb, flowrate_correction_factor ):
         """
         Function that computes the power of a collector row and returns the state of the fluid leaving it.
         
@@ -1918,7 +1952,7 @@ class SolarField( Device ):
         state_in : sercpy.fluids.FluidState
             State of the fluid as it enters the collector row.
         
-        T_mains : float
+        Tmains : float
             Mains water temperature (°C). This parameter is only used is water boiling and replacement from the distribution network is simulated by the solar field model.
         
         irradiance : float
@@ -1955,8 +1989,11 @@ class SolarField( Device ):
         
         if self._release_vapor and fluid.can_boil:
             
+            if Tmains is None:
+                raise ValueError("SolarField: Tmains cannot be None if 'release_vapor' has been set to 'True' at initialization.")
+            
             h_in = state_in.h
-            h_mains = fluid.state( T = T_mains ).h
+            h_mains = fluid.state( T = Tmains ).h
             
             flowrate_mains = 0
             it = 0
@@ -2190,44 +2227,119 @@ class SolarField( Device ):
             
         self._convergence = convergence
 
-    def compute_outputs( self, operating_conditions, iteration_number , *, 
+    def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
+                         state_in = None, flowrate = None,
                          GHI = None, DNI = None, DHI = None,
-                         solar_apparent_zenith = None, solar_azimuth = None, ):
+                         solar_apparent_zenith = None, solar_azimuth = None, 
+                         Tamb = None, Tmains = None,
+                         doy = None ):
         """
         Method to compute the outputs of the solar field.
         
+        The following attributes of the `SolarField` instance are updated when this method is called, unless convergence is achieved:
+            
+            - convergence
+            - outlet
+            - useful_power
+            - wasted_power
+            - vapor_flowrate
+            - efficiency
+            - iterations
+            - vapor_release_convergence
+        
         Parameters
         ----------
+        
+        The first two parameters are meant to be used in the context of a simulation. All the other parameters are key-word only and are meant for users to obtain results outside of simulations.
+        
         operating_conditions : dict
             Dictionary returned by an instance of `sercpy.operating_conditions.OperatingConditions` when its method `get_conditions` is called.
+
         iteration_number : int
-            Number of the iteration
+            Number of the iteration.
+        
+        state_in : :doc:`FluidState </fluids/class_fluidstate>`
+            Object defining the thermodynamic state of the fluid as it enters the solar field.
+        
+        flowrate : float
+            Mass flowrate entering the solar field (kg/s).
+        
+        GHI : float
+            Global horizontal irradiance (W/m2).
+        
+        DNI : float
+            Direct normal irradiance (W/m2).
+        
+        DHI : float
+            Diffuse horizontal irradiance (W/m2).
+        
+        solar_apparent_zenith : float
+            Apparent zenithal angle of the solar position (degrees, °).
+        
+        solar_azimuth : float
+            Azimuthal angle of the solar position (degrees, °).
+        
+        Tamb : float
+            Temperature of the environment surrounding the collector (°C).
+        
+        Tmains : float
+            Mains water temperature. Not needed if: (1) the argument `release_vapor` has been set to `False` at initialization,
+            or (2) boiling is not supported for the fluid that is entering the collector.
+        
+        doy : int
+            Integer defining the day of the year (1 to 365).
         
         Returns
         -------
         None
         
         """
-        if type( operating_conditions ) is not dict:
-            raise TypeError("SolarField.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
-        if not ( type( iteration_number ) is int and iteration_number >= 0 ):
-            raise TypeError("SolarField.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
-        
-        try:
-            flowrate = self._inlet.flowrate
-            state_in = self._inlet.state
-        except AttributeError:
-            return
-        
-        if iteration_number == 0:
-            self._set_last_inputs(flowrate, state_in)
+        if operating_conditions is None and iteration_number is None:
+            if any([ variable is None for variable in [ state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth, Tamb, Tmains ] ]):
+                raise TypeError("SolarField.compute_outputs: Not all arguments needed for manual mode were provided. Arguments needed: state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth,  Tamb, Tmains.")
+            
             self._convergence = False
+                
+            irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows = self.compute_poa_irradiance( GHI, DNI, DHI, solar_apparent_zenith, solar_azimuth, doy = doy,  )
+            
+            
+            operating_conditions = {
+                
+                'irradiance_first_row': irradiance_first_row,
+                'irradiance_shadeable_rows': irradiance_shadeable_rows,
+                'IAM_first_row': IAM_first_row,
+                'IAM_shadeable_rows': IAM_shadeable_rows,
+                'Tamb': Tamb,
+                'Tmains': Tmains,
+                
+                }
+            
+        elif operating_conditions is None or iteration_number is None:
+            raise TypeError("SolarField.compute_outputs: Both 'operating_conditions' and 'operating_conditions' must be provided in simulation mode. None of them must be provided in manual mode.")
+        
         else:
-            self._compute_convergence(flowrate, state_in)
-            if self._convergence:
+            
+            if type( operating_conditions ) is not dict:
+                raise TypeError("SolarField.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
+            if not ( type( iteration_number ) is int and iteration_number >= 0 ):
+                raise TypeError("SolarField.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
+            
+            try:
+                flowrate = self._inlet.flowrate
+                state_in = self._inlet.state
+            except AttributeError:
+                self._convergence = False
                 return
-            else:
+            
+            if iteration_number == 0:
                 self._set_last_inputs(flowrate, state_in)
+                self._convergence = False
+            else:
+                self._compute_convergence(flowrate, state_in)
+                if self._convergence:
+                    return
+                else:
+                    self._set_last_inputs(flowrate, state_in)
         
         if flowrate == 0:
             self._outlet.flowrate = 0
@@ -2235,7 +2347,7 @@ class SolarField( Device ):
             self._useful_power = 0
             self._wasted_power = 0
             self._vapor_flowrate = 0
-            self._efficiency = None
+            self._efficiency = np.nan
             self._iterations = 0
             self._vapor_release_convergence = True
             return
@@ -2283,16 +2395,20 @@ class SolarField( Device ):
             vap_flow_Sh = 0
             iterations_Sh = 1
             convergence_Sh = True
-            
-        h_out = min([ ( state_out_NS.h*self._non_shadeable_rows + state_out_Sh.h*self._shadeable_rows ) / self._coll_rows , fluid.h_sat_liq ])
-        state_out = fluid.state( h = h_out )
         
-        Q_useful = max ( [ flowrate*( h_out - state_in.h ) , 0 ] )
-        Q_waste = max( [ Q_waste_NS*self._non_shadeable_rows + Q_waste_Sh*self._shadeable_rows , 0 ] )
+        h_out = ( state_out_NS.h*self._non_shadeable_rows + state_out_Sh.h*self._shadeable_rows ) / self._coll_rows
+        
+        if fluid.can_boil:
+            state_out = fluid.state( h = min ( [ h_out, fluid.h_sat_liq ] ) )
+        else:
+            state_out = fluid.state( h = h_out )
+        
+        Q_useful = max( [ flowrate*( h_out - state_in.h ) , 0 ] )
+        Q_waste  = max( [ Q_waste_NS*self._non_shadeable_rows + Q_waste_Sh*self._shadeable_rows , 0 ] )
         vapor_flowrate = vap_flow_NS*self._non_shadeable_rows + vap_flow_Sh*self._shadeable_rows
         
         if irradiance_first_row <= 0:
-            efficiency = None
+            efficiency = np.nan
         else:
             efficiency = Q_useful/( irradiance_first_row*self._collector.area*self._coll_rows*self._colls_per_row )
         
@@ -2309,48 +2425,64 @@ class SolarField( Device ):
         self._iterations = total_iterations
         self._vapor_release_convergence = vapor_release_convergence
     
-def example_solar_field(
-        *,
-        
-        location = None,
-        latitude = None,
-        longitude = None,
-        field_gross_area = None,
-        
-        ):
+def example_solar_field( field_gross_area, latitude = None, ):
+    """
+    Function that takes one of two arguments and returns a generic instance of the class `SolarField`.
     
-    if not ( location is not None or ( latitude is not None and longitude is not None ) ):
-        raise ValueError("example_solar_field: Either 'location' or 'latitude' and 'longitude' must be provided.")
-        
-    if location is not None:
-        try:
-            assert type(location) is tuple and len( location ) == 2
-            latitude, longitude = float( location[0] ), float( location[1] )
-        except:
-            raise ValueError("example_solar_field: 'location' must be a tuple of two values convertible to float.")
+    Parameters
+    ----------
+    field_gross_area : float
+        Desired area for the solar field. Minimum value: 10.
+    latitude : float, optional
+        If provided, the orientation of the solar collector (tilt and azimuth) is set based on this value. The default is None.
+
+    Returns
+    -------
+    solar_field : SolarField
+        Generic instance of the class SolarField.
+
+    """
+    
+    coll_area = 2
+    n0 = 0.75
+    a1 = 3.6
+    a2 = 0.01
+    coll_IAM = 0.05
+    
+    if field_gross_area < 10:
+        raise ValueError( "example_solar_field: field_gross_area cannot be less than 10." )
+    
+    if latitude is not None:
+        coll_tilt = abs( latitude )
+        if latitude >= 0:
+            coll_azimuth = 180
+        else:
+            coll_azimuth = 0
+    
     else:
-        try:
-            latitude = float( latitude )
-            longitude = float( longitude )
-        except:
-            raise ValueError("example_solar_field: latitude and longitude must be convertible to float.")
-    
-    coll_tilt = abs( latitude )
-    if latitude < 0:
-        coll_azimuth = 0
-    else:
-        coll_azimuth = 180
-    coll_IAM = { 0: 1, 10: 1, 20: 0.98, 30: 0.95, 40: 0.92, 50: 0.88, 60: 0.85, 70: 0.8, 80: 0.30, 90: 0 }
-    ground_fraction_covered = 0.65
-    row_width_to_coll_length_ratio = 40
-    
-    return SolarField(
+        coll_tilt = None
+        coll_azimuth = None
         
-        coll_tilt = coll_tilt,
-        coll_azimuth = coll_azimuth,
-        coll_IAM = coll_IAM,
-        ground_fraction_covered = ground_fraction_covered,
-        row_width_to_coll_length_ratio = row_width_to_coll_length_ratio,
+    collector = SolarCollector(
+        
+        area = coll_area,
+        n0 = n0,
+        a1 = a1,
+        a2 = a2,
+        IAM = coll_IAM,
         
         )
+    
+    n_colls = field_gross_area // coll_area
+    
+    solar_field = SolarField(
+        
+        collector = collector,
+        coll_tilt = coll_tilt,
+        coll_azimuth = coll_azimuth,
+        total_colls = n_colls,
+        
+        )
+    
+    return solar_field
     
