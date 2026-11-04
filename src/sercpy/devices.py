@@ -36,10 +36,21 @@ class Outlet:
 
 class Device:
     
-    def set_inputs( self, **kwargs ):
-        
-        pass
-        
-    def set_connections(  ):
-        
-        pass
+    def __init__( self ):
+        self._convergence = False
+    
+    @property
+    def convergence(self):
+        return self._convergence
+    
+    def update_state(self):
+        return
+    
+    def set_convergence_criteria( self, **kwargs ):
+        return
+    
+    def set_connections( self, **kwargs ):
+        return
+    
+    def compute_outputs( self, operating_conditions, iteration_number, **kwargs ):
+        return

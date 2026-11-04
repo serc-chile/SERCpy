@@ -8,7 +8,7 @@ Created on Thu Sep 24 09:42:44 2026
 from typing import Optional
 import numpy as np
 from .fluids import Fluid
-from .devices import Outlet
+from .devices import Device, Outlet
 import warnings
 from math import log, exp
 from scipy.interpolate import RegularGridInterpolator
@@ -159,7 +159,7 @@ class SolarCollector:
         Flowrate per area unit with wich the collector has been tested (kg/m2 s). It is used to correct the efficiency of the collector considering the operation flowrate. If not provided, its value is assumed to be 0.02.
     
     test_fluid : :doc:`Fluid </fluids/fluid_class>` or str, optional
-        Instance of :doc:`Fluid </fluids/fluid_class>`, or a valid name to initialize an instance of this class. If not provided, 'water' is assumed.
+        Instance of :doc:`Fluid </fluids/fluid_class>`, or a valid name to initialize an instance of this class. If not provided, `"water"` is assumed.
     
     Attributes
     ----------
@@ -681,30 +681,29 @@ field_allowed_arguments = [
     "clear_horizon",
     "row_mode",
     "release_vapor",
-    "tolerance",
+    "vapor_tolerance",
     "max_iterations",
     
     ]
 
-class SolarField:
+class SolarField( Device ):
     """
     Class that models a solar collector field.
     
     Parameters
     ----------
     collector : :doc:`SolarCollector <solar_collector_class>`
-        `SolarCollector` instance defining the features
-        of each individual collector of the field.
+        Object that models each indidual collector of the solar field.
     
     coll_tilt : float, optional
         Tilt angle of each collector with respect to the ground. If not provided,
         it will be set automatically by a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance when the
-        method `compute_poa_irradiance` gets called using the `SolarField` instance.
+        method `MeteoProfile.compute_poa_irradiance` gets called using the `SolarField` instance as argument.
     
     coll_azimuth : float, optional
         Azimuthal angle of the collectors. If not provided, it will be set
         automatically by a :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` instance when the method
-        `compute_poa_irradiance` gets called using the `SolarField` instance.
+        `MeteoProfile.compute_poa_irradiance` gets called using the `SolarField` instance as argument.
     
     total_colls : int, optional
         Number of collectors that make up the solar field. If not provided,
@@ -727,11 +726,15 @@ class SolarField:
         Possible values for this argument: `"series"`, `"parallel"`.
         If arranged in series (common for heat pipe evacuated tube collectors), the heat transfer
         fluid passes from one collector to another one,
-        entering each one of them with the temperature it left the previous one with.
+        entering each one of them with the
+        temperature it left the previous one with.
         If arranged in parallel (common for flat plate collectors), the heat transfer
-        fluid flow gets equally distributed among all the collectors, entering all of them with the same temperature.
-        In the latter case, it is actually not mandatory to specify `coll_rows` or `colls_per_row`,
-        since the number of collectors per row only makes a difference when they are arranged in series.
+        fluid flow gets equally distributed among all
+        the collectors, entering all of them with the same temperature.
+        In the latter case, it is actually not
+        mandatory to specify `coll_rows` or `colls_per_row`,
+        since the number of collectors per row only
+        makes a difference when they are arranged in series.
         IF not provided, this parpameter defaults to `"parallel"`.
     
     coll_disposition : str, optional
@@ -745,7 +748,8 @@ class SolarField:
         (Incidence Angle Modifier) functions, which in most cases are evacuated tube collectors.
         This parameter can have the values `"vertical"`, `"tilted"`, or `"horizontal"`.
         In the two former cases (both are interpreted exactly the same way),
-        the tubes point towards the ground (not perpendicularly; the angle depends on the tilt of the collector),
+        the tubes point towards the ground
+        (not perpendicularly; the angle depends on the tilt of the collector),
         whereas in the latter case, the tubes are parallel to the ground. 
     
     non_shadeable_rows : int, optional
@@ -780,7 +784,7 @@ class SolarField:
         replaced with water from the distribution network. This mode is only available
         when water is used as heat transfer fluid. This parameter defaults to `True`.
     
-    tolerance : float, optional
+    vapor_tolerance : float, optional
         Only relevant of `release_vapor` is set to `True`. This argument defines
         the relative difference allowed between the vapor flowrate being released
         and the water flowrate being introduced from the distribution network to
@@ -792,40 +796,73 @@ class SolarField:
     
     Attributes
     ----------
-    model_name : str
-        String identifying the collector model.
+    outlet : sercpy.devices.outlet
+        Instance of the class sercpy.devices.Outlet representing the main fluid outlet of the solar field.
     
-    area : float
-        Area of the collector. If not provided by the user as
-        initialization argument, it is computed from `length` and `width`.
+    collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
+        Object that models each indidual collector of the solar field.
     
-    length : float
-        Long side of the collector (m). Only available
-        if enough data is provided at initialization.
+    convergence : bool
+        Boolean value stating whether convergence was achieved the last time the method
+        `SolarField.compute_outputs` was called. The concept of 'convergence'
+        refers to whether the inputs of the SolarField instance are similar enough
+        in consecutive iterations of a time step, so that no further computation is needed.
     
-    width : float
-        Short side of the collector (m). Only available
-        if enough data is provided at initialization.
+    useful_power : float
+        Useful power trasnferred to the heat transfer fluid (W). The word
+        'useful' is used to differentiate this value from the power used to
+        generate undesired vapor that is then released. This attribute gets
+        updated every time the method `SolarField.compute_outputs` is called.
     
-    n0 : float
-        Adimensional value in the range 0.1 - 0.99 identifying
-        the intercept efficiency, sometimes referred to as 'optical efficiency'. 
+    wasted_power : float
+        Thermal power used to generate undesired vapor that is then released (W).
+        This attribute gets updated every time the method `SolarField.compute_outputs` is called.
     
-    a1 : float
-        First order (linear) loss coefficient (W/m2 K).
+    vapor_flowrate : float
+        Undesired vapor being released from the solar field (kg/s). This attribute
+        gets updated every time the method `SolarField.compute_outputs` is called.
     
-    a2 : float
-        Second order (quadratic) loss coefficient (W/m2 K2).
+    efficiency : float
+        Ratio between the useful power and the total available energy,
+        which is computed as the irradiance on the collectors' plane,
+        multiplied by the solar field's total area. This attribute
+        gets updated every time the method `SolarField.compute_outputs` is called.
     
-    IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier)
-        curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
+    iterations : int
+        Number of iterations carried out the last time the method
+        `SolarField.compute_outputs` was called. An iteration process is only
+        necessary when undesired vapor is being produced and
+        released due to overheating of the collectors.
     
-    test_flowrate_per_m2 : float
-        Flowrate per area unit with wich the collector has been tested (kg/m2 s).
+    vapor_release_convergence : bool
+        Boolean value stating whether convergence for the vapor release modeling
+        was achieved the last time the method `SolarField.compute_outputs` was called.
+        If no vapor is released, this value is set to True.
     
-    test_fluid : :doc:`Fluid </fluids/fluid_class>`
-        :doc:`Fluid </fluids/fluid_class>` instance that models the fluid used to test the collector.
+    coll_tilt : float
+        Tilt of the collectors with respect to the ground (degree, °).
+    
+    coll_azimuth : float
+        Azimuthal angle of the collectors. Degrees east of north. See the
+        :doc:`documentation on azimuthal angles <azimuthal_angle>`
+        for more information on how the value is defined.
+    
+    coll_disposition : str
+        One of the following strings: 'HORIZONTAL', 'LANDSCAPE',
+        'VERTICAL', 'PORTRAIT'. See the argument with the same name in the class' documentation.
+    
+    tube_direction : str
+        One of the following strings: 'HORIZONTAL', 'VERTICAL',
+        'TILTED'. See the argument with the same name in the class' documentation.
+    
+    ground_fraction_covered : float
+        Ratio between the row spacing of the solar field and the
+        length of the collectors' tilted size. It is used by the self-shading modeling algorithm.
+    
+    ready_to_simulate : bool
+        Boolean value stating whether all attributes needed for
+        the collector to be used in a simulation have been computed.
+    
     """
     
     def __init__( self, *,
@@ -845,7 +882,7 @@ class SolarField:
             row_spacing: Optional[ float ] = None,
             clear_horizon: Optional[ bool ] = None,
             release_vapor: Optional[ bool ] = None,
-            tolerance: Optional[ float ] = None,
+            vapor_tolerance: Optional[ float ] = None,
             max_iterations: Optional[ int ] = None, ):
         
         self._collector = self._validate_argument("collector", collector)
@@ -986,10 +1023,10 @@ class SolarField:
         else:
             self._release_vapor = True
             
-        if tolerance is not None:
-            self._tolerance = self._validate_argument("tolerance", tolerance)
+        if vapor_tolerance is not None:
+            self._vapor_tolerance = self._validate_argument("vapor_tolerance", vapor_tolerance)
         else:
-            self._tolerance = 1e-3
+            self._vapor_tolerance = 1e-3
         
         if max_iterations is not None:
             self._max_iterations = self._validate_argument("max_iterations", max_iterations)
@@ -1094,19 +1131,20 @@ class SolarField:
     
     @property
     def ready_to_simulate(self):
-        "Boolean value stating whether are attributes needed for the collector to be used in a simulation have been computed."
+        "Boolean value stating whether all attributes needed for the collector to be used in a simulation have been computed."
         return all( [
             
             self._coll_tilt is not None,
             self._coll_azimuth is not None,
             hasattr( self, "_h_tolerance" ) or hasattr( self, "_temp_tolerance" ),
-            hasattr( self, "_flowrate_tolerance" ),
+            hasattr( self, "_relative_tolerance" ),
             hasattr( self, "_inlet" ),
             
             ] )
     
     @coll_tilt.setter
     def coll_tilt(self, value):
+        "Set the attribute 'coll_tilt'."
         if value is None:
             raise TypeError("SolarField: 'coll_tilt' must be a floating point number in the range: 0 <= coll_tilt <= 90.")
         self._coll_tilt = self._validate_argument("coll_tilt", value)
@@ -1117,6 +1155,7 @@ class SolarField:
     
     @coll_azimuth.setter
     def coll_azimuth(self, value):
+        "Set the attribute 'coll_azimuth'."
         if value is None:
             raise TypeError("SolarField: 'coll_azimuth' must be a floating point number in the range: 0 <= coll_tilt < 360.")
         self._coll_azimuth = self._validate_argument("coll_azimuth", value)
@@ -1124,6 +1163,28 @@ class SolarField:
             self._compute_rotation_matrix()
     
     def set_auto_orientation( self, *, coll_tilt, coll_azimuth ):
+        """
+        Method used by :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` to set the attributes
+        'coll_tilt' and 'coll_azimuth' based on the geographical location
+        to which the `MeteoProfile` instance corresponds.
+        
+        This method **only** changes the attributes of the `SolarField`
+        that have not been defined by the user at initialization.
+
+        Parameters
+        ----------
+        coll_tilt : float
+            Collector tilt with respect to the ground (degrees, °). Valid range: `0` - `90`
+        coll_azimuth : float
+            Collector azimuth. Degrees east of north. See the
+            :doc:`documentation on azimuthal angles <azimuthal_angle>`
+            for more information on how the value is defined.
+
+        Returns
+        -------
+        None.
+
+        """
         if self._tilt_mode == 'auto':
             if coll_tilt is None:
                 raise ValueError("SolarField.set_auto_orientation: 'coll_tilt' was expected to be defined.")
@@ -1143,7 +1204,30 @@ class SolarField:
             self._compute_shadeable_rows_visible_sky_dome_fraction()
     
     def _compute_rotation_matrix( self ):
+        """
+        Method to compute an attribute called '_rotation_matrix'.
         
+        This attribute converts vectors from one reference system to another.
+        
+        In particular, it converts vectors from a cartesian system whose axes
+        are parallel to the north-south,
+        east-west, and vertical directions, to a cartesian system
+        whose axes are parallel to the collector sides
+        and normal to the collector plane.
+        
+        This matrix is then used to convert the solar position to a system based on the collector.
+        The result is then used to determine the incidence angles.
+        
+        Raises
+        ------
+        AttributeError
+            If not all attributes necessary to compute the matrix have been defined.
+        
+        Returns
+        -------
+        None.
+        
+        """
         if self._coll_tilt is None:
             raise AttributeError("SolarField._compute_rotation_matrix: Rotation matrix cannot be computed because coll_tilt is not defined.")
         if self._coll_azimuth is None:
@@ -1158,17 +1242,21 @@ class SolarField:
     
     def compute_poa_irradiance( self, GHI, DNI, DHI, apparent_solar_zenith, solar_azimuth, ground_albedo = None, doy = None, dni_extra = None, diffuse_irradiance_model = None  ):
         """
-        Compute the irradiance on the plane of the collectors and the IAM (Incidence Angle Modifier) correction factor.
+        Compute the irradiance on the plane of the collectors and the IAM correction factor.
         
         The method can compute the results for single numeric values and for data arrays.
         
-        Both irradiance and IAM are computed for the collector rows that are subject to self-shading, and the ones that are not.
-        If no enough data is provided at initialization for the self-shading algorithm to work, it is assumed that all collector rows are not subject to self-shading.
+        Both irradiance and IAM are computed for the collector
+        rows that are subject to self-shading, and the ones that are not.
+        If no enough data is provided at initialization for
+        the self-shading algorithm to work, it is assumed
+        that all collector rows are not subject to self-shading.
         
         Parameters
         ----------
         
-        The first four arguments (`GHI` to `solar_azimuth`) are not optional and must have the same length, in the case that they are arrays of data.
+        The first four arguments (`GHI` to `solar_azimuth`) are not
+        optional and must have the same length, in the case that they are arrays of data.
         
         GHI : float or array-like
             Global horizontal irradiance (W/m2).
@@ -1186,16 +1274,24 @@ class SolarField:
             Azimuthal angle of the solar position (degree, °).
         
         ground_albedo : float or array-like, optional
-            Albedo of the ground in front of the solar collector field. Unlike the previous arguments, `ground_albedo` can be a single numeric value despite the first four argument being data arrays. It can also be an array with the same length as the other arrays. If not provided, this argument defaults to 0.2.
+            Albedo of the ground in front of the solar collector field.
+            Unlike the previous arguments, `ground_albedo` can be a single numeric
+            value despite the first four argument being data arrays. It can also
+            be an array with the same length as the other arrays.
+            If not provided, this argument defaults to `0.2`.
         
         doy : int or array-like, optional
-            Integer value identifying the day of the year. If provided, it must have the same length as the irradiance and solar position data. The default is None.
+            Integer value identifying the day of the year. If provided, it must
+            have the same length as the irradiance and solar position data. The default is None.
         
         dni_extra : float or array-like, optional
-            Extraterrestrial normal irradiance. It can be a single numeric value or an array with the same length as the irradiance and solar position data. If not provided, it defaults to 1366.1.
+            Extraterrestrial normal irradiance. It can be a single numeric
+            value or an array with the same length as the irradiance and
+            solar position data. If not provided, it defaults to 1366.1.
         
         diffuse_irradiance_model : str, optional
-            Model used for computing the diffuse irradiance. Valid values: `"isotropic"`, `"perez"`. If not provided, it defaults to `"perez"`.
+            Model used for computing the diffuse irradiance. Valid
+            values: `"isotropic"`, `"perez"`. If not provided, it defaults to `"perez"`.
 
         Returns
         -------
@@ -1666,13 +1762,13 @@ class SolarField:
             except:
                 raise TypeError("SolarField: Argument 'release_vapor' must be convertible to a boolean value.")
         
-        if argument_name == 'tolerance':
+        if argument_name == 'vapor_tolerance':
             try:
                 value = float( value )
             except:
-                raise TypeError("SolarField: Argument 'tolerance' must be converible to type 'float'.")
+                raise TypeError("SolarField: Argument 'vapor_tolerance' must be converible to type 'float'.")
             if not ( value >= 1e-8 and value <= 1e-1 ):
-                raise ValueError("SolarField: Argument 'tolerance' must be in the range 1e-8 <= tolerance <= 1e-1.")
+                raise ValueError("SolarField: Argument 'vapor_tolerance' must be in the range 1e-8 <= vapor_tolerance <= 1e-1.")
                 
         if argument_name == 'max_iterations':
             try:
@@ -1707,8 +1803,8 @@ class SolarField:
         Returns
         -------
         None
-        """
         
+        """
         if not hasattr( self, "_coll_tilt" ):
             raise Exception("SolarField._compute_diffuse_IAM: coll_tilt has not been defined yet.")
         
@@ -1853,8 +1949,8 @@ class SolarField:
         
         convergence : bool
             Whether convergence between the flowrate entering the collector row from the distribution network and the vapor flowrate being released due to overheating was achieved.
-        """
         
+        """
         fluid = state_in.fluid
         
         if self._release_vapor and fluid.can_boil:
@@ -1879,7 +1975,7 @@ class SolarField:
                 vapor_flowrate = mixture_state.Q*flowrate_mix
                 
                 it = it + 1
-                if flowrate_mains == vapor_flowrate or abs(flowrate_mains - vapor_flowrate)/max([ flowrate_mains, vapor_flowrate ]) < self._tolerance:
+                if flowrate_mains == vapor_flowrate or abs(flowrate_mains - vapor_flowrate)/max([ flowrate_mains, vapor_flowrate ]) < self._vapor_tolerance:
                     maxIt = False
                     break
                 if it == self._max_iterations:
@@ -1922,9 +2018,8 @@ class SolarField:
         Returns
         -------
         None.
-
-        """
         
+        """
         if not isinstance( inlet, Outlet ):
             raise ValueError("SolarField.set_inputs: 'outlet' must be an instance of sercpy.devices.Outlet.")
         
@@ -1937,7 +2032,7 @@ class SolarField:
                                   temp_normalization_range: Optional[ float ] = None,
                                   h_normalization_range: Optional[ float ] = None ):
         """
-        Method for the user to establish the convergence criteria of the SolarField instance.
+        Method for the user to establish the convergence criteria of the `SolarField` instance.
         
         When used in the context of a simulation, a `SolarField` instance determines that convergence has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
         The aforementioned "margin" or "tolerance" is set by this method.
@@ -1959,29 +2054,33 @@ class SolarField:
         Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion for more details.
         
         relative_tolerance : float
-            Maximum relative difference allowed for all input types except temperature and specific enthalpy.
+            Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `SolarField`
+            class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
+        
         temp_tolerance : float, optional
-            Absolute temperature difference allowed (°C). The default is None.
+            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
+        
         h_tolerance : float, optional
-            Absolute enthalpy difference allowed (J/kg). The default is None.
+            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
+        
         temp_normalization_range : float, optional
-            Normalization range for temperature. See the description above for more details. The default is None.
+            Normalization range for temperature. See the description above for more details.
+        
         h_normalization_range : float, optional
-            Normalization range for specific enthalpy. See the description above for more details. The default is None.
+            Normalization range for specific enthalpy. See the description above for more details.
         
         Returns
         -------
         None.
-
-        """
         
+        """
         try:
             relative_tolerance = float( relative_tolerance )
         except:
             raise TypeError("SolarField.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'.")
-            
+        
         self._relative_tolerance = relative_tolerance
-            
+        
         if sum( [ variable is not None for variable in [ 
                 
                 temp_tolerance,
@@ -1995,8 +2094,10 @@ class SolarField:
         
         if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
             raise ValueError("SolarField.set_convergence_criteria: At least one of the following arguments must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
+        
         elif temp_tolerance is not None and temp_normalization_range is not None:
             raise ValueError("SolarField.set_convergence_criteria: Arguments 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
+        
         elif h_tolerance is not None and h_normalization_range is not None:
             raise ValueError("SolarField.set_convergence_criteria: Arguments 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
             
@@ -2017,7 +2118,6 @@ class SolarField:
         else:
             self._temp_tolerance = None
         
-        
         if h_tolerance is not None:
             try:
                 h_tolerance = float( h_tolerance )
@@ -2033,6 +2133,12 @@ class SolarField:
         
         else:
             self._h_tolerance = None
+        
+        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
+            raise ValueError(f"SolarField.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
+        
+        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
+            raise ValueError(f"SolarField.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
             
     def _set_last_inputs( self, flowrate, state_in ):
         """
@@ -2100,8 +2206,8 @@ class SolarField:
         Returns
         -------
         None
-        """
         
+        """
         if type( operating_conditions ) is not dict:
             raise TypeError("SolarField.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
         if not ( type( iteration_number ) is int and iteration_number >= 0 ):
