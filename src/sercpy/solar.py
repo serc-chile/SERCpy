@@ -693,56 +693,102 @@ class SolarField:
     Parameters
     ----------
     collector : :doc:`SolarCollector <solar_collector_class>`
-        `sercpy.solar.SolarCollector` instance defining the features of each individual collector of the field.
+        `sercpy.solar.SolarCollector` instance defining the features
+        of each individual collector of the field.
     
     coll_tilt : float, optional
-        Tilt angle of each collector with respect to the ground. If not provided, it will be set automatically by a `MeteoProfile` instance when the method `compute_poa_irradiance` gets called using the `SolarField` instance.
+        Tilt angle of each collector with respect to the ground. If not provided,
+        it will be set automatically by a `MeteoProfile` instance when the
+        method `compute_poa_irradiance` gets called using the `SolarField` instance.
     
     coll_azimuth : float, optional
-        Azimuthal angle of the collectors. If not provided, it will be set automatically by a `MeteoProfile` instance when the method `compute_poa_irradiance` gets called using the `SolarField` instance.
+        Azimuthal angle of the collectors. If not provided, it will be set
+        automatically by a `MeteoProfile` instance when the method
+        `compute_poa_irradiance` gets called using the `SolarField` instance.
     
     total_colls : int, optional
-        Number of collectors that make up the solar field. If not provided, it can be computed as `coll_rows*colls_per_row`.
+        Number of collectors that make up the solar field. If not provided,
+        it can be computed as `coll_rows*colls_per_row`.
     
     coll_rows : int, optional
-        Number of collector groups that make up the solar field. This parameter only matters for the model's results if the argument `row_mode` is set to `"series"`, or if the argument `non_shadeable_rows` is provided. If not provided, its value can be determined as `total_cols/colls_per_row` (this result must be an integer).
+        Number of collector groups that make up the solar field. This parameter
+        only matters for the model's results if the argument `row_mode` is set to
+        `"series"`, or if the argument `non_shadeable_rows` is provided. If not provided,
+        its value can be determined as `total_cols/colls_per_row` (this result must be an integer).
     
     colls_per_row : int, optional
-        Number of collectors making up each collector row. This parameter only matters for the model's results if the argument `row_mode` is set to `"series"`, or if the argument `non_shadeable_rows` is provided. If not provided, its value can be determined as `total_cols/coll_rows` (this result must be an integer).
+        Number of collectors making up each collector row. This parameter only
+        matters for the model's results if the argument `row_mode` is set to `"series"`,
+        or if the argument `non_shadeable_rows` is provided. If not provided, its value
+        can be determined as `total_cols/coll_rows` (this result must be an integer).
         
     row_mode : str, optional
-        Parameter defining whether the collectors in a row are arranged in series or in parallel. Possible values for this argument: `"series"`, `"parallel"`.
-        If arranged in series (common for heat pipe evacuated tube collectors), the heat transfer fluid passes from one collector to another one, entering each one of them with the temperature it left the previous one with.
-        If arranged in parallel (common for flat plate collectors), the heat transfer fluid flow gets equally distributed among all the collectors, entering all of them with the same temperature. In the latter case, it is actually not mandatory to specify `coll_rows` or `colls_per_row`, since the number of collectors per row only makes a difference when they are arranged in series.
-        The default value for this parameter is `"parallel"`.
+        Parameter defining whether the collectors in a row are arranged in series or in parallel.
+        Possible values for this argument: `"series"`, `"parallel"`.
+        If arranged in series (common for heat pipe evacuated tube collectors), the heat transfer
+        fluid passes from one collector to another one,
+        entering each one of them with the temperature it left the previous one with.
+        If arranged in parallel (common for flat plate collectors), the heat transfer
+        fluid flow gets equally distributed among all the collectors, entering all of them with the same temperature.
+        In the latter case, it is actually not mandatory to specify `coll_rows` or `colls_per_row`,
+        since the number of collectors per row only makes a difference when they are arranged in series.
+        IF not provided, this parpameter defaults to `"parallel"`.
     
     coll_disposition : str, optional
-        String identifying whether the tilted side of the collector is the short side or the long side. The former case can be identified with the strings `"horizontal"` and `"landscape"`. The latter case can be identified with the strings `"vertical"` and `"portrait"`.
+        String identifying whether the tilted side of the collector is the short
+        side or the long side. The former case can be identified with the strings
+        `"horizontal"` and `"landscape"`. The latter case can be identified
+        with the strings `"vertical"` and `"portrait"`.
     
     tube_direction : str, optional
-        This parameter only makes a difference for collectors that have biaxial IAM (Incidence Angle Modifier) functions, which in most cases are evacuated tube collectors.
-        This parameter can have the values `"vertical"`, `"tilted"`, or `"horizontal"`. In the two former cases (both are interpreted exactly the same way), the tubes point towards the ground (not perpendicularly; the angle depends on the tilt of the collector), whereas in the latter case, the tubes are parallel to the ground. 
+        This parameter only makes a difference for collectors that have biaxial IAM
+        (Incidence Angle Modifier) functions, which in most cases are evacuated tube collectors.
+        This parameter can have the values `"vertical"`, `"tilted"`, or `"horizontal"`.
+        In the two former cases (both are interpreted exactly the same way),
+        the tubes point towards the ground (not perpendicularly; the angle depends on the tilt of the collector),
+        whereas in the latter case, the tubes are parallel to the ground. 
     
     non_shadeable_rows : int, optional
-        Number of collector rows that are not subject to self-shading. Note that more than one collector row may be in the front o the collector field, since a collector row may be defined as a group of collectors connected in series (see the argument `row_mode`).
+        Number of collector rows that are not subject to self-shading.
+        Note that more than one collector row may be at the front of the collector field,
+        since a collector row may be defined as a group of collectors connected in series
+        (see the argument `row_mode`). This argument cannot be provided together with `non_shadeable_colls`,
+        since both arguments provide the same information in different ways.
     
     non_shadeable_colls : int, optional
-        Number of collectors that are not subject to self-shading. If the number of collectors per row has been specified, this argument must be equivalent to an entire number of rows (i.e. `non_shadeable_colls/colls_per_row` must be a whole number). This argument is useful when the number of rows is not being taken into account.
+        Number of collectors that are not subject to self-shading.
+        If the number of collectors per row has been specified, this
+        argument must be equivalent to an entire number of rows
+        (i.e. `non_shadeable_colls/colls_per_row` must be a whole number).
+        This argument is useful when the number of rows
+        is not being taken into account. This argument cannot be provided
+        together with `non_shadeable_rows`, since both arguments provide the same
+        information in different ways.
     
     ground_fraction_covered : float, optional
-        Ratio between the tilted side of the solar collectors and the row spacing between them. This parameter is relevant for modeling of self-shading. This value can be computed internally if the attributes `length` and `width` of the object `collector` have been correctly defined, and if the arguments `coll_disposition` and `row_spacing` are provided for this class.
+        Ratio between the tilted side of the solar collectors and the row spacing between them.
+        This parameter is relevant for modeling of self-shading. This value can be computed internally if
+        the attributes `length` and `width` of the object `collector` have been correctly defined,
+        and if the arguments `coll_disposition` and `row_spacing` are provided for this class.
     
     row_spacing : float, optional
-        Distance between collector rows (m). 
+        Distance between collector rows (m).
     
     release_vapor : bool, optional
-        If this parameter is set to `True`, the vapor produced when the saturation temperature of the heat transfer fluid is achieved will be released and replaced with water from the distribution network. This mode is only available when water is used as heat transfer fluid. This parameter defaults to `True`.
+        If this parameter is set to `True`, the vapor produced when the saturation
+        temperature of the heat transfer fluid is achieved will be released and
+        replaced with water from the distribution network. This mode is only available
+        when water is used as heat transfer fluid. This parameter defaults to `True`.
     
     tolerance : float, optional
-        Only relevant of `release_vapor` is set to `True`. This argument defines the relative difference allowed between the vapor flowrate being released and the water flowrate being introduced from the distribution network to replace it. Allowed range: 1e-8 - 1e-1. If not provided, it defaults to 1e-3.
+        Only relevant of `release_vapor` is set to `True`. This argument defines
+        the relative difference allowed between the vapor flowrate being released
+        and the water flowrate being introduced from the distribution network to
+        replace it. Allowed range: `1e-8` to `1e-1`. If not provided, it defaults to `1e-3`.
     
     max_iterations : int, optional
-        Maximum number of iterations allowed when computing the vapor being released due to boiling of the heat transfer fluid.
+        Maximum number of iterations allowed when computing the vapor
+        being released due to boiling of the heat transfer fluid.
     
     Attributes
     ----------
@@ -750,16 +796,20 @@ class SolarField:
         String identifying the collector model.
     
     area : float
-        Area of the collector. If not provided by the user as initialization argument, it is computed from `length` and `width`.
+        Area of the collector. If not provided by the user as
+        initialization argument, it is computed from `length` and `width`.
     
     length : float
-        Long side of the collector (m). Only available if enough data is provided at initialization.
+        Long side of the collector (m). Only available
+        if enough data is provided at initialization.
     
     width : float
-        Short side of the collector (m). Only available if enough data is provided at initialization.
+        Short side of the collector (m). Only available
+        if enough data is provided at initialization.
     
     n0 : float
-        Adimensional value in the range 0.1 - 0.99 identifying the intercept efficiency, sometimes referred to as 'optical efficiency'. 
+        Adimensional value in the range 0.1 - 0.99 identifying
+        the intercept efficiency, sometimes referred to as 'optical efficiency'. 
     
     a1 : float
         First order (linear) loss coefficient (W/m2 K).
@@ -768,7 +818,8 @@ class SolarField:
         Second order (quadratic) loss coefficient (W/m2 K2).
     
     IAM : float, list, or dict
-        Object specifying the shape of the IAM (Incidence Angle Modifier) curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
+        Object specifying the shape of the IAM (Incidence Angle Modifier)
+        curve. See :doc:`IAM </devices/solar/solar_collector_class>` to learn the possible formats of this parameter.
     
     test_flowrate_per_m2 : float
         Flowrate per area unit with wich the collector has been tested (kg/m2 s).
