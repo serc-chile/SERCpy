@@ -30,7 +30,7 @@ The IAM of the solar collector must be specified through the initialization argu
 Mono-axial IAM function
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-For most flat plate solar collectors, IAM can be considered to be a function of the angle of incidence (AOI), which is defined as the angle of the sun with respect to a vector which is normal to the collector's plane. In other words, when the sun is pointing "directly" to the collector, the AOI is zero, and any deviation from that direction corresponds to the AOI. With mono-axial IAM curves, the correction factor that must be applied is completely defined by the AOI.
+For most flat plate solar collectors, IAM can be considered to be a function of the angle of incidence (AOI), which is defined as the angle of the solar position with respect to a vector that is normal to the collector's plane. In other words, when the sun is pointing "directly" to the collector, the AOI is zero, and any deviation from that direction corresponds to the AOI. With mono-axial IAM curves, the correction factor that must be applied is completely defined by the AOI.
 
 .. _iam_curve_from_list_of_values:
 
