@@ -649,7 +649,7 @@ class SolarCollector:
             Ambient temperature (°C).
         
         flowrate_correction_factor : float
-            Dimensionless quantity defining the correction factor associated to the flowrate.
+            Dimensionless quantity defining the correction factor associated to the flowrate. See :meth:`SolarCollector.compute_flowrate_correction_factor`.
         
         Returns
         -------
@@ -1673,7 +1673,8 @@ class SolarField( Device ):
         
         return aoi, longi, trans
     
-    def _validate_argument(self, argument_name, value ):
+    @staticmethod
+    def _validate_argument( argument_name, value ):
         """
         Private method to confirm that a certain argument provided by the user matches the expected type and other restrictions such as range, in the case of numeric values.
         
@@ -1685,12 +1686,12 @@ class SolarField( Device ):
             Name to identify the argument.
         value : any
             Argument value.
-
+        
         Raises
         ------
         ValueError
             Any discrepancy between the expected value and the value provided.
-
+        
         Returns
         -------
         value : any
