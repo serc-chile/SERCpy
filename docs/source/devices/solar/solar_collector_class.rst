@@ -75,8 +75,8 @@ Bi-axial IAM function
 
 For some collectors, particularly tubular ones, AOI is not enough to define the IAM correction factor, because the direction to which the sun is deviated from the normal makes a difference. Therefore, the angle of incidence is decomposed into two angles:
 
-- The transversal angle is the projection of the incidence angle onto a plane that is normal to the tubes' direction.
-- The longitudinal angle is the projection of the incidence angle onto a plane that is perpendicular to the last one defined, and also perpendicular to the collector's plane.
+- The **transversal angle** is the projection of the incidence angle onto a plane that is normal to the tubes' direction.
+- The **longitudinal angle** is the projection of the incidence angle onto a plane that is perpendicular to the last one defined, and also perpendicular to the collector's plane.
 
 The IAM of collectors for which this angle decomposition is needed, is usually reported with two curves:
 
