@@ -11,7 +11,7 @@ from bisect import bisect
 from .fluids import Fluid
 from typing import Optional
 
-tank_allowed_arguments = [
+tank_allowed_parameters = [
     
     "volume",
     "aspect_ratio",
@@ -37,36 +37,36 @@ class StorageTank( Device ):
     """
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
-    **Only two of the first four arguments must be provided to define the shape and size of the tank.**
+    **Only two of the first four parameters must be provided to define the shape and size of the tank.**
     
     Parameters
     ----------
     volume : float, optional
-        Internal volume of the tank, in m3. If provided, one and only one of the other arguments `aspect_ratio`, `diameter`, and `height` must also be provided.
+        Internal volume of the tank, in m3. If provided, one and only one of the other parameters `aspect_ratio`, `diameter`, and `height` must also be provided.
     
     aspect_ratio : float, optional
         Aspect ratio of the tank; i.e., the ratio between the height and the diameter.
-        If provided, one and only one of the other arguments `volume`, `diameter`, and `height` must also be provided.
+        If provided, one and only one of the other parameters `volume`, `diameter`, and `height` must also be provided.
     
     diameter : float, optional
         Diameter of the tank, in m.
-        If provided, one and only one of the other arguments `volume`, `aspect_ratio`, and `height` must also be provided.
+        If provided, one and only one of the other parameters `volume`, `aspect_ratio`, and `height` must also be provided.
     
     height : float, optional
         Height of the tank, in m.
-        If provided, one and only one of the other arguments `volume`, `aspect_ratio`, and `diameter` must also be provided.
+        If provided, one and only one of the other parameters `volume`, `aspect_ratio`, and `diameter` must also be provided.
     
     loss_coeff : float, optional
-        Thermal loss coefficient of the tank (W/m2 K). If provided, this value replaces the other arguments `top_loss_coeff`, `edge_loss_coeff`, and `bottom_loss_coeff`, only if they are not provided.
+        Thermal loss coefficient of the tank (W/m2 K). If provided, this value replaces the other parameters `top_loss_coeff`, `edge_loss_coeff`, and `bottom_loss_coeff`, only if they are not provided.
     
     top_loss_coeff : float, optional
-        Thermal loss coefficient at the top face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that argument is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the top face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     edge_loss_coeff : float, optional
-        Thermal loss coefficient at the lateral wall of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that argument is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the lateral wall of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     bottom_loss_coeff : float, optional
-        Thermal loss coefficient at the bottom face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that argument is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the bottom face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     n_nodes : int, optional
         Number of nodes of the tank. If not provided, it defaults to 8.
@@ -74,9 +74,9 @@ class StorageTank( Device ):
     io_nodes : list of pairs, optional
         Nodes where the inlets ond outlets are located . It has the following format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
         where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the nodes where the inlets and outlets of the tank are located. The top node has the number 1,
-        and the bottom node has the number `n_nodes`. The number of pairs in the list defines the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this argument could be
+        and the bottom node has the number `n_nodes`. The number of pairs in the list defines the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this parameter could be
         `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node, whereas `outlet_1` is located in the bottom node.
-        The opposite happens for `inlet_2` and `outlet_2`. **This argument can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
+        The opposite happens for `inlet_2` and `outlet_2`. **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
     
     io_relative_heights : list of pairs, optional
         Alternative way of defining the 
@@ -158,12 +158,12 @@ class StorageTank( Device ):
         else:
             self._n_nodes_mode = 'auto'
             if io_nodes is not None:
-                raise ValueError("StorageTank: Inlet/Outlet positions cannot be specified with the argument 'io_nodes' if the number of nodes of the tank 'n_nodes' is not specified.")
+                raise ValueError("StorageTank: Inlet/Outlet positions cannot be specified with the parameter 'io_nodes' if the number of nodes of the tank 'n_nodes' is not specified.")
             self._n_nodes = 8
         
         # Define inlet/outlet positions
         if io_nodes is not None and io_relative_heights is not None:
-            raise ValueError("StorageTank: Arguments 'io_nodes' and 'io_relative_heights' cannot be provided at the same time.")
+            raise ValueError("StorageTank: Parameters 'io_nodes' and 'io_relative_heights' cannot be provided at the same time.")
         elif io_relative_heights is not None:
             self._io_relative_heights = self._validate_argument("io_relative_heights", io_relative_heights)
             self._io_nodes_from_relative_heights()
@@ -172,7 +172,7 @@ class StorageTank( Device ):
             self._inlet_nodes =  [ pair[ 0 ] - 1 for pair in io_nodes ]
             self._outlet_nodes =  [ pair[ 1 ] - 1 for pair in io_nodes ]
         else:
-            raise ValueError("StorageTank: One and only one of the arguments 'io_nodes' and 'io_relative_heights' must be provided.")
+            raise ValueError("StorageTank: One and only one of the parameters 'io_nodes' and 'io_relative_heights' must be provided.")
             
         self._stored_fluid = self._validate_argument("stored_fluid", stored_fluid)
         
@@ -213,7 +213,7 @@ class StorageTank( Device ):
             self._fluid_thermal_conductivity = self._stored_fluid.k_ref
             self._fluid_density = self._stored_fluid.D_ref
         except AttributeError:
-            raise AttributeError("StorageTank: stored_fluid does not have reference properties. Argument 'T_ref' must be provided when initializing the 'Fluid' instance.")
+            raise AttributeError("StorageTank: stored_fluid does not have reference properties. Parameter 'T_ref' must be provided when initializing the 'Fluid' instance.")
         
         node_mass = self._fluid_density * self._volume / self._n_nodes
         self._node_thermal_capacity = node_mass * self._fluid_cp
@@ -287,7 +287,7 @@ class StorageTank( Device ):
         if value == self._n_nodes:
             return
         if not hasattr( self, "_io_relative_heights" ):
-            raise AttributeError("The number of nodes of the tank can only be modified when the inlet/outlet positions have been defined through the initialization argument 'io_relative_heights'.")
+            raise AttributeError("The number of nodes of the tank can only be modified when the inlet/outlet positions have been defined through the initialization parameter 'io_relative_heights'.")
         if not value.is_integer():
             raise ValueError("StorageTank: 'n_nodes' must be an integer value.")
         if not value >= 1:
@@ -366,31 +366,31 @@ class StorageTank( Device ):
         parameters_to_change = sum( [ variable is not None for variable in [ volume, aspect_ratio, diameter, height ] ] )
         
         if not parameters_to_change in [ 1,2 ]:
-            raise ValueError("StorageTank.change_geometry: One or two of the following arguments must be provided: 'volume', 'aspect_ratio', 'diameter', 'height'.")
+            raise ValueError("StorageTank.change_geometry: One or two of the following parameters must be provided: 'volume', 'aspect_ratio', 'diameter', 'height'.")
 
         if parameters_to_change == 2 and keep_constant is not None:
-            raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' must not be provided when two other parameters are specified.")
+            raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' must not be provided when two other parameters are specified.")
 
         if parameters_to_change == 1:
         
             if not keep_constant in [ 'volume', 'aspect_ratio', 'diameter', 'height' ]:
-                raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' must be one of the following strings: 'volume', 'aspect_ratio', 'diameter', 'height'.")
+                raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' must be one of the following strings: 'volume', 'aspect_ratio', 'diameter', 'height'.")
             
             if keep_constant == 'volume':
                 if volume is not None:
-                    raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' cannot be the same as the parameter to change.")
+                    raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' cannot be the same as the parameter to change.")
                 volume = self._volume
             if keep_constant == 'aspect_ratio':
                 if aspect_ratio is not None:
-                    raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' cannot be the same as the parameter to change.")
+                    raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' cannot be the same as the parameter to change.")
                 aspect_ratio = self._aspect_ratio
             if keep_constant == 'diameter':
                 if diameter is not None:
-                    raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' cannot be the same as the parameter to change.")
+                    raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' cannot be the same as the parameter to change.")
                 diameter = self._diameter
             if keep_constant == 'height':
                 if height is not None:
-                    raise ValueError("StorageTank.change_geometry: Argument 'keep_constant' cannot be the same as the parameter to change.")
+                    raise ValueError("StorageTank.change_geometry: Parameter 'keep_constant' cannot be the same as the parameter to change.")
                 height = self._height
         
         self._volume, self._aspect_ratio, self._diameter, self._height =  self._compute_geometry( volume, aspect_ratio, diameter, height )
@@ -417,7 +417,7 @@ class StorageTank( Device ):
     def _compute_geometry( volume, aspect_ratio, diameter, height ):
         
         if sum([ variable is not None for variable in [ volume, aspect_ratio, diameter, height ] ]) != 2:
-            raise ValueError("StorageTank: Two and only two of the arguments 'volume','aspect_ratio', 'diameter', and 'height' must be provided.")
+            raise ValueError("StorageTank: Two and only two of the parameters 'volume','aspect_ratio', 'diameter', and 'height' must be provided.")
         
         if volume is not None and aspect_ratio is not None:
             diameter = float( ( 4*volume / ( np.pi * aspect_ratio ) ) ** ( 1/3 ) )
@@ -451,7 +451,7 @@ class StorageTank( Device ):
         
         return volume, aspect_ratio, diameter, height
     
-    def _validate_argument( self, argument_name, value ):
+    def _validate_argument( self, parameter_name, value ):
         """
         Private method to confirm that a certain argument provided by the user matches the expected type and other restrictions such as range, in the case of numeric values.
         
@@ -459,10 +459,10 @@ class StorageTank( Device ):
         
         Parameters
         ----------
-        argument_name : str
-            Name to identify the argument.
+        parameter_name : str
+            Name to identify the parameter.
         value : any
-            Argument value.
+            Parameter value.
         
         Raises
         ------
@@ -476,16 +476,16 @@ class StorageTank( Device ):
         
         """
         
-        if type(argument_name) is not str:
-            raise TypeError("StorageTank._validate_argument: Argument 'argument_name' must be a string.")
+        if type(parameter_name) is not str:
+            raise TypeError("StorageTank._validate_argument: Parameter 'parameter_name' must be a string.")
             
-        if not argument_name in tank_allowed_arguments:
-            raise ValueError( f"StorageTank: '{argument_name}' is not a valid argument." )
+        if not parameter_name in tank_allowed_parameters:
+            raise ValueError( f"StorageTank: '{parameter_name}' is not a valid parameter." )
             
         if value is None:
             return None
         
-        if argument_name in [
+        if parameter_name in [
                 
                 "volume",
                 "aspect_ratio",
@@ -501,11 +501,11 @@ class StorageTank( Device ):
             try:
                 value = float( value )
             except:
-                raise TypeError(f"StorageTank: '{argument_name}' must be convertible to type 'float'.")
+                raise TypeError(f"StorageTank: '{parameter_name}' must be convertible to type 'float'.")
             if value <= 0:
-                raise ValueError(f"StorageTank: '{argument_name}' must larger than zero.")
+                raise ValueError(f"StorageTank: '{parameter_name}' must larger than zero.")
                 
-        if argument_name == 'n_nodes':
+        if parameter_name == 'n_nodes':
             
             try:
                 assert value.is_integer()
@@ -516,14 +516,14 @@ class StorageTank( Device ):
             if not value >= 1:
                 raise ValueError("StorageTank: 'n_nodes' must be >= 1.")
         
-        if argument_name == "io_nodes":
+        if parameter_name == "io_nodes":
             
             try:
                 value = [ v for v in value ]
                 assert all([ len( v ) == 2 for v in value ])
                 value = [ [ v[0], v[1] ] for v in value ]
             except:
-                raise ValueError("StorageTank: Argument 'io_nodes' does not match the expected format: [ [ input_node_1, output_node_1 ], [ input_node_2, output_node_2 ], ... ].")
+                raise ValueError("StorageTank: Parameter 'io_nodes' does not match the expected format: [ [ input_node_1, output_node_1 ], [ input_node_2, output_node_2 ], ... ].")
             
             try:
                 assert all([ v[0].is_integer() and v[1].is_integer() for v in value ])
@@ -534,14 +534,14 @@ class StorageTank( Device ):
             if not all( [ v[0] >= 1 and v[0] <= self._n_nodes and v[1] >= 1 and v[1] <= self._n_nodes for v in value ] ):
                 raise ValueError("StorageTank: The numeric values of 'io_nodes' must be in the range 1 <= node <= n_nodes.")
             
-        if argument_name ==  "io_relative_heights":
+        if parameter_name ==  "io_relative_heights":
             
             try:
                 value = [ v for v in value ]
                 assert all([ len( v ) == 2 for v in value ])
                 value = [ [ v[0], v[1] ] for v in value ]
             except:
-                raise ValueError("StorageTank: Argument 'io_relative_heights' does not match the expected format: [ [ input_height_1, output_height_1 ], [ input_height_2, output_height_2 ], ... ].")
+                raise ValueError("StorageTank: Parameter 'io_relative_heights' does not match the expected format: [ [ input_height_1, output_height_1 ], [ input_height_2, output_height_2 ], ... ].")
             
             try:
                 value = [ [ float( v[0] ), float( v[1] ) ] for v in value ]
@@ -551,12 +551,12 @@ class StorageTank( Device ):
             if not all( [ v[0] >= 0 and v[0] <= 1 and v[1] >= 0 and v[1] <= 1 for v in value ] ):
                 raise ValueError("StorageTank: The numeric values of 'io_relative_heights' must be in the range 0 <= relative_height <= 1.")
         
-        if argument_name == "stored_fluid":
+        if parameter_name == "stored_fluid":
             
             if not isinstance( value, Fluid ):
                 raise TypeError("StorageTank: stored_fluid must be an instance of sercpy.fluids.Fluid.")
                 
-        if argument_name == "initial_temperature":
+        if parameter_name == "initial_temperature":
             
             try:
                 value_2 = float( value )
@@ -567,45 +567,45 @@ class StorageTank( Device ):
                     value = [ float(v) for v in value ]
                     assert len( value ) == self._n_nodes
                 except:
-                    raise ValueError("StorageTank: Argument 'initial_temperature' must be a single numeric value or a list of numeric values. In the latter case, its length must be equal to n_nodes.")
+                    raise ValueError("StorageTank: Parameter 'initial_temperature' must be a single numeric value or a list of numeric values. In the latter case, its length must be equal to n_nodes.")
                 
-        if argument_name == "inlet_mode":
+        if parameter_name == "inlet_mode":
             
             try:
                 value = str(value)
             except:
-                raise ValueError("StorageTank: Argument 'inlet_mode' must be a string.")
+                raise ValueError("StorageTank: Parameter 'inlet_mode' must be a string.")
                 
             if not value in [ "fixed_inlets", "temperature_seeking", "AFD" ]:
-                raise ValueError("StorageTank: Argument 'inlet_mode' must be one of the strings: 'fixed_inlets', 'temperature_seeking' or 'AFD'.")
+                raise ValueError("StorageTank: Parameter 'inlet_mode' must be one of the strings: 'fixed_inlets', 'temperature_seeking' or 'AFD'.")
                 
-        if argument_name == "flow_alloc_coeff":
+        if parameter_name == "flow_alloc_coeff":
             
             try:
                 value = float(value)
             except:
-                raise ValueError("StorageTank: Argument 'flow_alloc_coeff' must be convertible to type 'float'.")
+                raise ValueError("StorageTank: Parameter 'flow_alloc_coeff' must be convertible to type 'float'.")
             
             value = min( [ value, 1 ] )
             
-        if argument_name == "tolerance":
+        if parameter_name == "tolerance":
             try:
                 value = float( value )
             except:
-                raise TypeError("StorageTank: Argument 'tolerance' must be convertible to type 'float'.")
+                raise TypeError("StorageTank: Parameter 'tolerance' must be convertible to type 'float'.")
             
             if not ( value >= 1e-8 and value <= 1e-1 ):
-                raise ValueError("StorageTank: Argument 'tolerance' must be in the range 1e-8 - 1e-1.")
+                raise ValueError("StorageTank: Parameter 'tolerance' must be in the range 1e-8 - 1e-1.")
         
-        if argument_name == "max_iterations":
+        if parameter_name == "max_iterations":
             try:
                 assert value.is_integer()
                 value = int( value )
             except:
-                raise TypeError("StorageTank: Argument 'max_iterations' must be an integer value.")
+                raise TypeError("StorageTank: Parameter 'max_iterations' must be an integer value.")
             
             if not ( value >= 3 and value <= 300 ):
-                raise ValueError("StorageTank: Argument 'max_iterations' must be in the range 3 <= max_iterations <= 300.")
+                raise ValueError("StorageTank: Parameter 'max_iterations' must be in the range 3 <= max_iterations <= 300.")
         
         return value
         
@@ -962,7 +962,7 @@ class StorageTank( Device ):
             raise ValueError("StorageTank.set_connections: Number of inlets specified must be equal to the number of inlet ports of the tank.")
         
         if not all( [ "inlet_" + str(i + 1) for i in range( len( kwargs ) ) ] ):
-            raise ValueError("StorageTank.set_connections: Argument names expected: inlet_1, inlet_2, inlet_3, ... up to the number of inlet-outlet pairs in the tank.")
+            raise ValueError("StorageTank.set_connections: Parameter names expected: inlet_1, inlet_2, inlet_3, ... up to the number of inlet-outlet pairs in the tank.")
         
         for inlet_name in kwargs:
             if not isinstance( kwargs[ inlet_name ] , Outlet ):
@@ -982,7 +982,7 @@ class StorageTank( Device ):
         The aforementioned "margin" or "tolerance" is set by this method.
         When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
         
-        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
+        The parameter `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
         
         For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
         Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
@@ -1034,16 +1034,16 @@ class StorageTank( Device ):
                 
                 ] ] ) != 1:
             
-            raise ValueError("StorageTank.set_convergence_criteria: One and only one of the optional arguments must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
+            raise ValueError("StorageTank.set_convergence_criteria: One and only one of the optional parameters must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
         
         if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
-            raise ValueError("StorageTank.set_convergence_criteria: At least one of the following arguments must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
+            raise ValueError("StorageTank.set_convergence_criteria: At least one of the following parameters must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
         
         elif temp_tolerance is not None and temp_normalization_range is not None:
-            raise ValueError("StorageTank.set_convergence_criteria: Arguments 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
+            raise ValueError("StorageTank.set_convergence_criteria: Parameters 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
         
         elif h_tolerance is not None and h_normalization_range is not None:
-            raise ValueError("StorageTank.set_convergence_criteria: Arguments 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
+            raise ValueError("StorageTank.set_convergence_criteria: Parameters 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
             
         if temp_tolerance is not None:
             try:
@@ -1177,7 +1177,7 @@ class StorageTank( Device ):
         
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ inlet_flowrates, inlet_states, Tamb, time_step ] ]):
-                raise TypeError("StorageTank.compute_outputs: Not all arguments needed for manual mode were provided. Arguments needed: inlet_flowrates, inlet_states, Tamb, time_step.")
+                raise TypeError("StorageTank.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: inlet_flowrates, inlet_states, Tamb, time_step.")
             self._convergence = False
             
         elif operating_conditions is None or iteration_number is None:
@@ -1186,9 +1186,9 @@ class StorageTank( Device ):
         else:
             
             if type( operating_conditions ) is not dict:
-                raise TypeError("StorageTank.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
+                raise TypeError("StorageTank.compute_outputs: Parameter 'operating_conditions' must be a dictionary.")
             if not ( type( iteration_number ) is int and iteration_number >= 0 ):
-                raise TypeError("StorageTank.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
+                raise TypeError("StorageTank.compute_outputs: Parameter 'iteration_number' must be an 'int'. Its value msut be >= 0.")
             
             inlet_flowrates = []
             inlet_states = []
