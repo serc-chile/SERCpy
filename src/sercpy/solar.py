@@ -1268,12 +1268,11 @@ class SolarField( Device ):
         the self-shading algorithm to work, it is assumed
         that all collector rows are not subject to self-shading.
         
+        **The first four arguments (`GHI` to `solar_azimuth`) are not
+        optional and must have the same length, in the case that they are arrays of data.**
+        
         Parameters
         ----------
-        
-        The first four arguments (`GHI` to `solar_azimuth`) are not
-        optional and must have the same length, in the case that they are arrays of data.
-        
         GHI : float or array-like
             Global horizontal irradiance (W/m2).
         
@@ -2086,11 +2085,10 @@ class SolarField( Device ):
             - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
             - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
         
+        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
+        
         Parameters
         ----------
-        
-        Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion for more details.
-        
         relative_tolerance : float
             Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `SolarField`
             class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
@@ -2248,11 +2246,11 @@ class SolarField( Device ):
             - iterations
             - vapor_release_convergence
         
+        **The first two parameters are meant to be used in the context of a simulation.
+        All the other parameters are key-word only and are meant for users to obtain results outside of simulations.**
+        
         Parameters
         ----------
-        
-        The first two parameters are meant to be used in the context of a simulation. All the other parameters are key-word only and are meant for users to obtain results outside of simulations.
-        
         operating_conditions : dict
             Dictionary returned by an instance of `sercpy.operating_conditions.OperatingConditions` when its method `get_conditions` is called.
 

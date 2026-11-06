@@ -37,11 +37,10 @@ class StorageTank( Device ):
     """
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
+    **Only two of the first four arguments must be provided to define the shape and size of the tank.**
+    
     Parameters
     ----------
-    
-    Only two of the first four arguments must be provided to define the shape and size of the tank.
-    
     volume : float, optional
         Internal volume of the tank, in m3. If provided, one and only one of the other arguments `aspect_ratio`, `diameter`, and `height` must also be provided.
     
@@ -77,10 +76,10 @@ class StorageTank( Device ):
         where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the nodes where the inlets and outlets of the tank are located. The top node has the number 1,
         and the bottom node has the number `n_nodes`. The number of pairs in the list defines the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this argument could be
         `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node, whereas `outlet_1` is located in the bottom node.
-        The opposite happens for `inlet_2` and `outlet_2`.
+        The opposite happens for `inlet_2` and `outlet_2`. **This argument can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
     
     io_relative_heights : list of pairs, optional
-        
+        Alternative way of defining the 
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         
