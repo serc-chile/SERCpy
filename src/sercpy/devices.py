@@ -11,6 +11,8 @@ class Outlet:
     
     @property
     def state(self):
+        if not hasattr( self, "_state" ):
+            raise AttributeError("Outlet: Attribute 'state' has not been defined.")
         return self._state
     
     @state.setter
@@ -21,6 +23,8 @@ class Outlet:
     
     @property
     def flowrate(self):
+        if not hasattr( self, "_flowrate" ):
+            raise AttributeError("Outlet: Attribute 'flowrate' has not been defined.")
         return self._flowrate
     
     @flowrate.setter
@@ -33,15 +37,37 @@ class Outlet:
             raise ValueError(f"Outlet: Flowrate cannot be negative. Flowrate value introduced: {flowrate}")
         self._flowrate = flowrate
         
+    @property
+    def T(self):
+        if not hasattr( self, "_state" ):
+            raise AttributeError("Outlet: Attribute 'state' has not been defined.")
+        return self._state.T
+    
+    @property
+    def temp(self):
+        return self.T
+    
+    @property
+    def h(self):
+        if not hasattr( self, "_state" ):
+            raise AttributeError("Outlet: Attribute 'state' has not been defined.")
+        return self._state.h
 
 class Device:
     
-    def __init__( self ):
-        self._convergence = False
-    
     @property
     def convergence(self):
-        return self._convergence
+        if hasattr( self, "_convergence" ):
+            return self._convergence
+        return True
+    
+    @convergence.setter
+    def convergence(self, value):
+        try:
+            value = bool( value )
+        except:
+            raise TypeError("Device: convergence must be a boolean value.")
+        self._convergence = value
     
     def update_state(self):
         return

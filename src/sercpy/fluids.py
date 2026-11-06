@@ -779,21 +779,21 @@ class Fluid:
     def cp_ref(self):
         "Get specific heat capacity at the reference temperature, in J/kg °C."
         if not self._ref_conditions:
-            raise FluidError("Fluid.cp_ref: Reference temperature must be provided at initialization.")
+            raise AttributeError("Fluid: Attribute 'cp_ref' is not defined. Argument 'T_ref' must be provided at initialization.")
         return self._cp_ref
         
     @property
     def D_ref(self):
         "Get density at the reference temperature, in J/kg °C."
         if not self._ref_conditions:
-            raise FluidError("Fluid.D_ref: Reference temperature must be provided at initialization.")
+            raise AttributeError("Fluid: Attribute 'D_ref' is not defined. Argument 'T_ref' must be provided at initialization.")
         return self._D_ref
         
     @property
     def k_ref(self):
         "Get thermal conductivity at the reference temperature, in J/kg °C."
         if not self._ref_conditions:
-            raise FluidError("Fluid.k_ref: Reference temperature must be provided at initialization.")
+            raise AttributeError("Fluid: Attribute 'k_ref' is not defined. Argument 'T_ref' must be provided at initialization.")
         return self._k_ref
     
     @property

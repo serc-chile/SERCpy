@@ -32,6 +32,9 @@ class OperatingConditions:
     time_step_min : int, optional
         Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step( time_step_min )`.
     
+    time_step : int, optional
+        Time step in default time units (i.e., seconds). Its value must be equivalent to one of the possible time step lengths specified for `time_step_min`.
+    
     include_solar_position : bool, optional
         Whether to include the solar position data in the yearly profiles (`"zenith"`, `"apparent_zenith"`, and `"azimuth"`). This is not necessary for standard simulations carried out by SERCpy, and it may extend initialization time of the object. Therefore, it defaults to False.
     
@@ -71,8 +74,8 @@ class OperatingConditions:
             
             meteo_profile: MeteoProfile,
             demand_profile: DemandProfile,
-            
             time_step_min: Optional[ int ] = None,
+            time_step : Optional[ int ] = None,
             include_solar_position: Optional[ bool ] = False ):
         
         self._ready = False
@@ -102,12 +105,15 @@ class OperatingConditions:
             
             self._minutal_profiles[ column ] = demand_df[ column ].values
         
-        if time_step_min is not None:
-            self.set_time_step( time_step_min )
+        if time_step_min is not None and time_step is not None:
+            raise TypeError("OperatingConditions: Only one of the arguments 'time_step_min' and 'time_step' must be provided.")
+        
+        if time_step_min is not None or time_step is not None:
+            self.set_time_step( time_step_min = time_step_min, time_step = time_step )
             
     @property
     def time_step(self):
-        "Get the simulation time step in minutes."
+        "Get the simulation time step in seconds."
         if not self._ready:
             ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
         return self._time_step
@@ -115,7 +121,7 @@ class OperatingConditions:
     @property
     def time_step_min(self):
         "Get the simulation time step in minutes."
-        return self.time_step
+        return self._time_step_min
     
     @property
     def time_steps_per_year(self):
@@ -211,9 +217,11 @@ class OperatingConditions:
             return 360 + avg_value
         return avg_value
         
-    def set_time_step( self, time_step_min ):
+    def set_time_step( self, *, time_step_min = None, time_step = None ):
         """
         Set the time step of an `OperatingConditions` instance.
+        
+        This method re-uses the dataset with minutal resolution constructed when initializing the `OperatingConditions` instance to create a new dataset with a different time resolution.
         
         This can be done for:
             
@@ -222,8 +230,13 @@ class OperatingConditions:
 
         Parameters
         ----------
+        
+        Only one of the parameters must be provided.
+        
         time_step_min : int
             Time step in minutes. Valid values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.
+        time_step : int
+            Time step in default time units (i.e., seconds). Its value must be equivalent to one of the possible time step lengths specified for `time_step_min`.
 
         Raises
         ------
@@ -238,16 +251,39 @@ class OperatingConditions:
 
         """
         
-        try:
-            assert time_step_min.is_integer()
-        except AttributeError:
-            raise TypeError(f"OperatingConditions: Argument 'time_step_min' could not be interpreted as a number. Value type: { type( time_step_min ) }.")
-        except AssertionError:
-            raise ValueError("OperatingConditions: Argument 'time_step_min' must be an integer value.")
+        if time_step_min is not None and time_step is not None:
+            raise TypeError("OperatingConditions.set_time_step: Only one of the arguments 'time_step_min' and 'time_step' must be provided.")
+        if time_step_min is None and time_step is None:
+            raise TypeError("OperatingConditions.set_time_step: No time step argument was provided.")
         
-        time_step_min = int( time_step_min )
-        if not time_step_min in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]:
-            raise ValueError("OperatingConditions.set_time_step: Argument 'time_step_min' must be one of the allowed values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60")
+        if time_step_min is not None:
+            
+            try:
+                assert time_step_min.is_integer()
+            except AttributeError:
+                raise TypeError(f"OperatingConditions: Argument 'time_step_min' could not be interpreted as a number. Value type: { type( time_step_min ) }.")
+            except AssertionError:
+                raise ValueError("OperatingConditions: Argument 'time_step_min' must be an integer value.")
+            
+            time_step_min = int( time_step_min )
+            if not time_step_min in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]:
+                raise ValueError("OperatingConditions.set_time_step: Argument 'time_step_min' must be one of the allowed values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.")
+                
+        if time_step is not None:
+            
+            try:
+                assert time_step.is_integer()
+            except AttributeError:
+                raise TypeError(f"OperatingConditions: Argument 'time_step' could not be interpreted as a number. Value type: { type( time_step ) }.")
+            except AssertionError:
+                raise ValueError("OperatingConditions: Argument 'time_step' must be an integer value.")
+            
+            time_step = int( time_step )
+            
+            if not ( time_step%60 == 0 and time_step//60 in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ] ):
+                raise ValueError("OperatingConditions: Argument 'time_step' (seconds) must be equivalent to an integer number of minutes within the allowed values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.")
+            
+            time_step_min = time_step//60
         
         self._effective_profiles = { "timestamp": [ self._minutal_profiles[ "timestamp" ][ i ] for i in range( 0, 525600, time_step_min ) ] }
         
@@ -264,12 +300,14 @@ class OperatingConditions:
             else:
                 self._effective_profiles[ key ] = self._minutal_profiles[ key ].reshape(-1, time_step_min).mean(axis=1).astype(float).tolist()
         
-        self._time_step = time_step_min
+        self._time_step_min = time_step_min
         self._time_steps_per_year = len( self._effective_profiles[ "timestamp" ] )
         assert self._time_steps_per_year%365 == 0
         assert self._time_steps_per_year%8760 == 0
         self._time_steps_per_day = self._time_steps_per_year//365
         self._time_steps_per_hour = self._time_steps_per_year//8760
+        
+        self._time_step = self._time_step_min * 60
         
         self._ready = True
             
@@ -313,5 +351,7 @@ class OperatingConditions:
                 result[ key ] = self._effective_profiles[ key ][ time_step_number ]
             else:
                 result[ key ] = float( self._effective_profiles[ key ][ time_step_number ] )
+                
+        result[ 'time_step' ] = self._time_step
                 
         return result

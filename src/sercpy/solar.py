@@ -2212,7 +2212,7 @@ class SolarField( Device ):
         Returns
         -------
         None.
-
+        
         """
         convergence = True
         if flowrate == 0 or self._flowrate_last == 0:
@@ -2302,7 +2302,6 @@ class SolarField( Device ):
             self._convergence = False
                 
             irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows = self.compute_poa_irradiance( GHI, DNI, DHI, solar_apparent_zenith, solar_azimuth, doy = doy,  )
-            
             
             operating_conditions = {
                 
