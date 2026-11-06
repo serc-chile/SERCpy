@@ -2257,7 +2257,7 @@ class SolarField( Device ):
         iteration_number : int
             Number of the iteration.
         
-        state_in : :doc:`FluidState </fluids/class_fluidstate>`
+        state_in : :doc:`FluidState </fluids/fluidstate_class>`
             Object defining the thermodynamic state of the fluid as it enters the solar field.
         
         flowrate : float
