@@ -2247,7 +2247,7 @@ class SolarField( Device ):
             - vapor_release_convergence
         
         **The first two parameters are meant to be used in the context of a simulation.
-        All the other parameters are key-word only and are meant for users to obtain results outside of simulations.**
+        All the other parameters are keyword only and are meant for users to obtain results outside of simulations.**
         
         Parameters
         ----------
