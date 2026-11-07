@@ -116,15 +116,18 @@ class StorageTank( Device ):
         String specifying how the flows that enter the tank through the inlet ports of the tank are modeled.
         The question of how to model the inlet flows comes from a
         simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located,
-        the inlet flow tends to go up or down due to temperature differences.
-        This parameter has three possible values: `"fixed_inlets"`, `"temperature_seeking"`, and `"AFD"`.
-        When the value is set to `"fixed_inlets"`, the flows that enter the tank are assumed to stay in the node where the inlet is physically located.
-        When the value is set to `"temperature_seeking"`, the flows are assumed to flow directly to the node the is closest to their temperature.
-        When the vlaue is set to `"AFD"`, the model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
-        If not provided, "`fixed_inlets`" is used by default.
-        
+        the inlet flow tends to go up or down due to density differences.
+        This parameter has three possible values:
+            
+            `"fixed_inlets"`
+                The flows that enter the tank are assumed to stay in the node where the inlet is physically located.
+            `"temperature_seeking"`
+                The flows are assumed to flow directly to the node that is closest to their temperature.
+            `"AFD"`
+                The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
+    
     flow_alloc_coeff : float, optional
-        The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo,
+        The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
         is an essential parameter for their modelling method. Range: `-inf` to `1`.
         If not provided, it defaults to `-0.5`.
     
