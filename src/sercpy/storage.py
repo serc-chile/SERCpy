@@ -37,9 +37,9 @@ class StorageTank( Device ):
     """
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
-    This model discretizes a tank dividing its volume into vertically-stacked equally sized parts, known as "nodes".
+    This model discretizes a tank dividing its volume into vertically-stacked equally-sized parts, known as "nodes".
     
-    It is based on the models presented by Newton in 1995 [1]_, which has been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
     It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
     
