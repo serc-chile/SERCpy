@@ -39,6 +39,9 @@ class StorageTank( Device ):
     
     This model discretizes a tank dividing its volume into vertically-stacked equally-sized parts, known as "nodes".
     
+    This is a computationally cheap way of modeling stratified tanks, i.e., tanks in which there is a noticeable temperature difference between the top part and the bottom part, with the top part being hotter.
+    This temperature difference 
+    
     It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
     It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
@@ -120,9 +123,9 @@ class StorageTank( Device ):
         This parameter has three possible values:
             
         `"fixed_inlets"`
-            The flows that enter the tank are assumed to stay in the node where the inlet is physically located.
+            The flows that enter the tank are assumed to stay in the node where the inlet is physically located. In other words, the phenomenon just discussed is neglected.
         `"temperature_seeking"`
-            The flows are assumed to flow directly to the node that is closest to their temperature.
+            The flows are assumed to flow directly to the node that is closest to their temperature. The drawback of this model is that
         `"AFD"`
             The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
     
