@@ -37,6 +37,20 @@ class StorageTank( Device ):
     """
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
+    This model discretizes a tank dividing its volume into vertically-stacked equally sized parts, known as "nodes".
+    
+    It is based on the models presented by Newton in 1995 [1], which has been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    
+    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2].
+    
+    References
+    ----------
+    .. [1] Newton, Brian J., "Modeling of Solar Storage Tanks,"
+       Master Thesis, *University of Wisconsin-Madison*
+       URL: `https://minds.wisc.edu/items/12af0289-60e9-436a-9c26-30bb04d2a228`_
+    .. [2] E. Saloux, J.A. Candanedo. "Modelling stratified thermal energy storage tanks using an advanced flowrate distribution of the received flow,"
+       *Applied Energy*, Volume 241, pages 34-45, 1 May 2019. `https://doi.org/10.1016/j.apenergy.2019.02.075`_
+    
     **Only two of the first four parameters must be provided to define the shape and size of the tank.**
     
     Parameters
@@ -72,14 +86,21 @@ class StorageTank( Device ):
         Number of nodes of the tank. If not provided, it defaults to 8.
     
     io_nodes : list of pairs, optional
-        Nodes where the inlets ond outlets are located . It has the following format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
-        where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the nodes where the inlets and outlets of the tank are located. The top node has the number 1,
+        Nodes where the inlet ond outlet ports are located . It has the following format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
+        where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the nodes where the inlets and outlets of the tank are located. The top node has the number `1`,
         and the bottom node has the number `n_nodes`. The number of pairs in the list defines the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this parameter could be
         `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node, whereas `outlet_1` is located in the bottom node.
         The opposite happens for `inlet_2` and `outlet_2`. **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
     
     io_relative_heights : list of pairs, optional
-        Alternative way of defining the 
+        Alternative parameter to define the heights where the inlet and outlet ports of the tank are located (see `io_nodes`).
+        With this parameter, the nodes where the inlets and outlets are located is not provided directly;
+        instead, the relative heights with respect to the tank are provided with numbers in the range 0 - 1. 
+        
+        Alternative to the parameter `io_nodes` to define the heights where the inlet and outlet ports of the tank are located. It should be a list of pairs, where the values inside the pairs are floating point numbers in the range 0 - 1.
+        The value `0` corresponds to the bottom of the tank, whereas the value `1` corresponds to the top of the tank. For instance, a possible value for this parameter is `[ (1, 0), (0, 1) ]`.
+        This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located at the top of the tank, whereas `outlet_1` is located at the bottom of the tank.
+        The opposite happens for `inlet_2` and `outlet_2`.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         
