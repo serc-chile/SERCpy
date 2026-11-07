@@ -101,11 +101,7 @@ class StorageTank( Device ):
         **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
     
     io_relative_heights : list of pairs, optional
-        Alternative parameter to define the heights where the inlet and outlet ports of the tank are located (see `io_nodes`).
-        With this parameter, the nodes where the inlets and outlets are located are not provided directly;
-        instead, the relative heights with respect to the tank are provided with numbers in the range 0 - 1.
-        `0` corresponds to the bottom of the tank, whereas `1` corresponds to the top of the tank. **This parameter is actually preferrable over `io_nodes`, since it allows to change the number of nodes of the tank thereafter, and the node where each inlet and outlet is located is re-computed automatically.**
-        E.g. a value for this parameter which is equivalent to the example given for `io_nodes` is: `[ ( 1, 0 ), ( 0, 1 ) ]`.
+        Object specifying the positions of the inlet- and outlet ports of the tank. See :ref:`inlet_outlet_ports_definition` for more details on the format of this parameter.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Fluid stored inside the tank.
@@ -116,10 +112,10 @@ class StorageTank( Device ):
         The first value of the list corresponds to the top node of the tank; the last value corresponds to the bottom node.
     
     inlet_mode : str, optional
-        String specifying how the flows that enter the tank through the inlet ports of the tank are modeled.
+        String specifying how the flows that enter the tank through its inlets ports are modeled.
         The question of how to model the inlet flows comes from a
         simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located,
-        the inlet flow tends to go up or down due to density differences.
+        the flow tends rise or sink to density differences.
         This parameter has three possible values:
             
         `"fixed_inlets"`
@@ -127,6 +123,8 @@ class StorageTank( Device ):
         `"temperature_seeking"`
             The flows are assumed to flow directly to the node that is closest to their temperature. The drawback of this model is that
         `"AFD"`
+            This string stands for "Advanced Flowrate Distribution", which is a modelling method presented by Saloux and Candanedo in 2019,
+            and could be summarized as a method to 
             The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
     
     flow_alloc_coeff : float, optional
