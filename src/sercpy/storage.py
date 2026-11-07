@@ -47,9 +47,9 @@ class StorageTank( Device ):
     ----------
     .. [1] Newton, Brian J., "Modeling of Solar Storage Tanks,"
        Master Thesis, *University of Wisconsin-Madison*
-       URL: `https://minds.wisc.edu/items/12af0289-60e9-436a-9c26-30bb04d2a228`_
+       URL: https://minds.wisc.edu/items/12af0289-60e9-436a-9c26-30bb04d2a228
     .. [2] E. Saloux, J.A. Candanedo. "Modelling stratified thermal energy storage tanks using an advanced flowrate distribution of the received flow,"
-       *Applied Energy*, Volume 241, pages 34-45, 1 May 2019. `https://doi.org/10.1016/j.apenergy.2019.02.075`_
+       *Applied Energy*, Volume 241, pages 34-45, 1 May 2019. https://doi.org/10.1016/j.apenergy.2019.02.075
     
     **Only two of the first four parameters must be provided to define the shape and size of the tank.**
     
