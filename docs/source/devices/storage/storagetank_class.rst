@@ -21,7 +21,7 @@ Methods
 Setting the positions of the inlet/outlet ports
 -----------------------------------------------
 
-**Why do ports' positions matter?** As discussed above, vertical storage tanks tend to get stratified, which is a desirable behavior. Because of this, the temperature with wich the heat transfer fluid leaves the tank depends on the height of the outlet port. The `StorageTank` model assumes that the fluid leaves the tank with the same temperature as the node where the output is located.
+**Why do ports' positions matter?** As discussed above, vertical storage tanks tend to get stratified, which is a desirable behavior. Because of this, the temperature with which the heat transfer fluid leaves the tank depends on the height of the outlet port. The `StorageTank` model assumes that the fluid leaves the tank with the same temperature as the node where the output is located.
 
 The positions of the inlet- and outlet ports in the tank can be specified at initialization with the parameter `io_relative_heights`, but this is not mandatory. In fact, if the `StorageTank` instance is used as part of one of the pre-defined system layouts included in **SERCpy**, the ports' positions are set automatically if they have not been set by the user.
 
