@@ -39,15 +39,15 @@ class StorageTank( Device ):
     
     This model discretizes a tank dividing its volume into vertically-stacked equally sized parts, known as "nodes".
     
-    It is based on the models presented by Newton in 1995 [1], which has been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    It is based on the models presented by Newton in 1995 [1]_, which has been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
-    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2].
+    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
     
     References
     ----------
     .. [1] Newton, Brian J., "Modeling of Solar Storage Tanks,"
        Master Thesis, *University of Wisconsin-Madison*
-       URL: https://minds.wisc.edu/items/12af0289-60e9-436a-9c26-30bb04d2a228
+       https://minds.wisc.edu/items/12af0289-60e9-436a-9c26-30bb04d2a228
     .. [2] E. Saloux, J.A. Candanedo. "Modelling stratified thermal energy storage tanks using an advanced flowrate distribution of the received flow,"
        *Applied Energy*, Volume 241, pages 34-45, 1 May 2019. https://doi.org/10.1016/j.apenergy.2019.02.075
     
