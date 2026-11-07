@@ -34,7 +34,7 @@ tank_allowed_parameters = [
     ]
 
 class StorageTank( Device ):
-    """
+    r"""
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
     This model discretizes a tank dividing its volume into vertically-stacked equally-sized parts, known as "nodes".
@@ -86,41 +86,55 @@ class StorageTank( Device ):
         Number of nodes of the tank. If not provided, it defaults to 8.
     
     io_nodes : list of pairs, optional
-        Nodes where the inlet ond outlet ports are located . It has the following format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
-        where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the nodes where the inlets and outlets of the tank are located. The top node has the number `1`,
-        and the bottom node has the number `n_nodes`. The number of pairs in the list defines the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this parameter could be
-        `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node, whereas `outlet_1` is located in the bottom node.
-        The opposite happens for `inlet_2` and `outlet_2`. **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
+        Nodes where the inlet ond outlet ports are located . It has the following
+        format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
+        where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the
+        nodes where the inlets and outlets of the tank are located. The top node has the number `1`,
+        and the bottom node has the number `n_nodes`. The number of pairs in the list defines
+        the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this parameter could be
+        `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node,
+        whereas `outlet_1` is located in the bottom node.
+        The opposite happens for `inlet_2` and `outlet_2`.
+        **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
     
     io_relative_heights : list of pairs, optional
         Alternative parameter to define the heights where the inlet and outlet ports of the tank are located (see `io_nodes`).
-        With this parameter, the nodes where the inlets and outlets are located is not provided directly;
-        instead, the relative heights with respect to the tank are provided with numbers in the range 0 - 1. 
-        
-        Alternative to the parameter `io_nodes` to define the heights where the inlet and outlet ports of the tank are located. It should be a list of pairs, where the values inside the pairs are floating point numbers in the range 0 - 1.
-        The value `0` corresponds to the bottom of the tank, whereas the value `1` corresponds to the top of the tank. For instance, a possible value for this parameter is `[ (1, 0), (0, 1) ]`.
-        This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located at the top of the tank, whereas `outlet_1` is located at the bottom of the tank.
-        The opposite happens for `inlet_2` and `outlet_2`.
+        With this parameter, the nodes where the inlets and outlets are located are not provided directly;
+        instead, the relative heights with respect to the tank are provided with numbers in the range 0 - 1.
+        `0` corresponds to the bottom of the tank, whereas `1` corresponds to the top of the tank. **This parameter is actually preferrable over `io_nodes`, since it allows to change the number of nodes of the tank thereafter, and the node where each inlet and outlet is located is re-computed automatically.**
+        E.g. a value for this parameter which is equivalent to the example given for `io_nodes` is: `[ ( 1, 0 ), ( 0, 1 ) ]`.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
-        
+        Fluid stored inside the tank.
     
     initial_temperature : float or list of float
-        
+        Initial temperature or temperatures of the tank (°C). This parameter can be a single value or a list of values.
+        In the former case, all nodes are initialized with the same temperature. In the latter case, the length of the list has to be equal to `n_nodes`.
+        The first value of the list corresponds to the top node of the tank; the last value corresponds to the bottom node.
     
     inlet_mode : str, optional
+        String specifying how the flows that enter the tank through the inlet ports of the tank are modeled.
+        The question of how to model the inlet flows comes from a
+        simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located,
+        the inlet flow tends to go up or down due to temperature differences.
+        This parameter has three possible values: `"fixed_inlets"`, `"temperature_seeking"`, and `"AFD"`.
+        When the value is set to `"fixed_inlets"`, the flows that enter the tank are assumed to stay in the node where the inlet is physically located.
+        When the value is set to `"temperature_seeking"`, the flows are assumed to flow directly to the node the is closest to their temperature.
+        When the vlaue is set to `"AFD"`, the model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
+        If not provided, "`fixed_inlets`" is used by default.
         
-    
     flow_alloc_coeff : float, optional
-        
+        The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo,
+        is an essential parameter for their modelling method. Range: `-inf` to `1`.
+        If not provided, it defaults to `-0.5`.
     
     tolerance : float, optional
-        
+        Maximum temperature discrepancy (°C) allowed between successive **internal** iterations of the model so that convergence is achieved.
+        Valid range: `1e-8` to `1e-1`. If not specified, it defaults to 1e-4.
     
     max_iterations : int, optional
-        
-    
-    
+        Maximum number of **internal** iterations of the model allowed before forcing the computation to stop. Valid range: `3` to `300`.
+        If not specified, it defaults to `30`.
     
     """
     def __init__( self, *,
