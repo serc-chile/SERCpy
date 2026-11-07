@@ -119,12 +119,12 @@ class StorageTank( Device ):
         the inlet flow tends to go up or down due to density differences.
         This parameter has three possible values:
             
-            `"fixed_inlets"`
-                The flows that enter the tank are assumed to stay in the node where the inlet is physically located.
-            `"temperature_seeking"`
-                The flows are assumed to flow directly to the node that is closest to their temperature.
-            `"AFD"`
-                The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
+        `"fixed_inlets"`
+            The flows that enter the tank are assumed to stay in the node where the inlet is physically located.
+        `"temperature_seeking"`
+            The flows are assumed to flow directly to the node that is closest to their temperature.
+        `"AFD"`
+            The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
     
     flow_alloc_coeff : float, optional
         The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
