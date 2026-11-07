@@ -27,7 +27,7 @@ The positions of the inlet- and outlet ports in the tank can be specified at ini
 
 The parameter `io_relative_heights` expresses the height of each port as a `float <https://docs.python.org/3.15/builtins/functions.html#float>`_ number in the range 0 - 1, where `0` corresponds to the bottom of the tank, and `1` corresponds to the top of the tank. The expected format for this parameter is a list of pairs, as follows:
 
-`io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height )  ]`
+`io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`
 
 Where `inlet_1_height`, `outlet_1_height`, `inlet_2_height`, and `outlet_2_height` are values in the range 0 - 1 as already discussed. Internally, the `StorageTank` instance determines to which node each height corresponds.
 
