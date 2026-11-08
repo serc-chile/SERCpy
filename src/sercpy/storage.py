@@ -114,25 +114,8 @@ class StorageTank( Device ):
         the last value corresponds to the bottom node.
     
     inlet_mode : str, optional
-        String specifying how the flows that enter the tank through its inlets ports are modeled.
-        The question of how to model the inlet flows comes from a
-        simple fact: when an entering flow has a different temperature from the
-        fluid inside the tank at the height where the inlet is located,
-        the flow tends rise or sink to density differences.
-        This parameter has three possible values:
-            
-        `"fixed_inlets"`
-            The flows that enter the tank are assumed to stay in the node where
-            the inlet is physically located. In other words, the phenomenon just discussed is neglected.
-        `"temperature_seeking"`
-            The flows are assumed to flow directly to the node that is closest
-            to their temperature. The drawback of this model is that
-        `"AFD"`
-            This string stands for "Advanced Flowrate Distribution", which is
-            a modelling method presented by Saloux and Candanedo in 2019,
-            and could be summarized as a method to 
-            The model proposed by Saloux and Candanedo [2]_, which is an
-            intermediate between the two models just discussed, is used.
+        String specifying how the flows that enter the tank through its inlets ports are modeled. Allowed values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
+        See :ref:`inlet_flow_modeling` for more details on what each value means. If not provided, it defaults to `"fixed_inlets"`
     
     flow_alloc_coeff : float, optional
         The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
