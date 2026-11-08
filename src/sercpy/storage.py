@@ -120,6 +120,7 @@ class StorageTank( Device ):
     flow_alloc_coeff : float, optional
         The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
         is an essential parameter for their modelling method. Range: `-inf` to `1`.
+        This parameter is only taken into account if `inlet_mode` is set to `"AFD"`.
         If not provided, it defaults to `-0.5`.
     
     tolerance : float, optional
