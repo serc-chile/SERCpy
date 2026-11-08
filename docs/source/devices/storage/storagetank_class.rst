@@ -73,6 +73,4 @@ A stratified tank keeps a temperature difference between its top part and its bo
 
 A "temperature inversion" is a state in which the fluid in a certain part of the tank is hotter than the fluid above it. This condition is not stable, since the hot fluid will quickly rise or mix with the fluid layers above it.
 
-When the node temperatures computed by the `StorageTank` model ar such that, by the end of a time step, there are temperature inversions in the tank, the nodes are mixed 
-
-When a temperature inversion occurs in the `StorageTank` model, it is
+In the `StorageTank` model, a temperature inversion can occur when, by the end of a time step, the temperature computed for a certain node is higher than the temperature of the nodes above it. This is corrected by mixing the nodes involved in the temperature inversion, so that there are no temperature inversions at the moment of computing the next time step. This correction algorithm is used more intesively when the parameter `"inlet_mode"` is set to `"fixed_inlets"` (see :ref:`inlet_flow_modeling`).
