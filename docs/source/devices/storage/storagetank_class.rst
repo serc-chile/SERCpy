@@ -1,8 +1,7 @@
 StorageTank
 ===========
 
-Instances of the class `SolarCollector` store the features of the individual collectors that make up a solar field, such as the size and the parameters of the efficiency curve.
-
+Storage tanks are an essential component for most low-temperature solar thermal systems. They allow to store the solar energy, so that it can be delivered to the load when irradiance is not derectly available.
 
 .. currentmodule:: sercpy.storage
 
