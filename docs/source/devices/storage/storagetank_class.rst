@@ -69,5 +69,10 @@ The user can set how inlet flows are modeled through the parameter `inlet_mode`.
 Temperature inversions
 ----------------------
 
-A stritified tank keeps a temperature difference between its top part and its bottom part, with the top part being hotter than the bottom part. This temperature difference can be maintained during relatively long periods of time because the hotter fluid has a lower density than the cold fluid; hence, it avoids mixing with the fluid below it.
+A stratified tank keeps a temperature difference between its top part and its bottom part, with the top part being hotter than the bottom part. This temperature difference can be maintained during relatively long periods of time because the hotter fluid has a lower density; hence, it does not tend to mix with the fluid below it.
 
+A "temperature inversion" is a state in which the fluid in a certain part of the tank is hotter than the fluid above it. This condition is not stable, since the hot fluid will quickly rise or mix with the fluid layers above it.
+
+When the node temperatures computed by the `StorageTank` model ar such that, by the end of a time step, there are temperature inversions in the tank, the nodes are mixed 
+
+When a temperature inversion occurs in the `StorageTank` model, it is
