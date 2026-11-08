@@ -38,7 +38,7 @@ Setting the ports' positions after initialization
 
 As discussed above, it is not mandatory to specify the heights of the inlet- and outlet ports when initializing the tank. The parameter `io_relative_heights` can simply be skipped.
 
-Nevertheless, it is necessary that this feature of the tank is specified before calling the method :meth:`StorageTank.compute_outputs` for the first time. To set the inlet/outlet heights after initialization, the method :meth:`StorageTank.set_io_relative_heights` must be called. This method can also be used to ***change*** inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be kept.
+Nevertheless, it is necessary that this feature of the tank is specified before calling the method :meth:`StorageTank.compute_outputs` for the first time. To set the inlet/outlet heights after initialization, the method :meth:`StorageTank.set_io_relative_heights` must be called. This method can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
 
 The main purpose of this feature is that the inlet/outlet positions get set internally by **SERCpy** when the tank is included in one of the pre-defined system layouts.
 
@@ -49,12 +49,12 @@ Inlet flow modeling
 
 As already stated, the flows leaving the tank are assumed to have the same temperature as the node where the outlet is physically located.
 
-For inlet flows, there is a harder question to answer: wihch node does an entering flow actually *enter*? This question comes from a simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located, the flow tends rise or sink due to density differences.
+For inlet flows, there is a harder question to answer: which node does an entering flow actually *enter*? This question comes from a simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located, the flow tends rise or sink due to density differences.
 
 The user can set how inlet flows are modeled through the parameter `inlet_mode`. This parameter must be a string and can have three values:
 
    `"fixed_inlets"`
-      The flows that enter the tank are assumed to stay in the node where the inlet is physically located. One could say that, with this inlet mode, the phenomenon just discussed is being neglected, but this is not completely true because of the algorithm to correct flow inversions.
+      The flows that enter the tank are assumed to stay in the node where the inlet is physically located. One could say that, with this inlet mode, the phenomenon just discussed is being neglected, but this is actually not true because of the :ref:`algorithm to correct flow inversions <temperature_inversions>`.
    `"temperature_seeking"`
       The flows are assumed to flow directly to the node that is closest to their temperature. The drawback of this model is that, in reality, 
    `"AFD"`
@@ -63,3 +63,11 @@ The user can set how inlet flows are modeled through the parameter `inlet_mode`.
       and could be summarized as a method to 
       The model proposed by Saloux and Candanedo [2]_, which is an
       intermediate between the two models just discussed, is used.
+
+.. _temperature_inversions:
+
+Temperature inversions
+----------------------
+
+A stritified tank keeps a temperature difference between its top part and its bottom part, with the top part being hotter than the bottom part. This temperature difference can be maintained during relatively long periods of time because the hotter fluid has a lower density than the cold fluid; hence, it avoids mixing with the fluid below it.
+
