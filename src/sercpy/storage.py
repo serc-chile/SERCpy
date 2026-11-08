@@ -22,7 +22,6 @@ tank_allowed_parameters = [
     "edge_loss_coeff",
     "bottom_loss_coeff",
     "n_nodes",
-    "io_nodes",
     "io_relative_heights",
     "stored_fluid",
     "initial_temperature",
@@ -39,8 +38,9 @@ class StorageTank( Device ):
     
     This model discretizes a tank dividing its volume into vertically-stacked equally-sized parts, known as "nodes".
     
-    This is a computationally cheap way of modeling stratified tanks, i.e., tanks in which there is a noticeable temperature difference between the top part and the bottom part, with the top part being hotter.
-    This temperature difference 
+    This is a computationally cheap way of modeling stratified tanks, i.e.,
+    tanks in which there is a noticeable temperature difference between the top
+    part and the bottom part, with the top part being hotter.
     
     It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
@@ -67,65 +67,72 @@ class StorageTank( Device ):
     
     diameter : float, optional
         Diameter of the tank, in m.
-        If provided, one and only one of the other parameters `volume`, `aspect_ratio`, and `height` must also be provided.
+        If provided, one and only one of the other parameters `volume`,
+        `aspect_ratio`, and `height` must also be provided.
     
     height : float, optional
         Height of the tank, in m.
-        If provided, one and only one of the other parameters `volume`, `aspect_ratio`, and `diameter` must also be provided.
+        If provided, one and only one of the other parameters `volume`,
+        `aspect_ratio`, and `diameter` must also be provided.
     
     loss_coeff : float, optional
-        Thermal loss coefficient of the tank (W/m2 K). If provided, this value replaces the other parameters `top_loss_coeff`, `edge_loss_coeff`, and `bottom_loss_coeff`, only if they are not provided.
+        Thermal loss coefficient of the tank (W/m2 K). If provided,
+        this value replaces the other parameters `top_loss_coeff`,
+        `edge_loss_coeff`, and `bottom_loss_coeff`, only if they are not provided.
     
     top_loss_coeff : float, optional
-        Thermal loss coefficient at the top face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the top face of the tank (W/m2 K).
+        If not provided, this value gets replaced by `loss_coeff`.
+        If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     edge_loss_coeff : float, optional
-        Thermal loss coefficient at the lateral wall of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the lateral wall of the tank (W/m2 K).
+        If not provided, this value gets replaced by `loss_coeff`.
+        If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     bottom_loss_coeff : float, optional
-        Thermal loss coefficient at the bottom face of the tank (W/m2 K). If not provided, this value gets replaced by `loss_coeff`. If that parameter is not provided either, it defaults to 1 W/m2 K.
+        Thermal loss coefficient at the bottom face of the tank (W/m2 K).
+        If not provided, this value gets replaced by `loss_coeff`.
+        If that parameter is not provided either, it defaults to 1 W/m2 K.
     
     n_nodes : int, optional
         Number of nodes of the tank. If not provided, it defaults to 8.
     
-    io_nodes : list of pairs, optional
-        Nodes where the inlet ond outlet ports are located . It has the following
-        format: `[ ( inlet_1_node, outlet_1_node ), ( inlet_2_node, outlet_2_node ), ... ]`,
-        where the values `inlet_1_node`, `outlet_1_node`, etc. are integer values defining the
-        nodes where the inlets and outlets of the tank are located. The top node has the number `1`,
-        and the bottom node has the number `n_nodes`. The number of pairs in the list defines
-        the number of inlet/outlet pairs of the tank. For instance, in a tank with 8 nodes, this parameter could be
-        `[ (1, 8), (8, 1) ]`. This means that the tank has two inlet/outlet pairs. Moreover, `inlet_1` is located in the top node,
-        whereas `outlet_1` is located in the bottom node.
-        The opposite happens for `inlet_2` and `outlet_2`.
-        **This parameter can only be provided if the number of nodes of the tank `n_nodes` is specified by the user. See `io_relative_heights` for an alternative way of providing the same information**.
-    
     io_relative_heights : list of pairs, optional
-        Object specifying the positions of the inlet- and outlet ports of the tank. See :ref:`inlet_outlet_ports_definition` for more details on the format of this parameter.
+        Object specifying the positions of the inlet- and outlet ports of the tank.
+        See :ref:`inlet_outlet_ports_definition` for more details on the format of this parameter.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Fluid stored inside the tank.
     
     initial_temperature : float or list of float
-        Initial temperature or temperatures of the tank (°C). This parameter can be a single value or a list of values.
-        In the former case, all nodes are initialized with the same temperature. In the latter case, the length of the list has to be equal to `n_nodes`.
-        The first value of the list corresponds to the top node of the tank; the last value corresponds to the bottom node.
+        Initial temperature or temperatures of the tank (°C). This parameter
+        can be a single value or a list of values.
+        In the former case, all nodes are initialized with the same temperature.
+        In the latter case, the length of the list has to be equal to `n_nodes`.
+        The first value of the list corresponds to the top node of the tank;
+        the last value corresponds to the bottom node.
     
     inlet_mode : str, optional
         String specifying how the flows that enter the tank through its inlets ports are modeled.
         The question of how to model the inlet flows comes from a
-        simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located,
+        simple fact: when an entering flow has a different temperature from the
+        fluid inside the tank at the height where the inlet is located,
         the flow tends rise or sink to density differences.
         This parameter has three possible values:
             
         `"fixed_inlets"`
-            The flows that enter the tank are assumed to stay in the node where the inlet is physically located. In other words, the phenomenon just discussed is neglected.
+            The flows that enter the tank are assumed to stay in the node where
+            the inlet is physically located. In other words, the phenomenon just discussed is neglected.
         `"temperature_seeking"`
-            The flows are assumed to flow directly to the node that is closest to their temperature. The drawback of this model is that
+            The flows are assumed to flow directly to the node that is closest
+            to their temperature. The drawback of this model is that
         `"AFD"`
-            This string stands for "Advanced Flowrate Distribution", which is a modelling method presented by Saloux and Candanedo in 2019,
+            This string stands for "Advanced Flowrate Distribution", which is
+            a modelling method presented by Saloux and Candanedo in 2019,
             and could be summarized as a method to 
-            The model proposed by Saloux and Candanedo [2]_, which is an intermediate between the two models just discussed, is used.
+            The model proposed by Saloux and Candanedo [2]_, which is an
+            intermediate between the two models just discussed, is used.
     
     flow_alloc_coeff : float, optional
         The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
@@ -151,7 +158,6 @@ class StorageTank( Device ):
                   edge_loss_coeff = None,
                   bottom_loss_coeff = None,
                   n_nodes = None,
-                  io_nodes = None,
                   io_relative_heights = None,
                   stored_fluid,
                   initial_temperature = None,
@@ -192,26 +198,13 @@ class StorageTank( Device ):
         
         # Define number of nodes
         if n_nodes is not None:
-            self._n_nodes_mode = 'manual'
             self._n_nodes = self._validate_argument("n_nodes", n_nodes)
         else:
-            self._n_nodes_mode = 'auto'
-            if io_nodes is not None:
-                raise ValueError("StorageTank: Inlet/Outlet positions cannot be specified with the parameter 'io_nodes' if the number of nodes of the tank 'n_nodes' is not specified.")
             self._n_nodes = 8
         
         # Define inlet/outlet positions
-        if io_nodes is not None and io_relative_heights is not None:
-            raise ValueError("StorageTank: Parameters 'io_nodes' and 'io_relative_heights' cannot be provided at the same time.")
-        elif io_relative_heights is not None:
-            self._io_relative_heights = self._validate_argument("io_relative_heights", io_relative_heights)
-            self._io_nodes_from_relative_heights()
-        elif io_nodes is not None:
-            io_nodes = self._validate_argument("io_nodes", io_nodes)
-            self._inlet_nodes =  [ pair[ 0 ] - 1 for pair in io_nodes ]
-            self._outlet_nodes =  [ pair[ 1 ] - 1 for pair in io_nodes ]
-        else:
-            raise ValueError("StorageTank: One and only one of the parameters 'io_nodes' and 'io_relative_heights' must be provided.")
+        if io_relative_heights is not None:
+            self.set_io_relative_heights( io_relative_heights )
             
         self._stored_fluid = self._validate_argument("stored_fluid", stored_fluid)
         
@@ -260,9 +253,9 @@ class StorageTank( Device ):
         self._node_height = self._height / self._n_nodes
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
         
-        for i in range( len( self._outlet_nodes ) ):
-            new_outlet = Outlet()
-            setattr( self , "_outlet_" + str( i + 1 ) , new_outlet )
+    @property
+    def stored_fluid(self):
+        return self._stored_fluid
     
     @property
     def n_nodes(self):
@@ -293,6 +286,10 @@ class StorageTank( Device ):
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
+    def convergence(self):
+        return self._convergence
+    
+    @property
     def dE(self):
         if not hasattr( self, "_dE" ):
             raise AttributeError("StorageTank: Attribute 'dE' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
@@ -311,22 +308,21 @@ class StorageTank( Device ):
         return self._internal_convergence
     
     @property
+    def iterations(self):
+        return self._iterations
+    
+    @property
     def ready_to_simulate(self):
         
         for i in range( len( self._inlet_nodes ) ):
             if not hasattr( self, "_inlet_" + str( i + 1 ) ):
                 return False
-        
-        
-        
         return True
     
     @n_nodes.setter
     def n_nodes(self, value):
         if value == self._n_nodes:
             return
-        if not hasattr( self, "_io_relative_heights" ):
-            raise AttributeError("The number of nodes of the tank can only be modified when the inlet/outlet positions have been defined through the initialization parameter 'io_relative_heights'.")
         if not value.is_integer():
             raise ValueError("StorageTank: 'n_nodes' must be an integer value.")
         if not value >= 1:
@@ -439,6 +435,22 @@ class StorageTank( Device ):
         self._cross_area = float( np.pi * self._diameter**2 / 4 )
         self._node_height = self._height / self._n_nodes
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
+        
+    def set_io_relative_heights( self, io_relative_heights ):
+        
+        io_relative_heights = self._validate_argument("io_relative_heights", io_relative_heights)
+        
+        if hasattr( self, "_n_io_pairs" ):
+            if not len( io_relative_heights ) == self._n_io_pairs:
+                raise AttributeError("StorageTank.set_io_relative_heights: Number of inlet/outlet pairs cannot be modified. Port positions can.")
+        else:
+            self._n_io_pairs = len( io_relative_heights )
+            for i in range( self._n_io_pairs ):
+                new_outlet = Outlet()
+                setattr( self , "_outlet_" + str( i + 1 ) , new_outlet )
+        
+        self._io_relative_heights = io_relative_heights
+        self._io_nodes_from_relative_heights()
     
     def _io_nodes_from_relative_heights( self ):
         
@@ -554,24 +566,6 @@ class StorageTank( Device ):
                 
             if not value >= 1:
                 raise ValueError("StorageTank: 'n_nodes' must be >= 1.")
-        
-        if parameter_name == "io_nodes":
-            
-            try:
-                value = [ v for v in value ]
-                assert all([ len( v ) == 2 for v in value ])
-                value = [ [ v[0], v[1] ] for v in value ]
-            except:
-                raise ValueError("StorageTank: Parameter 'io_nodes' does not match the expected format: [ [ input_node_1, output_node_1 ], [ input_node_2, output_node_2 ], ... ].")
-            
-            try:
-                assert all([ v[0].is_integer() and v[1].is_integer() for v in value ])
-                value = [ [ int( v[0] ), int( v[1] ) ] for v in value ]
-            except:
-                raise ValueError("StorageTank: The numeric values of 'io_nodes' must be integers.")
-            
-            if not all( [ v[0] >= 1 and v[0] <= self._n_nodes and v[1] >= 1 and v[1] <= self._n_nodes for v in value ] ):
-                raise ValueError("StorageTank: The numeric values of 'io_nodes' must be in the range 1 <= node <= n_nodes.")
             
         if parameter_name ==  "io_relative_heights":
             
@@ -997,13 +991,20 @@ class StorageTank( Device ):
     
     def set_connections(self, **kwargs):
         
-        if not len( kwargs ) == len( self._inlet_nodes ):
-            raise ValueError("StorageTank.set_connections: Number of inlets specified must be equal to the number of inlet ports of the tank.")
+        if not hasattr( self, "_inlet_nodes" ):
+            raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been define. Use the method StorageTank.set_io_relative_heights.")
         
-        if not all( [ "inlet_" + str(i + 1) for i in range( len( kwargs ) ) ] ):
-            raise ValueError("StorageTank.set_connections: Parameter names expected: inlet_1, inlet_2, inlet_3, ... up to the number of inlet-outlet pairs in the tank.")
+        n_inlets = len( self._inlet_nodes )
         
         for inlet_name in kwargs:
+            try:
+                inlet_name_split = inlet_name.split( '_' )
+                assert len( inlet_name_split ) == 2
+                assert inlet_name_split[0] == 'inlet'
+                inlet_number = int( inlet_name_split[1] )
+                assert inlet_number >= 1 and inlet_number <= n_inlets + 1
+            except:
+                ValueError(f"StorageTank.set_connections: Unexpected parameter name: {inlet_name}")
             if not isinstance( kwargs[ inlet_name ] , Outlet ):
                 raise TypeError(f"StorageTank.set_connections: {inlet_name} is expected to be an instance of sercpy.devices.Outlet.")
             setattr( self, '_' + inlet_name , kwargs[ inlet_name ] )
@@ -1269,9 +1270,11 @@ class StorageTank( Device ):
             it = it + 1
             if self._compute_internal_convergence(previous_result, new_result):
                 self._internal_convergence = True
+                self._iterations = it
                 break
             if it == self._max_iterations:
                 self._internal_convergence = False
+                self._iterations = it
                 break
             previous_result = new_result
         # Nodes are mixed if temperature inversions are detected (see StorageTank._mix_nodes method)
