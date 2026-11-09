@@ -27,7 +27,7 @@ tank_allowed_parameters = [
     "initial_temperature",
     "inlet_mode",
     "flow_alloc_coeff",
-    "tolerance",
+    "internal_tolerance",
     "max_iterations",
     
     ]
@@ -42,9 +42,9 @@ class StorageTank( Device ):
     tanks in which there is a noticeable temperature difference between the top
     part and the bottom part, with the top part being hotter.
     
-    It is based on the models presented by Newton in 1995[1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
-    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019[2]_.
+    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
     
     The tank can have as many inlets and outlets as the user requires. The inlets and outlets are **always** organized in pairs.
     The flow leaving the tank through an outlet port is always equal to the flow entering the tank through the inlet port of the same inlet/outlet pair.
@@ -126,7 +126,7 @@ class StorageTank( Device ):
         This parameter is only taken into account if `inlet_mode` is set to `"AFD"`.
         If not provided, it defaults to `-0.5`.
     
-    tolerance : float, optional
+    internal_tolerance : float, optional
         Maximum temperature discrepancy (°C) allowed between successive **internal** iterations of the model so that convergence is achieved.
         Valid range: `1e-8` to `1e-1`. If not specified, it defaults to 1e-4.
     
@@ -150,7 +150,7 @@ class StorageTank( Device ):
                   initial_temperature = None,
                   inlet_mode = None,
                   flow_alloc_coeff = None,
-                  tolerance = None,
+                  internal_tolerance = None,
                   max_iterations = None ):
         
         # Compute geometry
@@ -216,10 +216,10 @@ class StorageTank( Device ):
             self._alpha = None
         
         # Set internal tolerance
-        if tolerance is None:
+        if internal_tolerance is None:
             self._internal_tolerance = 1e-4
         else:
-            self._internal_tolerance = self._validate_argument( "tolerance", tolerance )
+            self._internal_tolerance = self._validate_argument( "internal_tolerance", internal_tolerance )
         
         # Set maximum internal interations
         if max_iterations is None:
@@ -565,11 +565,11 @@ class StorageTank( Device ):
         volume : float, optional
             Volume of the tank, in m3.
         aspect_ratio : float, optional
-            DESCRIPTION.
+            Ratio between the height of the tank and its diameter.
         diameter : float, optional
-            DESCRIPTION.
+            Diameter of the tank, in m.
         height : float, optional
-            DESCRIPTION.
+            Height of the tank, in m.
 
         Raises
         ------
@@ -578,14 +578,14 @@ class StorageTank( Device ):
 
         Returns
         -------
-        volume : TYPE
-            DESCRIPTION.
-        aspect_ratio : TYPE
-            DESCRIPTION.
-        diameter : TYPE
-            DESCRIPTION.
-        height : TYPE
-            DESCRIPTION.
+        volume : float, optional
+            Volume of the tank, in m3.
+        aspect_ratio : float, optional
+            Ratio between the height of the tank and its diameter.
+        diameter : float, optional
+            Diameter of the tank, in m.
+        height : float, optional
+            Height of the tank, in m.
 
         """
         
@@ -743,14 +743,14 @@ class StorageTank( Device ):
             
             value = min( [ value, 1 ] )
             
-        if parameter_name == "tolerance":
+        if parameter_name == "internal_tolerance":
             try:
                 value = float( value )
             except:
-                raise TypeError("StorageTank: Parameter 'tolerance' must be convertible to type 'float'.")
+                raise TypeError("StorageTank: Parameter 'internal_tolerance' must be convertible to type 'float'.")
             
             if not ( value >= 1e-8 and value <= 1e-1 ):
-                raise ValueError("StorageTank: Parameter 'tolerance' must be in the range 1e-8 - 1e-1.")
+                raise ValueError("StorageTank: Parameter 'internal_tolerance' must be in the range 1e-8 - 1e-1.")
         
         if parameter_name == "max_iterations":
             try:
@@ -764,36 +764,41 @@ class StorageTank( Device ):
         
         return value
         
-    def set_inlet_flows(self, inlet_flowrates, inlet_temps):
+    def _set_inlet_flows(self, inlet_flowrates, inlet_temps):
         """
-        Method to set the flow entering each node of the tank.
-        This method is called by the Tank.compute_outputs method.
+        Private method to compute the flow that enters each node of the tank from each inlet port.
+        
+        This method returns a list of lists of flowrates, with the format:
+            
+            [ [ inlet_1_node_1, inlet_1_node_2, inlet_1_node_3, ... inlet_1_node_n ],
+              [ inlet_2_node_1, inlet_2_node_2, inlet_2_node_3, ... inlet_2_node_n ],
+              
+              .................
+              
+              [ inlet_m_node_1, inlet_m_node_2, inlet_m_node_3, ... inlet_m_node_n ] ]
+            
+        where n is the number of nodes of the tank and m is the number of inlet ports.
+        
+        Regarding the nodes, 1 corresponds to the top node of the tank, whereas n corresponds to the bottom node.
+        
+        The values inside the lists correspond to the flowrates (in kg/s) that enter each node from each inlet.
 
         Parameters
         ----------
-            - inlet_1_T : float or int
-                  temperature of inlet flow 1
-            - inlet_1_flow_rate : float or int
-                  mass flow of inlet flow 1
-            - inlet_2_T : float or int
-                  temperature of inlet flow 2
-            - inlet_2_flow_rate : float or int
-                  mass flow of inlet flow 2
+        inlet_flowrates : list of float
+            Flowrate entering the tank through each inlet port (kg/s). The length of this list is equal to the number of inlet ports of the tank.
+        inlet_temps : list of float
+            Temperatures of the flows entering the tank through each inlet port (kg/s). The length of this list is equal to the number of inlet ports of the tank.
 
         Returns
         -------
-            - inlet_1_dist : dictionary with the format: {1: F1, 2: F2, 3: F3, ... , N: FN}
-                  Where the keys of the dictionary represent the number each node.
-                  F1, F2, F3 represent the portion of the inlet flow 1 entering each node (in flow units).
-                  The top node has the number 1 and the bottom node has the number N, with N being the total number of nodes.
-            - inlet_2_dist : same format as inlet_1_dist
-                  same purpose but for inlet flow 2.
+        list of lists of float
+            See description above for details on the format.
         """
-        assert len( inlet_flowrates ) == len( self._inlet_nodes )
-        assert len( inlet_flowrates ) == len( inlet_temps )
+        assert len( inlet_flowrates ) == len( self._inlet_nodes ) and len( inlet_flowrates ) == len( inlet_temps )
         
         if self._n_nodes == 1:
-            return None
+            return [ [ inlet_flowrate ] for inlet_flowrate in inlet_flowrates ]
         
         distributions_list = [  ]
         
@@ -896,63 +901,47 @@ class StorageTank( Device ):
         assert all( [ len( distribution ) == self._n_nodes for distribution in distributions_list ] )
         return distributions_list
     
-    def _compute_internal_convergence(self, list_1, list_2):
-        """
-        Method that receives the temperatures of successive iterations.
-        It returns a boolean value which is True is convergence has been achieved (i.e. the difference between successive iterations is less than the tolerance) and False otherwise.
-        This method is called by the Tank.compute_outputs method.
-        
-        Parameters
-        ----------
-            - dict1 : dictionary
-                dictionary of resulting temperatures as yielded by the method Tank.iteration, corresponding to the previous iteration.
-            - dict2 : dictionary
-                dictionary of resulting temperatures as yielded by the method Tank.iteration, corresponding to the current iteration.
-
-        Returns
-        -------
-            - Boolean Value
-                True is convergence has been achieved (i.e. the difference between successive iterations is less than the tolerance) and False otherwise.
-        """
-        
-        return all( abs( temps_1[ 'T_avg' ] - temps_2[ 'T_avg' ] ) <= self._internal_tolerance      and 
-                    abs( temps_1[ 'T_final' ] - temps_2[ 'T_final' ] ) <= self._internal_tolerance 
-                    for temps_1, temps_2 in zip( list_1, list_2 ) )
-    
     def _mix_nodes(self, temps_list):
         """
-        Method to mix the nodes in the case that there are temperature inversions (i.e., a certain node is hotter than the node above it).
-        This method is called by the Tank.compute_outputs method.
+        Private method to correct temperature inversions, i.e., the condition by which a node is hotter than the node above it.
+        
+        This is done by mixing the nodes involved in temperature inversions until all temperature inversions are corrected.
         
         Parameters
         ----------
-            - dict1 : dictionary
-                 dictionary of resulting temperatures as yielded by the method Tank.iteration.
+        temps_list : list of float
+            List of node temperatures, in °C. The first value corresponds to the top node; the last value corresponds to the bottom node.
+            
+        Returns
+        -------
+        list of float
+            Same format as the input, with corrrected temperature values.
+        
         """
-        assert len( temps_list ) == self._n_nodes
         
         if self._n_nodes == 1:
-            return [ { 'T_avg': temps_list[ 0 ][ 'T_avg' ], 'T_final': temps_list[ 0 ][ 'T_final' ] } ]
+            return temps_list
         
-        mixed_nodes = [ { 'original_node_numbers': [ i ], 'T_final': temps_list[ i ]['T_final'],
-                          'mass': 1} for i in range( len( temps_list ) ) ]
+        mixed_nodes = [ { 'original_node_numbers': [ i ], 'temp': temps_list[ i ] } for i in range( len( temps_list ) ) ]
         while True:
             
-            if all(  [ mixed_nodes[ i ][ 'T_final' ] >= mixed_nodes[ i + 1 ][ 'T_final' ] for i in range( len( mixed_nodes ) - 1 ) ]  ):
+            if all(  [ mixed_nodes[ i ][ 'temp' ] >= mixed_nodes[ i + 1 ][ 'temp' ] for i in range( len( mixed_nodes ) - 1 ) ]  ):
                 break
             
             for i in range( len( mixed_nodes ) - 1 ):
                 
-                if mixed_nodes[ i ][ 'T_final' ] < mixed_nodes[ i + 1 ][ 'T_final' ]:
+                if mixed_nodes[ i ][ 'temp' ] < mixed_nodes[ i + 1 ][ 'temp' ]:
                     
-                    total_mass = mixed_nodes[ i ][ 'mass' ] + mixed_nodes[ i + 1 ][ 'mass' ]
+                    print( "MIX NODES: Condition encountered" )
                     
-                    T_final = ( ( mixed_nodes[   i   ][ 'mass' ] / total_mass ) * mixed_nodes[   i   ][ 'T_final' ] +
-                                ( mixed_nodes[ i + 1 ][ 'mass' ] / total_mass ) * mixed_nodes[ i + 1 ][ 'T_final' ]   )
+                    total_mass = len( mixed_nodes[ i ][ 'original_node_numbers' ] ) + len( mixed_nodes[ i + 1 ][ 'original_node_numbers' ] )
+                    
+                    temp = ( ( len( mixed_nodes[   i   ][ 'original_node_numbers' ] ) / total_mass ) * mixed_nodes[   i   ][ 'temp' ] +
+                             ( len( mixed_nodes[ i + 1 ][ 'original_node_numbers' ] ) / total_mass ) * mixed_nodes[ i + 1 ][ 'temp' ]   )
                     
                     nodes_list = mixed_nodes[ i ][ 'original_node_numbers' ] + mixed_nodes[ i + 1 ][ 'original_node_numbers' ]
                     
-                    mixed_nodes[ i ] = { 'original_node_numbers': nodes_list , 'T_final': T_final , 'mass': total_mass }
+                    mixed_nodes[ i ] = { 'original_node_numbers': nodes_list , 'temp': temp }
                     
                     mixed_nodes.pop( i + 1 )
                     
@@ -961,50 +950,44 @@ class StorageTank( Device ):
         result = [ np.nan ]*self._n_nodes
         for dictionary in mixed_nodes:
             for node_number in dictionary[ 'original_node_numbers' ]:
-                result[ node_number ] = { 'T_avg': temps_list[ node_number ][ 'T_avg' ], 'T_final': dictionary[ 'T_final'] }
+                result[ node_number ] = dictionary[ 'temp']
         
         return result
     
-    def _iteration( self, inlet_flowrates, inlet_temps,
-                    Tamb, previous_result, time_step,
-                    distributions_list ):
+    def _iteration( self, inlet_flowrates_distribution, inlet_temps,
+                    Tamb, T_avg_list_previous, time_step ):
         """
-        Method that executes a single iteration to determine the temperature at the end of the time step and the average temperature over the time step for each node.
-        This method is called by the Tank.compute_outputs method.
-
+        Private method that carries out the main algorithm to model the evolution of the nodes' temperatures during a time step.
+        
+        The method returns two lists:
+            
+            - One list contains the average temperatures of the tank's nodes during the time step.
+            - The other list contains the temperatures of the tank's nodes at the end of the time step.
+        
         Parameters
         ----------
-            - inlet_1_flow_rate : float or int (positive or zero)
-                  mass flow rate entering the tank through inlet 1
-            - inlet_1_T : float or int
-                  temperature of the flow entering the tank through inlet 1
-            - inlet_2_flow_rate : float or int (positive or zero)
-                  mass flow rate entering the tank through inlet 2
-            - inlet_2_T : float or int
-                  temperature of the flow entering the tank through inlet 2
-            - Tamb : float or int
-                  ambient temperature
-            - previous_result : dictionary
-                  dictionary of temperatures at the end of the time step and average temperatures yielded by the previous iteration (see the information on what this method returns).
-            - time_step : float or int (positive)
-                  time step value (time units)
-
+        inlet_flowrates_distribution : list of list of float
+            Object returned by the method StorageTank._set_inlet_flows.
+            It defines how the flows entering the tank get distributed along the tank's nodes.
+            See the aforementioned method for more information on the format of this parameter.
+        inlet_temps : list of float
+            Temperatures of the flows entering the tank (°C). Each value in the list corresponds to one of the inlet ports of the tank.
+        Tamb : float
+            Ambient temperature in °C.
+        T_avg_list_previous : list of float
+            T_avg_list returned by this method in the previous iteration.
+        time_step : float
+            Time step length in seconds.
+        
         Returns
         -------
-            - Sol : dictionary
-                  This method returns a dictionary with the following format:
-                      {1: {'T_avg': T_avg_1, 'T_final': T_final_1},
-                       2: {'T_avg': T_avg_2, 'T_final': T_final_2},
-                       3: {'T_avg': T_avg_3, 'T_final': T_final_3},
-                       .... ,
-                       .... ,
-                       N: {'T_avg': T_avg_N, 'T_final': T_final_N}}
-                    
-                  The keys of the dictionary are integers representing each node of the tank.
-                  The top node has the number 1 and the bottom node has the number N, with N being the total number of nodes.
-                  Each node has a corresponding dictionary with the keys 'T_avg' and 'T_final'.
-                  The values T_avg_1, T_avg_2, T_avg_3, .... , T_avg_N represent the average temperature determined for each node during the current time step.
-                  The values T_final_1, T_final_2, T_final_3, .... , T_final_N represent the temperature determined for each node at the end of the current time step.
+        T_avg_list : list of float
+            Average temperatures of the tank's nodes during the time step (°C).
+            The first value corresponds to the top node; the last value corresponds to the bottom node.
+        T_final_list : list of float
+            Temperatures of the tank's nodes at the end of the time step (°C).
+            The first value corresponds to the top node; the last value corresponds to the bottom node.
+        
         """
         # Case 1: The tank has only 1 node
         if self._n_nodes == 1:
@@ -1014,58 +997,64 @@ class StorageTank( Device ):
             b = b + self._cross_area*self._top_loss_coeff*Tamb
             a = a - self._cross_area*self._bottom_loss_coeff
             b = b + self._cross_area*self._bottom_loss_coeff*Tamb
-            a = a - sum( [ inlet_flowrates[ inlet_node_index ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            b = b + sum( [ inlet_flowrates[ inlet_node_index ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            a = a - sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            b = b + sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
             a = a/self._node_thermal_capacity
             b = b/self._node_thermal_capacity
             T_final = float( ( self._node_temperatures[ 0 ] + b/a ) * np.exp( a*time_step ) - b/a )
             T_avg = float( ( 1 / ( a*time_step ) ) * ( self._node_temperatures[ 0 ] + b/a ) * ( np.exp( a * time_step ) - 1 ) - b/a )
-            return [ { 'T_avg': T_avg, 'T_final': T_final } ]
+            return [ T_avg ], [ T_final ]
         
         # Case 2: The tank has more than one node
-        result = []
+        T_avg_list = [  ]
+        T_final_list = [  ]
         # The values of a_i and b_i of each node are determined (first without dividing by the thermal capacity of the node)
         for node in range( self._n_nodes ):
             a = -self._nodal_edge_area*self._edge_loss_coeff
             b = self._nodal_edge_area*self._edge_loss_coeff*Tamb
-            flow_in = sum( [ distributions_list[ inlet_node_index ][ node ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            a = a - sum( [ distributions_list[ inlet_node_index ][ node ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            b = b + sum( [ distributions_list[ inlet_node_index ][ node ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            flow_out = sum( [ ( node == self._outlet_nodes[ outlet_node_index ] )*inlet_flowrates[ outlet_node_index ] for outlet_node_index in range( len( self._outlet_nodes ) ) ] )
+            flow_in = sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            a = a - sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            b = b + sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            
+            flow_out = 0
+            if node in self._outlet_nodes:
+                for outlet_node_index, outlet_node in enumerate( self._outlet_nodes ):
+                    if node == outlet_node:
+                        flow_out = flow_out + sum( inlet_flowrates_distribution[ outlet_node_index ] )
             
             if node == 0:
                 flow_below = flow_out - flow_in
                 a = a - self._cross_area*self._top_loss_coeff
                 a = a - self._fluid_thermal_conductivity*self._cross_area/self._node_height
                 b = b + self._cross_area*self._top_loss_coeff*Tamb
-                b = b + self._fluid_thermal_conductivity*self._cross_area*previous_result[ node + 1 ]['T_avg']/self._node_height
+                b = b + self._fluid_thermal_conductivity*self._cross_area*T_avg_list_previous[ node + 1 ]/self._node_height
                 if flow_below > 0:
                     a = a - flow_below*self._fluid_cp
-                    b = b + flow_below*self._fluid_cp*previous_result[ node + 1 ]['T_avg']
+                    b = b + flow_below*self._fluid_cp*T_avg_list_previous[ node + 1 ]
                 flow_above = -flow_below
             
             elif node == self._n_nodes - 1:
                 a = a - self._cross_area*self._bottom_loss_coeff
                 a = a - self._fluid_thermal_conductivity*self._cross_area/self._node_height
                 b = b + self._cross_area*self._bottom_loss_coeff*Tamb
-                b = b + self._fluid_thermal_conductivity*self._cross_area*previous_result[ node - 1 ]['T_avg']/self._node_height
+                b = b + self._fluid_thermal_conductivity*self._cross_area*T_avg_list_previous[ node - 1 ]/self._node_height
                 if abs(flow_above + flow_in - flow_out) > 1e-8:
                     raise ValueError("StorageTank: Flow balance error.")
                 if flow_above > 0:
                     a = a - flow_above*self._fluid_cp
-                    b = b + flow_above*self._fluid_cp*previous_result[ node - 1 ]['T_avg']
+                    b = b + flow_above*self._fluid_cp*T_avg_list_previous[ node - 1 ]
             
             else:
                 flow_below = flow_out - flow_in - flow_above
                 a = a - 2*self._fluid_thermal_conductivity*self._cross_area/self._node_height
-                b = b + self._fluid_thermal_conductivity*self._cross_area*previous_result[ node + 1 ]['T_avg']/self._node_height
-                b = b + self._fluid_thermal_conductivity*self._cross_area*previous_result[ node - 1 ]['T_avg']/self._node_height
+                b = b + self._fluid_thermal_conductivity*self._cross_area*T_avg_list_previous[ node + 1 ]/self._node_height
+                b = b + self._fluid_thermal_conductivity*self._cross_area*T_avg_list_previous[ node - 1 ]/self._node_height
                 if flow_above > 0:
                     a = a - flow_above*self._fluid_cp
-                    b = b + flow_above*self._fluid_cp*previous_result[ node - 1 ]['T_avg']
+                    b = b + flow_above*self._fluid_cp*T_avg_list_previous[ node - 1 ]
                 if flow_below > 0:
                     a = a - flow_below*self._fluid_cp
-                    b = b + flow_below*self._fluid_cp*previous_result[ node + 1]['T_avg']
+                    b = b + flow_below*self._fluid_cp*T_avg_list_previous[ node + 1]
                 flow_above = -flow_below
             # The actual values of a_i and b_i are determined by dividing by the thermal capacity of the nodes
             a = a/self._node_thermal_capacity
@@ -1073,9 +1062,10 @@ class StorageTank( Device ):
             # Average temperatures and temperatures at the end of the time step are determined.
             T_final = float( ( self._node_temperatures[ node ] + b/a ) * np.exp( a*time_step ) - b/a )
             T_avg = float( ( 1 / ( a*time_step ) ) * ( self._node_temperatures[ node ] + b/a )*( np.exp( a*time_step ) - 1 ) - b/a )
-            result.append( { 'T_avg': T_avg, 'T_final': T_final } )
+            T_avg_list.append( T_avg )
+            T_final_list.append( T_final )
             
-        return result
+        return T_avg_list, T_final_list
     
     def __setattr__(self, name, value):
         
@@ -1382,18 +1372,23 @@ class StorageTank( Device ):
         
         inlet_temps = [ state_in.T for state_in in inlet_states ]
         
-        distributions_list = self.set_inlet_flows( inlet_flowrates, inlet_temps )
+        distributions_list = self._set_inlet_flows( inlet_flowrates, inlet_temps )
         
-        # The result of the "iteration 0" is defined as the current nodes' temperatures
-        previous_result = [ {'T_avg': self._node_temperatures[ node ], 'T_final': self._node_temperatures[ node ] } for node in range( self._n_nodes ) ]
+        # The result of "iteration 0" is defined as the current nodes' temperatures
+        T_avg_list_previous = self._node_temperatures
+        T_final_list_previous = self._node_temperatures
         # Outputs are determined by using the Tank.iteration method iteratively
         it = 0
         while True:
-            new_result = self._iteration( inlet_flowrates, inlet_temps,
-                                          Tamb, previous_result, time_step,
-                                          distributions_list )
+            T_avg_list_new, T_final_list_new = self._iteration( inlet_flowrates, inlet_temps,
+                                                                Tamb, T_avg_list_previous, time_step,
+                                                                distributions_list )
             it = it + 1
-            if self._compute_internal_convergence(previous_result, new_result):
+            
+            if all( abs( T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
+                    abs( T_final_list_previous[ i ] - T_final_list_new[ i ] )  <=  self._internal_tolerance 
+                    for i in range( self._n_nodes ) ):
+            
                 self._internal_convergence = True
                 self._iterations = it
                 break
@@ -1401,15 +1396,15 @@ class StorageTank( Device ):
                 self._internal_convergence = False
                 self._iterations = it
                 break
-            previous_result = new_result
+            T_avg_list_previous = T_avg_list_new
         # Nodes are mixed if temperature inversions are detected (see StorageTank._mix_nodes method)
-        new_result = self._mix_nodes( new_result )
+        T_final_list_new = self._mix_nodes( T_final_list_new )
         # Outputs are defined
         
         for i in range( len( self._outlet_nodes ) ):
             outlet = getattr( self, "_outlet_" + str( i + 1 ) )
             outlet.flowrate = inlet_flowrates[ i ]
-            outlet.state = self._stored_fluid.state( T = new_result[ self._outlet_nodes[ i ] ][ 'T_avg' ] )
+            outlet.state = self._stored_fluid.state( T = T_avg_list_new[ self._outlet_nodes[ i ] ] )
         
         self._new_temperatures = [ node_temps[ 'T_final' ] for node_temps in new_result ]
         
