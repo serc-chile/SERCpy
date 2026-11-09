@@ -53,7 +53,7 @@ For inlet flows, there is a harder question to answer: which node does an enteri
 The user can set how inlet flows are modeled through the parameter `inlet_mode`. This parameter must be a string and can have three values:
 
    `"fixed_inlets"`
-      The flows that enter the tank are assumed to stay in the node where the inlet is physically located. One could say that, with this inlet mode, the phenomenon just discussed is being neglected, but this is actually not true because of the :ref:`algorithm to correct flow inversions <temperature_inversions>`.
+      The flows that enter the tank are assumed to stay in the node where the inlet is physically located. One could say that, with this inlet mode, the phenomenon just discussed is being neglected, but this is actually not true because of the :ref:`algorithm to correct temperature inversions <temperature_inversions>`.
    `"temperature_seeking"`
       The flows are assumed to flow directly to the node that is closest to their temperature. This model becomes unrealistic when the node that best matches the inlet flow's temperature is several nodes appart from where the inlet is actually located.
    `"AFD"`
