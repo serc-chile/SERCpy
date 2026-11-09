@@ -55,13 +55,11 @@ The user can set how inlet flows are modeled through the parameter `inlet_mode`.
    `"fixed_inlets"`
       The flows that enter the tank are assumed to stay in the node where the inlet is physically located. One could say that, with this inlet mode, the phenomenon just discussed is being neglected, but this is actually not true because of the :ref:`algorithm to correct flow inversions <temperature_inversions>`.
    `"temperature_seeking"`
-      The flows are assumed to flow directly to the node that is closest to their temperature. The drawback of this model is that, in reality, 
+      The flows are assumed to flow directly to the node that is closest to their temperature. This model becomes unrealistic when the node that best matches the inlet flow's temperature is several nodes appart from where the inlet is actually located.
    `"AFD"`
       This string stands for "Advanced Flowrate Distribution", which is
-      a modelling method presented by Saloux and Candanedo in 2019,
-      and could be summarized as a method to 
-      The model proposed by Saloux and Candanedo [2]_, which is an
-      intermediate between the two models just discussed, is used.
+      a `modeling method presented by Saloux and Candanedo in 2019 <https://doi.org/10.1016/j.apenergy.2019.02.075>`_.
+      This modeling method can be described as a way of establishing a continuum between the two models just discussed.
 
 .. _temperature_inversions:
 
