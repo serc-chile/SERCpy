@@ -1053,7 +1053,7 @@ class SolarField( Device ):
     
     @property
     def convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a time step, so that no further computation is needed."
+        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_convergence" ):
             raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
         return self._convergence

@@ -42,9 +42,12 @@ class StorageTank( Device ):
     tanks in which there is a noticeable temperature difference between the top
     part and the bottom part, with the top part being hotter.
     
-    It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    It is based on the models presented by Newton in 1995[1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
-    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
+    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019[2]_.
+    
+    The tank can have as many inlets and outlets as the user requires. The inlets and outlets are **always** organized in pairs.
+    The flow leaving the tank through an outlet port is always equal to the flow entering the tank through the inlet port of the same inlet/outlet pair.
     
     References
     ----------
@@ -66,12 +69,12 @@ class StorageTank( Device ):
         If provided, one and only one of the other parameters `volume`, `diameter`, and `height` must also be provided.
     
     diameter : float, optional
-        Diameter of the tank, in m.
+        Internal diameter of the tank, in m.
         If provided, one and only one of the other parameters `volume`,
         `aspect_ratio`, and `height` must also be provided.
     
     height : float, optional
-        Height of the tank, in m.
+        Internal height of the tank, in m.
         If provided, one and only one of the other parameters `volume`,
         `aspect_ratio`, and `diameter` must also be provided.
     
@@ -115,7 +118,7 @@ class StorageTank( Device ):
     
     inlet_mode : str, optional
         String specifying how the flows that enter the tank through its inlets ports are modeled. Allowed values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
-        See :ref:`inlet_flow_modeling` for more details on what each value means. If not provided, it defaults to `"fixed_inlets"`
+        See :ref:`inlet_flow_modeling` for more details on what each value means. If not provided, it defaults to `"fixed_inlets"`.
     
     flow_alloc_coeff : float, optional
         The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
@@ -239,72 +242,93 @@ class StorageTank( Device ):
         
     @property
     def stored_fluid(self):
+        "Instance of the class sercpy.fluids.Fluid, which models the fluid stored by the tank."
         return self._stored_fluid
     
     @property
     def n_nodes(self):
+        "Number of nodes into which the tank is discretized."
         return self._n_nodes
     
     @property
     def volume(self):
+        "Internal volume of the tank (m3)."
         return self._volume
     
     @property
     def aspect_ratio(self):
+        "Aspect ratio of the tank; i.e., the ratio between the height and the diameter."
         return self._aspect_ratio
         
     @property
     def height(self):
+        "Internal height of the tank (m)."
         return self._height
     
     @property
     def diameter(self):
+        "Internal diameter of the tank (m)."
         return self._diameter
     
     @property
     def top_temp(self):
+        "Temperature of tank's top node (°C) at the beginning of the time step. It is equal to the maximum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs)."
         return self._node_temperatures[ 0 ]
     
     @property
     def bottom_temp(self):
+        "Temperature of tank's bottom node (°C) at the beginning of the time step. It is equal to the minimum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs)."
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
     def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         return self._convergence
     
     @property
     def dE(self):
+        "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_dE" ):
             raise AttributeError("StorageTank: Attribute 'dE' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._dE
     
     @property
     def Q_loss(self):
+        "Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_Q_loss" ):
             raise AttributeError("StorageTank: Attribute 'Q_loss' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._Q_loss
     
     @property
     def internal_convergence(self):
+        "Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_internal_convergence" ):
             raise AttributeError("StorageTank: Attribute 'internal_convergence' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._internal_convergence
     
     @property
     def iterations(self):
+        "Number of internal iterations performed the last time the method StorageTank.compute_outputs was called."
         return self._iterations
     
     @property
+    def io_positions_defined(self):
+        "Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`"
+        return hasattr( self, "_n_io_pairs" )
+    
+    @property
     def ready_to_simulate(self):
-        
-        for i in range( len( self._inlet_nodes ) ):
+        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined."
+        if not hasattr( self, "_n_io_pairs" ):
+            return False
+        for i in range( len( self._n_io_pairs ) ):
             if not hasattr( self, "_inlet_" + str( i + 1 ) ):
                 return False
         return True
     
     @n_nodes.setter
     def n_nodes(self, value):
+        "Change the number of nodes, i.e. the number of volumes into which the tank is descretized."
         if value == self._n_nodes:
             return
         if not value.is_integer():
@@ -318,9 +342,27 @@ class StorageTank( Device ):
         self._node_height = self._height / self._n_nodes
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
         self._update_temp_after_n_node_updating()
-        
+    
     def _update_temp_after_n_node_updating( self ):
+        """
+        Private method that updates the attributes "_node_temperatures" and "_new_temperatures" (the latter is modified only if it already exists)
+        when the number of nodes of the tank is changed.
         
+        Both attributes just mentioned are lists of values storing the temperatures of each node of the tank.
+        
+        The attribute _node_temperatures has the current temperatures of the nodes. 
+        
+        The attribute _new_temperatures has the temperatures computed for the end of the time step, the last time the method "compute_outputs was called".
+        
+        When the number of nodes of the tank is modified, the length of these two lists has to be modified.
+        
+        This function carries out this process in a way that conserves the internal energy of the tank.
+
+        Returns
+        -------
+        None
+
+        """
         n_nodes_old = len( self._node_temperatures )
         node_interfaces_old = np.linspace( 0, 1, n_nodes_old + 1 ).astype(float).tolist()
         
@@ -376,6 +418,36 @@ class StorageTank( Device ):
                          diameter = None,
                          height = None,
                          keep_constant = None ):
+        """
+        Change the size and/or shape of the tank.
+        
+        This method has two ways of being used:
+            
+            1. Redefining the shape and size of the tank from scratch by specifying two of the first four parameters.
+            2. Redefining the shape or size of the tank while keeping one of the other features constant (e.g. volume, diameter, etc.). In this case, one of the first four parameters **and** `keep_constant` must be specified.
+        
+        The user must keep in mind that, if the volume of the tank is modified (either directly or indirectly), its internal energy will change in proportion to the new amount of fluid stored.
+        
+        **At most two of the first four parameters must be specified**.
+        
+        Parameters
+        ----------
+        volume : float, optional
+            New volume of the tank, in m3.
+        aspect_ratio : float, optional
+            New aspect ratio of the tank, i.e., the ratio between its height and its diameter.
+        diameter : float, optional
+            New diameter of the tank, in m.
+        height : float, optional
+            New height of the tank, in m.
+        keep_constant : str, optional
+            String specifying which feature of the storage tank will be kept constant. Allowed values: `"volume"`, `"aspect_ratio"`, `"diameter"`, `"height"`.
+        
+        Returns
+        -------
+        None.
+        
+        """
         
         volume = self._validate_argument("volume", volume)
         aspect_ratio = self._validate_argument("aspect_ratio", aspect_ratio)
@@ -421,11 +493,30 @@ class StorageTank( Device ):
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
         
     def set_io_relative_heights( self, io_relative_heights ):
+        """
+        Set inlet/outlet port positions after initialization.
+        
+        This method allows the user to specify the positions of the inlet- and outlet ports of the tank.
+        This can be done when this feature was not specified at initialization, *and* to re-define it as well. In the latter case, only the positions of the outlets can be changed, but not the number of inlet/outlet pairs.
+
+        Parameters
+        ----------
+        io_relative_heights : list of pairs
+            List of pairs with the format `[ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`. The values `inlet_1_height`, `outlet_1_height`, etc. are `float <https://docs.python.org/3/builtins/functions.html#float>`_ numbers in the range 0 - 1. See :ref:`inlet_outlet_ports_definition` for more details.
+        
+        Returns
+        -------
+        None.
+
+        """
+        
+        if io_relative_heights is None:
+            raise TypeError("StorageTank.set_io_relative_heights: io_relative_heights cannot be None.")
         
         io_relative_heights = self._validate_argument("io_relative_heights", io_relative_heights)
         
         if hasattr( self, "_n_io_pairs" ):
-            if not len( io_relative_heights ) == self._n_io_pairs:
+            if len( io_relative_heights ) != self._n_io_pairs:
                 raise AttributeError("StorageTank.set_io_relative_heights: Number of inlet/outlet pairs cannot be modified. Port positions can.")
         else:
             self._n_io_pairs = len( io_relative_heights )
@@ -437,6 +528,17 @@ class StorageTank( Device ):
         self._io_nodes_from_relative_heights()
     
     def _io_nodes_from_relative_heights( self ):
+        """
+        Private method to determine the nodes where the inlet and outlet ports are located based on the object `io_relative_heights`, which is received by the public method `set_io_relative_heights`.
+        
+        This method sets the private attributes of the StorageTank instance: "_inlet_nodes" and  "_outlet_nodes",
+        which are lists indicating the number of the node where the inlets and outlets are located. 0 corresponds to the top node; _n_nodes - 1 corresponds to the bottom node.
+
+        Returns
+        -------
+        None.
+
+        """
         
         if not hasattr( self, "_n_nodes" ):
             raise AttributeError("Storagetank._io_nodes_from_relative_heights: Attribute 'n_nodes' is not defined.")
@@ -445,11 +547,47 @@ class StorageTank( Device ):
         
         node_interfaces_rel_heigths = [ i/self._n_nodes for i in range( self._n_nodes ) ]
         
-        self._inlet_nodes = [ bisect( node_interfaces_rel_heigths, pair[ 0 ] ) - 1 for pair in self._io_relative_heights ]
-        self._outlet_nodes = [ bisect( node_interfaces_rel_heigths, pair[ 1 ] ) - 1 for pair in self._io_relative_heights ]
+        inlet_nodes_inv = [ bisect( node_interfaces_rel_heigths, pair[ 0 ] ) - 1 for pair in self._io_relative_heights ]
+        outlet_nodes_inv = [ bisect( node_interfaces_rel_heigths, pair[ 1 ] ) - 1 for pair in self._io_relative_heights ]
+        
+        self._inlet_nodes = [ self._n_nodes - 1 - node for node in inlet_nodes_inv ]
+        self._outlet_nodes = [ self._n_nodes - 1 - node for node in outlet_nodes_inv ]
     
     @staticmethod
     def _compute_geometry( volume, aspect_ratio, diameter, height ):
+        """
+        Private, static method that computes all geometric features of the tank (volume, aspect_ratio, diameter, height) from two of them
+        
+        Two and only two of the parameters of this method must be provided.
+
+        Parameters
+        ----------
+        volume : float, optional
+            Volume of the tank, in m3.
+        aspect_ratio : float, optional
+            DESCRIPTION.
+        diameter : float, optional
+            DESCRIPTION.
+        height : float, optional
+            DESCRIPTION.
+
+        Raises
+        ------
+        ValueError
+            If the aspect ratio is not within the allowed range: 0.2 - 5. This error is raised both when the aspect ratio is directly specified by the user and when it must be determined from two other parameters.
+
+        Returns
+        -------
+        volume : TYPE
+            DESCRIPTION.
+        aspect_ratio : TYPE
+            DESCRIPTION.
+        diameter : TYPE
+            DESCRIPTION.
+        height : TYPE
+            DESCRIPTION.
+
+        """
         
         if sum([ variable is not None for variable in [ volume, aspect_ratio, diameter, height ] ]) != 2:
             raise ValueError("StorageTank: Two and only two of the parameters 'volume','aspect_ratio', 'diameter', and 'height' must be provided.")
@@ -976,7 +1114,7 @@ class StorageTank( Device ):
     def set_connections(self, **kwargs):
         
         if not hasattr( self, "_inlet_nodes" ):
-            raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been define. Use the method StorageTank.set_io_relative_heights.")
+            raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been defined. Use the method StorageTank.set_io_relative_heights.")
         
         n_inlets = len( self._inlet_nodes )
         
@@ -1199,6 +1337,9 @@ class StorageTank( Device ):
                     - 'maxIt' : Boolean value which is True if the maximum number of allowed iterations was reached without achieving convergence, and False otherwise
         """
         
+        if not hasattr(self, "_inlet_nodes"):
+            raise AttributeError("StorageTank.compute_outputs: Inlet and outlet nodes have not been defined. Use the method StorageTank.set_io_relative_heights.")
+        
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ inlet_flowrates, inlet_states, Tamb, time_step ] ]):
                 raise TypeError("StorageTank.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: inlet_flowrates, inlet_states, Tamb, time_step.")
@@ -1272,7 +1413,7 @@ class StorageTank( Device ):
         
         self._new_temperatures = [ node_temps[ 'T_final' ] for node_temps in new_result ]
         
-        self._dE = self._node_thermal_capacity * sum( [  self._new_temperatures[ node ] - self._node_temperatures[ node ] for node in range( len( self._new_temperatures ) )  ] )
+        self._dU = self._node_thermal_capacity * sum( [  self._new_temperatures[ node ] - self._node_temperatures[ node ] for node in range( len( self._new_temperatures ) )  ] )
         
         Heat_Loss_Rate = self._nodal_edge_area * self._edge_loss_coeff * sum([ new_result[ node ][ 'T_avg' ] - Tamb for node in range( len( new_result ) ) ] )
         Heat_Loss_Rate = Heat_Loss_Rate + self._cross_area * self._top_loss_coeff * ( new_result[ 0 ][ 'T_avg' ] - Tamb )
