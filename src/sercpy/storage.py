@@ -145,6 +145,80 @@ class StorageTank( Device ):
         Maximum number of **internal** iterations of the model allowed before
         forcing the computation to stop. Valid range: `3` to `300`.
         If not specified, it defaults to `30`.
+        
+    Attributes
+    ----------
+    stored_fluid : :doc:`Fluid </fluids/fluid_class>`
+        Instance of the class sercpy.fluids.Fluid, which models the fluid stored by the tank.
+    
+    n_nodes : int
+        Number of nodes into which the tank is discretized.
+    
+    volume : float
+        Internal volume of the tank (m3).
+    
+    aspect_ratio : float
+        Aspect ratio of the tank; i.e., the ratio between the height and the diameter.
+        
+    height : float
+        Internal height of the tank (m).
+    
+    diameter : float
+        Internal diameter of the tank (m).
+    
+    top_temp : float
+        Temperature of tank's top node (°C) at the beginning of the time step. It is equal to the maximum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs).
+    
+    @property
+    def bottom_temp(self):
+        "Temperature of tank's bottom node (°C) at the beginning of the time step. It is equal to the minimum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs)."
+        return self._node_temperatures[ self._n_nodes - 1 ]
+    
+    @property
+    def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        return self._convergence
+    
+    @property
+    def dE(self):
+        "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        if not hasattr( self, "_dE" ):
+            raise AttributeError("StorageTank: Attribute 'dE' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
+        return self._dE
+    
+    @property
+    def Q_loss(self):
+        "Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        if not hasattr( self, "_Q_loss" ):
+            raise AttributeError("StorageTank: Attribute 'Q_loss' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
+        return self._Q_loss
+    
+    @property
+    def internal_convergence(self):
+        "Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        if not hasattr( self, "_internal_convergence" ):
+            raise AttributeError("StorageTank: Attribute 'internal_convergence' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
+        return self._internal_convergence
+    
+    @property
+    def iterations(self):
+        "Number of internal iterations performed the last time the method StorageTank.compute_outputs was called."
+        return self._iterations
+    
+    @property
+    def io_positions_defined(self):
+        "Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`"
+        return hasattr( self, "_n_io_pairs" )
+    
+    @property
+    def ready_to_simulate(self):
+        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined."
+        if not hasattr( self, "_n_io_pairs" ):
+            return False
+        for i in range( len( self._n_io_pairs ) ):
+            if not hasattr( self, "_inlet_" + str( i + 1 ) ):
+                return False
+        return True
     
     """
     def __init__( self, *,
@@ -952,6 +1026,7 @@ class StorageTank( Device ):
             return temps_list
         
         mixed_nodes = [ { 'original_node_numbers': [ i ], 'temp': temps_list[ i ] } for i in range( len( temps_list ) ) ]
+        
         while True:
             
             if all(  [ mixed_nodes[ i ][ 'temp' ] >= mixed_nodes[ i + 1 ][ 'temp' ] for i in range( len( mixed_nodes ) - 1 ) ]  ):
@@ -1129,21 +1204,31 @@ class StorageTank( Device ):
     
     def set_connections(self, **kwargs):
         """
-        Method that.....
+        Specify the devices to which the storage tank's inlet ports are connected.
+        
+        All arguments provided must be instances of `sercpy.devices.Outlet`.
+        
+        Inlets can be re-defined as many times as needed by using this method.
+        
+        The total number of inlets expected to be specified by this method is equal to the number of inlets defined when providing the
+        argument `io_relative_heights`, either at initialization or with the method :meth:`StorageTank.set_io_relative_heights`.
+        
+        The method does not expect all inlets to be defined at the same time. However, all inlets must be defined before calling
+        the method :meth:`StorageTank.compute_outputs` for the first time.
         
         Parameters
         ----------
-        **parameters : float
-            Keyword arguments named ``parameter_<i>``, where ``<i>`` is a
-            consecutive integer starting at 1 (``parameter_1``,
-            ``parameter_2``, ...). Gaps in the numbering raise
-            ``ValueError``.
+        **kwargs : :doc:`/devices/outlet`
+            Keyword arguments named `inlet_<i>`, where ``<i>`` is an
+            integer between 1 and the number of inlet ports of the tank.
+            (`inlet_1`, `inlet_2`, ...). 
     
         Raises
         ------
         ValueError
-            If a keyword does not match ``parameter_<i>`` or the
-            numbering is not consecutive.
+            If a keyword does not match the expected format
+        TypeError
+            If the arguments provided are not instances of sercpy.devices.outlet
         
         """
         
