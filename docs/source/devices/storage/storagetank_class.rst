@@ -58,7 +58,7 @@ The user can set how inlet flows are modeled through the parameter `inlet_mode`.
       The flows are assumed to flow directly to the node that is closest to their temperature. This model becomes unrealistic when the node that best matches the inlet flow's temperature is several nodes appart from where the inlet is actually located.
    `"AFD"`
       This string stands for "Advanced Flowrate Distribution", which is
-      a model presented by Saloux and Candanedo in 2019[2]_.
+      a model presented by Saloux and Candanedo in 2019 [2]_.
       This modeling method can be described as a way of establishing a continuum between the two models just discussed.
 
 .. _temperature_inversions:
