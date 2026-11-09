@@ -14,6 +14,9 @@ Methods
    :toctree: generated/
 
    StorageTank.compute_outputs
+   StorageTank.update_state
+   StorageTank.set_connections
+   StorageTank.set_convergence_criteria
 
 .. _inlet_outlet_ports_definition:
 
