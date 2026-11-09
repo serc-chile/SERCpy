@@ -36,18 +36,23 @@ class StorageTank( Device ):
     r"""
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
-    This model discretizes a tank dividing its volume into vertically-stacked equally-sized parts, known as "nodes".
+    This model discretizes a tank dividing its volume into
+    vertically-stacked equally-sized parts, known as "nodes".
     
     This is a computationally cheap way of modeling stratified tanks, i.e.,
     tanks in which there is a noticeable temperature difference between the top
     part and the bottom part, with the top part being hotter.
     
-    It is based on the models presented by Newton in 1995 [1]_, which have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    It is based on the models presented by Newton in 1995 [1]_, which
+    have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
-    It also features the model known as "Advanced Flowrate Distribution", presented by Saloux and Candanedo in 2019 [2]_.
+    It also features the model known as "Advanced Flowrate Distribution",
+    presented by Saloux and Candanedo in 2019 [2]_.
     
-    The tank can have as many inlets and outlets as the user requires. The inlets and outlets are **always** organized in pairs.
-    The flow leaving the tank through an outlet port is always equal to the flow entering the tank through the inlet port of the same inlet/outlet pair.
+    The tank can have as many inlets and outlets as the user requires.
+    The inlets and outlets are **always** organized in pairs.
+    The flow leaving the tank through an outlet port is always equal
+    to the flow entering the tank through the inlet port of the same inlet/outlet pair.
     
     References
     ----------
@@ -57,12 +62,14 @@ class StorageTank( Device ):
     .. [2] E. Saloux, J.A. Candanedo. "Modelling stratified thermal energy storage tanks using an advanced flowrate distribution of the received flow,"
        *Applied Energy*, Volume 241, pages 34-45, 1 May 2019. https://doi.org/10.1016/j.apenergy.2019.02.075
     
-    **Only two of the first four parameters must be provided to define the shape and size of the tank.**
+    **Only two of the first four parameters must be
+    provided to define the shape and size of the tank.**
     
     Parameters
     ----------
     volume : float, optional
-        Internal volume of the tank, in m3. If provided, one and only one of the other parameters `aspect_ratio`, `diameter`, and `height` must also be provided.
+        Internal volume of the tank, in m3. If provided, one and only one of
+        the other parameters `aspect_ratio`, `diameter`, and `height` must also be provided.
     
     aspect_ratio : float, optional
         Aspect ratio of the tank; i.e., the ratio between the height and the diameter.
@@ -117,21 +124,26 @@ class StorageTank( Device ):
         the last value corresponds to the bottom node.
     
     inlet_mode : str, optional
-        String specifying how the flows that enter the tank through its inlets ports are modeled. Allowed values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
-        See :ref:`inlet_flow_modeling` for more details on what each value means. If not provided, it defaults to `"fixed_inlets"`.
+        String specifying how the flows that enter the tank through its
+        inlets ports are modeled. Allowed values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
+        See :ref:`inlet_flow_modeling` for more details on what
+        each value means. If not provided, it defaults to `"fixed_inlets"`.
     
     flow_alloc_coeff : float, optional
-        The "flowrate allocation coefficient", represented as :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
+        The "flowrate allocation coefficient", represented as
+        :math:`\alpha` in the paper of Saloux and Candanedo [2]_,
         is an essential parameter for their modelling method. Range: `-inf` to `1`.
         This parameter is only taken into account if `inlet_mode` is set to `"AFD"`.
         If not provided, it defaults to `-0.5`.
     
     internal_tolerance : float, optional
-        Maximum temperature discrepancy (°C) allowed between successive **internal** iterations of the model so that convergence is achieved.
+        Maximum temperature discrepancy (°C) allowed between successive **internal**
+        iterations of the model so that convergence is achieved.
         Valid range: `1e-8` to `1e-1`. If not specified, it defaults to 1e-4.
     
     max_iterations : int, optional
-        Maximum number of **internal** iterations of the model allowed before forcing the computation to stop. Valid range: `3` to `300`.
+        Maximum number of **internal** iterations of the model allowed before
+        forcing the computation to stop. Valid range: `3` to `300`.
         If not specified, it defaults to `30`.
     
     """
@@ -345,14 +357,16 @@ class StorageTank( Device ):
     
     def _update_temp_after_n_node_updating( self ):
         """
-        Private method that updates the attributes "_node_temperatures" and "_new_temperatures" (the latter is modified only if it already exists)
+        Private method that updates the attributes "_node_temperatures" and "_new_temperatures"
+        (the latter is modified only if it already exists)
         when the number of nodes of the tank is changed.
         
         Both attributes just mentioned are lists of values storing the temperatures of each node of the tank.
         
         The attribute _node_temperatures has the current temperatures of the nodes. 
         
-        The attribute _new_temperatures has the temperatures computed for the end of the time step, the last time the method "compute_outputs was called".
+        The attribute _new_temperatures has the temperatures computed for the end of the time step,
+        the last time the method "compute_outputs was called".
         
         When the number of nodes of the tank is modified, the length of these two lists has to be modified.
         
@@ -529,10 +543,15 @@ class StorageTank( Device ):
     
     def _io_nodes_from_relative_heights( self ):
         """
-        Private method to determine the nodes where the inlet and outlet ports are located based on the object `io_relative_heights`, which is received by the public method `set_io_relative_heights`.
+        Private method to determine the nodes where the inlet and outlet ports
+        are located based on the object `io_relative_heights`,
+        which is received by the public method `set_io_relative_heights`.
         
-        This method sets the private attributes of the StorageTank instance: "_inlet_nodes" and  "_outlet_nodes",
-        which are lists indicating the number of the node where the inlets and outlets are located. 0 corresponds to the top node; _n_nodes - 1 corresponds to the bottom node.
+        This method sets the private attributes of the StorageTank
+        instance: "_inlet_nodes" and  "_outlet_nodes",
+        which are lists indicating the number of the node where the inlets and
+        outlets are located. 0 corresponds to the top
+        node; _n_nodes - 1 corresponds to the bottom node.
 
         Returns
         -------
@@ -556,7 +575,8 @@ class StorageTank( Device ):
     @staticmethod
     def _compute_geometry( volume, aspect_ratio, diameter, height ):
         """
-        Private, static method that computes all geometric features of the tank (volume, aspect_ratio, diameter, height) from two of them
+        Private, static method that computes all geometric features of the
+        tank (volume, aspect_ratio, diameter, height) from two of them
         
         Two and only two of the parameters of this method must be provided.
 
@@ -574,7 +594,9 @@ class StorageTank( Device ):
         Raises
         ------
         ValueError
-            If the aspect ratio is not within the allowed range: 0.2 - 5. This error is raised both when the aspect ratio is directly specified by the user and when it must be determined from two other parameters.
+            If the aspect ratio is not within the allowed range: 0.2 - 5. This error
+            is raised both when the aspect ratio is directly specified by the user and
+            when it must be determined from two other parameters.
 
         Returns
         -------
@@ -626,7 +648,8 @@ class StorageTank( Device ):
     
     def _validate_argument( self, parameter_name, value ):
         """
-        Private method to confirm that a certain argument provided by the user matches the expected type and other restrictions such as range, in the case of numeric values.
+        Private method to confirm that a certain argument provided by
+        the user matches the expected type and other restrictions such as range, in the case of numeric values.
         
         In some cases, this method modifies the argument so that it matches the expected format.
         
@@ -786,14 +809,17 @@ class StorageTank( Device ):
         Parameters
         ----------
         inlet_flowrates : list of float
-            Flowrate entering the tank through each inlet port (kg/s). The length of this list is equal to the number of inlet ports of the tank.
+            Flowrate entering the tank through each inlet port (kg/s).
+            The length of this list is equal to the number of inlet ports of the tank.
         inlet_temps : list of float
-            Temperatures of the flows entering the tank through each inlet port (kg/s). The length of this list is equal to the number of inlet ports of the tank.
+            Temperatures of the flows entering the tank through each inlet
+            port (kg/s). The length of this list is equal to the number of inlet ports of the tank.
 
         Returns
         -------
         list of lists of float
             See description above for details on the format.
+        
         """
         assert len( inlet_flowrates ) == len( self._inlet_nodes ) and len( inlet_flowrates ) == len( inlet_temps )
         
@@ -903,14 +929,17 @@ class StorageTank( Device ):
     
     def _mix_nodes(self, temps_list):
         """
-        Private method to correct temperature inversions, i.e., the condition by which a node is hotter than the node above it.
+        Private method to correct temperature inversions,
+        i.e., the condition by which a node is hotter than the node above it.
         
-        This is done by mixing the nodes involved in temperature inversions until all temperature inversions are corrected.
+        This is done by mixing the nodes involved in
+        temperature inversions until all temperature inversions are corrected.
         
         Parameters
         ----------
         temps_list : list of float
-            List of node temperatures, in °C. The first value corresponds to the top node; the last value corresponds to the bottom node.
+            List of node temperatures, in °C. The first value corresponds
+            to the top node; the last value corresponds to the bottom node.
             
         Returns
         -------
@@ -931,8 +960,6 @@ class StorageTank( Device ):
             for i in range( len( mixed_nodes ) - 1 ):
                 
                 if mixed_nodes[ i ][ 'temp' ] < mixed_nodes[ i + 1 ][ 'temp' ]:
-                    
-                    print( "MIX NODES: Condition encountered" )
                     
                     total_mass = len( mixed_nodes[ i ][ 'original_node_numbers' ] ) + len( mixed_nodes[ i + 1 ][ 'original_node_numbers' ] )
                     
@@ -955,9 +982,10 @@ class StorageTank( Device ):
         return result
     
     def _iteration( self, inlet_flowrates_distribution, inlet_temps,
-                    Tamb, T_avg_list_previous, time_step ):
+                    Tamb, time_step, T_avg_list_previous ):
         """
-        Private method that carries out the main algorithm to model the evolution of the nodes' temperatures during a time step.
+        Private method that carries out the main algorithm
+        to model the evolution of the nodes' temperatures during a time step.
         
         The method returns two lists:
             
@@ -971,13 +999,14 @@ class StorageTank( Device ):
             It defines how the flows entering the tank get distributed along the tank's nodes.
             See the aforementioned method for more information on the format of this parameter.
         inlet_temps : list of float
-            Temperatures of the flows entering the tank (°C). Each value in the list corresponds to one of the inlet ports of the tank.
+            Temperatures of the flows entering the tank (°C). Each value
+            in the list corresponds to one of the inlet ports of the tank.
         Tamb : float
             Ambient temperature in °C.
-        T_avg_list_previous : list of float
-            T_avg_list returned by this method in the previous iteration.
         time_step : float
             Time step length in seconds.
+        T_avg_list_previous : list of float
+            T_avg_list returned by this method in the previous iteration.
         
         Returns
         -------
@@ -997,8 +1026,8 @@ class StorageTank( Device ):
             b = b + self._cross_area*self._top_loss_coeff*Tamb
             a = a - self._cross_area*self._bottom_loss_coeff
             b = b + self._cross_area*self._bottom_loss_coeff*Tamb
-            a = a - sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            b = b + sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            a = a - self._fluid_cp * sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            b = b + self._fluid_cp * sum( [ inlet_flowrates_distribution[ inlet_node_index ][ 0 ]*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
             a = a/self._node_thermal_capacity
             b = b/self._node_thermal_capacity
             T_final = float( ( self._node_temperatures[ 0 ] + b/a ) * np.exp( a*time_step ) - b/a )
@@ -1013,8 +1042,8 @@ class StorageTank( Device ):
             a = -self._nodal_edge_area*self._edge_loss_coeff
             b = self._nodal_edge_area*self._edge_loss_coeff*Tamb
             flow_in = sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            a = a - sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ]*self._fluid_cp for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
-            b = b + sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ]*self._fluid_cp*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            a = a - self._fluid_cp * sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
+            b = b + self._fluid_cp * sum( [ inlet_flowrates_distribution[ inlet_node_index ][ node ]*inlet_temps[ inlet_node_index ] for inlet_node_index in range( len( self._inlet_nodes ) ) ] )
             
             flow_out = 0
             if node in self._outlet_nodes:
@@ -1039,7 +1068,7 @@ class StorageTank( Device ):
                 b = b + self._cross_area*self._bottom_loss_coeff*Tamb
                 b = b + self._fluid_thermal_conductivity*self._cross_area*T_avg_list_previous[ node - 1 ]/self._node_height
                 if abs(flow_above + flow_in - flow_out) > 1e-8:
-                    raise ValueError("StorageTank: Flow balance error.")
+                    raise Exception("StorageTank: Flow balance error.")
                 if flow_above > 0:
                     a = a - flow_above*self._fluid_cp
                     b = b + flow_above*self._fluid_cp*T_avg_list_previous[ node - 1 ]
@@ -1068,40 +1097,55 @@ class StorageTank( Device ):
         return T_avg_list, T_final_list
     
     def __setattr__(self, name, value):
+        """
+        Method to extend the attribute setting of the class.
+        
+        It prevents the user from setting attributes whose names begin with "inlet" and "outlet."
+        """
         
         if type(name) is not str:
             raise TypeError("StorageTank.__setattr__: 'name' must be a string.")
             
         if name.startswith("inlet"):
-            if hasattr( self, '_' + name ):
-                raise AttributeError(f"StorageTank: Attribute {name} is read-only.")
-            else:
-                raise AttributeError(f"StorageTank: Attribute {name} cannot be set manually.")
+            raise AttributeError("StorageTank: Inlets must be set with the method StorageTank.set_connections.")
                 
         if name.startswith("outlet"):
-            if hasattr( self, '_' + name ):
-                raise AttributeError(f"StorageTank: Attribute {name} is read-only.")
-            else:
-                raise AttributeError(f"StorageTank: Attribute {name} cannot be set manually.")
+            AttributeError("StorageTank: Outlets cannot be set manually.")
         
         super().__setattr__(name, value)
         
     def __getattr__(self, name):
+        """
+        Method to retrieve the inlets and outlets of the tank.
+        """
         
         if type(name) is not str:
             raise TypeError("StorageTank.__getattr__: 'name' must be a string.")
         
-        if name.startswith( "inlet" ):
-            if hasattr(self, "_" + name ):
-                return getattr( self, "_" + name  )
-            raise AttributeError(f"StorageTank: Attribute '{name}' has not been set.")
-            
-        if name.startswith( "outlet" ) and hasattr(self, "_" + name ):
-            return getattr( self, "_" + name  )
+        if ( name.startswith( "inlet" ) or name.startswith( "outlet" ) ) and hasattr(self, "_" + name ):
+            return getattr( self, "_" + name )
         
         raise AttributeError(f"StorageTank: Attribute '{name}' not recognized.")
     
     def set_connections(self, **kwargs):
+        """
+        Method that.....
+        
+        Parameters
+        ----------
+        **parameters : float
+            Keyword arguments named ``parameter_<i>``, where ``<i>`` is a
+            consecutive integer starting at 1 (``parameter_1``,
+            ``parameter_2``, ...). Gaps in the numbering raise
+            ``ValueError``.
+    
+        Raises
+        ------
+        ValueError
+            If a keyword does not match ``parameter_<i>`` or the
+            numbering is not consecutive.
+        
+        """
         
         if not hasattr( self, "_inlet_nodes" ):
             raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been defined. Use the method StorageTank.set_io_relative_heights.")
@@ -1372,7 +1416,7 @@ class StorageTank( Device ):
         
         inlet_temps = [ state_in.T for state_in in inlet_states ]
         
-        distributions_list = self._set_inlet_flows( inlet_flowrates, inlet_temps )
+        inlet_flowrates_distribution = self._set_inlet_flows( inlet_flowrates, inlet_temps )
         
         # The result of "iteration 0" is defined as the current nodes' temperatures
         T_avg_list_previous = self._node_temperatures
@@ -1380,9 +1424,8 @@ class StorageTank( Device ):
         # Outputs are determined by using the Tank.iteration method iteratively
         it = 0
         while True:
-            T_avg_list_new, T_final_list_new = self._iteration( inlet_flowrates, inlet_temps,
-                                                                Tamb, T_avg_list_previous, time_step,
-                                                                distributions_list )
+            T_avg_list_new, T_final_list_new = self._iteration( inlet_flowrates_distribution, inlet_temps,
+                                                                Tamb, time_step, T_avg_list_previous )
             it = it + 1
             
             if all( abs( T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
@@ -1406,13 +1449,13 @@ class StorageTank( Device ):
             outlet.flowrate = inlet_flowrates[ i ]
             outlet.state = self._stored_fluid.state( T = T_avg_list_new[ self._outlet_nodes[ i ] ] )
         
-        self._new_temperatures = [ node_temps[ 'T_final' ] for node_temps in new_result ]
+        self._new_temperatures = T_final_list_new
         
         self._dU = self._node_thermal_capacity * sum( [  self._new_temperatures[ node ] - self._node_temperatures[ node ] for node in range( len( self._new_temperatures ) )  ] )
         
-        Heat_Loss_Rate = self._nodal_edge_area * self._edge_loss_coeff * sum([ new_result[ node ][ 'T_avg' ] - Tamb for node in range( len( new_result ) ) ] )
-        Heat_Loss_Rate = Heat_Loss_Rate + self._cross_area * self._top_loss_coeff * ( new_result[ 0 ][ 'T_avg' ] - Tamb )
-        Heat_Loss_Rate = Heat_Loss_Rate + self._cross_area * self._bottom_loss_coeff * ( new_result[ self._n_nodes - 1 ][ 'T_avg' ] - Tamb )
+        Heat_Loss_Rate = self._nodal_edge_area * self._edge_loss_coeff * sum([ T_avg_list_new[ node ] - Tamb for node in range( len( T_avg_list_new ) ) ] )
+        Heat_Loss_Rate = Heat_Loss_Rate + self._cross_area * self._top_loss_coeff * ( T_avg_list_new[ 0 ] - Tamb )
+        Heat_Loss_Rate = Heat_Loss_Rate + self._cross_area * self._bottom_loss_coeff * ( T_avg_list_new[ -1 ] - Tamb )
         
         self._Q_loss = Heat_Loss_Rate
         self._iterations = it
