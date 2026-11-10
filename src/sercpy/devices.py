@@ -26,6 +26,20 @@ class Outlet:
         
         >>> solar_field.set_connections( inlet = heat_exchanger.outlet_source ) # Connect an outlet of the heat exchanger to the inlet of the solar field
     
+    .. code-block:: python
+    
+        from sercpy.solar import SolarField
+        from sercpy.heat_exchanger import HeatExchanger
+        
+        #Create SolarField instance
+        solar_field = SolarField( ... )
+        
+        #Create HeatExchanger instance
+        heat_exchanger = HeatExchanger( ... )
+        
+        # Connect an outlet of the heat exchanger to the inlet of the solar field
+        solar_field.set_connections( inlet = heat_exchanger.outlet_source )
+    
     After doing this, `solar_field` will compute its outputs using the flow data extracted from `heat_exchanger.outlet_source`, which is one of the two outlets of `heat_exchanger`.
     
     """
