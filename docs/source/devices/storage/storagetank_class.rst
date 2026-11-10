@@ -1,7 +1,7 @@
 StorageTank
 ===========
 
-Storage tanks are an essential component for most solar thermal systems. They allow to store the solar energy, so that it can be delivered to the load when irradiance is not derectly available.
+Storage tanks are an essential component for most solar thermal systems. They allow to store the solar energy, so that it can be delivered to the load when irradiance is not directly available.
 
 .. currentmodule:: sercpy.storage
 
