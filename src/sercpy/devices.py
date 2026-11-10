@@ -15,16 +15,6 @@ class Outlet:
         2. To pass the aforementioned information to the device that receives the flow.
         
     Instances of this class are meant to be attributes of the devices that make up a thermal system. A connection between two devices can be set in the following way:
-        
-    .. doctest::
-        
-        >>> from sercpy.solar import SolarField
-        >>> from sercpy.heat_exchanger import HeatExchanger
-        
-        >>> solar_field = SolarField( ... ) #Create SolarField instance
-        >>> heat_exchanger = HeatExchanger( ... ) #Create HeatExchanger instance
-        
-        >>> solar_field.set_connections( inlet = heat_exchanger.outlet_source ) # Connect an outlet of the heat exchanger to the inlet of the solar field
     
     .. code-block:: python
     
