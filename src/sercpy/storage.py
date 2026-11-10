@@ -36,6 +36,8 @@ class StorageTank( Device ):
     r"""
     One-dimensional nodal model for a vertical, cylindrical storage tank.
     
+    This class models sensible heat storage tanks with a liquid storage medium.
+    
     This model discretizes a tank dividing its volume into
     vertically-stacked equally-sized parts, known as "nodes".
     
