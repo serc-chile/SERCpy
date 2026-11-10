@@ -1397,9 +1397,9 @@ class StorageTank( Device ):
                         inlet_flowrates = None, inlet_states = None,
                         Tamb = None, time_step = None):
         """
-        Method to compute the outputs of the solar field.
+        Method to compute the outputs of the storage tank.
         
-        The following attributes of the `SolarField` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+        The following attributes of the `StorageTank` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
             
             - input_convergence
             - outlet_1, outlet_2, outlet_3, etc. (state and flowrate of each one)
@@ -1491,13 +1491,13 @@ class StorageTank( Device ):
         it = 0
         while True:
             T_avg_list_new, T_final_list_new = self._iteration( inlet_flowrates_distribution, inlet_temps,
-                                                                Tamb, time_step, T_avg_list_previous )
+                                                                Tamb, time_step, T_avg_list_previous        )
             it = it + 1
             
             if all( abs( T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
                     abs( T_final_list_previous[ i ] - T_final_list_new[ i ] )  <=  self._internal_tolerance 
                     for i in range( self._n_nodes ) ):
-            
+                
                 self._internal_convergence = True
                 self._iterations = it
                 break
