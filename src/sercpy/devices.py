@@ -16,9 +16,10 @@ class Outlet:
         
     Instances of this class are meant to be attributes of the devices that make up a thermal system. A connection between two devices can be set in the following way:
         
-    .. code-block:: python
-
-      solar_field.set_connections( inlet = heat_exchanger.outlet_source )
+    .. doctest::
+    
+       >>> from sercpy.config import set_api_key
+       >>> set_api_key( "your_API_Key_as_a_string" )
     
     After doing this, `solar_field` will compute its outputs using the flow data extracted from `heat_exchanger.outlet_source`, which is one of the two outlets of `heat_exchanger`.
     
