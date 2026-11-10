@@ -18,7 +18,7 @@ The concept of "device" in the context of **SERCpy**, encompasses the classes th
 .. _class_outlet:
 
 Outlet
-======
+------
 
 .. currentmodule:: sercpy.devices
 
