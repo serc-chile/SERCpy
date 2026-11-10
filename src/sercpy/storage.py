@@ -70,12 +70,15 @@ class StorageTank( Device ):
     Parameters
     ----------
     volume : float, optional
-        Internal volume of the tank, in m3. If provided, one and only one of
-        the other parameters `aspect_ratio`, `diameter`, and `height` must also be provided.
+        Internal volume of the tank, in m3.
+        If provided, one and only one of
+        the other parameters `aspect_ratio`, `diameter`,
+        and `height` must also be provided.
     
     aspect_ratio : float, optional
         Aspect ratio of the tank; i.e., the ratio between the height and the diameter.
-        If provided, one and only one of the other parameters `volume`, `diameter`, and `height` must also be provided.
+        If provided, one and only one of the other
+        parameters `volume`, `diameter`, and `height` must also be provided.
     
     diameter : float, optional
         Internal diameter of the tank, in m.
@@ -112,7 +115,8 @@ class StorageTank( Device ):
     
     io_relative_heights : list of pairs, optional
         Object specifying the positions of the inlet- and outlet ports of the tank.
-        See :ref:`inlet_outlet_ports_definition` for more details on the format of this parameter.
+        See :ref:`inlet_outlet_ports_definition` for
+        more details on the format of this parameter.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Fluid stored inside the tank.
@@ -127,7 +131,8 @@ class StorageTank( Device ):
     
     inlet_mode : str, optional
         String specifying how the flows that enter the tank through its
-        inlets ports are modeled. Allowed values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
+        inlets ports are modeled. Allowed
+        values: `"fixed_inlets"`, `"temperature_seeking"`, `"AFD"`.
         See :ref:`inlet_flow_modeling` for more details on what
         each value means. If not provided, it defaults to `"fixed_inlets"`.
     
@@ -141,7 +146,7 @@ class StorageTank( Device ):
     internal_tolerance : float, optional
         Maximum temperature discrepancy (°C) allowed between successive **internal**
         iterations of the model so that convergence is achieved.
-        Valid range: `1e-8` to `1e-1`. If not specified, it defaults to 1e-4.
+        Valid range: `1e-8` to `1e-1`. If not specified, it defaults to `1e-4`.
     
     max_iterations : int, optional
         Maximum number of **internal** iterations of the model allowed before
@@ -160,7 +165,8 @@ class StorageTank( Device ):
         Internal volume of the tank (m3).
     
     aspect_ratio : float
-        Aspect ratio of the tank; i.e., the ratio between the height and the diameter.
+        Aspect ratio of the tank; i.e.,
+        the ratio between the height and the diameter.
         
     height : float
         Internal height of the tank (m).
@@ -169,31 +175,55 @@ class StorageTank( Device ):
         Internal diameter of the tank (m).
     
     top_temp : float
-        Temperature of tank's top node (°C) at the beginning of the time step. It is equal to the maximum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs).
+        Temperature of tank's top node (°C) at the beginning of the time step.
+        It is equal to the maximum temperature inside the tank.
+        The value of this attribute gets updated when the method
+        `StorageTank.update_temperatures` is called,
+        **NOT** with `StorageTank.compute_outputs`.
     
     bottom_temp : float
-        Temperature of tank's bottom node (°C) at the beginning of the time step. It is equal to the minimum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs).
+        Temperature of tank's bottom node (°C) at the beginning of the time step.
+        It is equal to the minimum temperature inside the tank.
+        The value of this attribute gets updated when the method
+        `StorageTank.update_temperatures` is called,
+        **NOT** with `StorageTank.compute_outputs`.
     
     input_convergence : bool
-        Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.
+        Boolean value stating whether input convergence was achieved the last time
+        the method `StorageTank.compute_outputs` was called.
+        The concept of "input convergence" refers to whether the inputs of the
+        StorageTank instance are similar enough in consecutive iterations
+        of a simulation time step, so that no further computation is needed.
     
     dE : float
-        Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
+        Energy change of the fluid stored inside the tank during the last time
+        step computed (J). This attribute gets updated every
+        time the method `SolarField.compute_outputs` is called.
     
     Q_loss : float
-        Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
+        Heat loss rate to the environment during the last time step
+        computed (W). This attribute gets updated every
+        time the method `SolarField.compute_outputs` is called.
     
     internal_convergence : bool
-        Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
+        Boolean value stating whether convergence was achieved
+        for the internal energy balance of the storage tank.
+        This attribute gets updated every time the
+        method `SolarField.compute_outputs` is called.
     
     iterations : int
-        Number of internal iterations performed the last time the method StorageTank.compute_outputs was called.
+        Number of internal iterations performed
+        the last time the method `SolarField.compute_outputs` was called.
     
     io_positions_defined : bool
-        Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`
+        Boolean value stating whether the positions of the inlet- and
+        outlet ports have already been established, either
+        at initialization or by calling the method `set_io_relative_heights`
     
     ready_to_simulate : bool
-        Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined.
+        Boolean value stating whether all the attributes that
+        are necessary for the StorageTank to be used
+        in a simulation have already been defined.
     
     """
     def __init__( self, *,
@@ -781,7 +811,7 @@ class StorageTank( Device ):
         if parameter_name == "stored_fluid":
             
             if not isinstance( value, Fluid ):
-                raise TypeError("StorageTank: stored_fluid must be an instance of sercpy.fluids.Fluid.")
+                raise TypeError( "StorageTank: stored_fluid must be an instance of sercpy.fluids.Fluid." )
                 
         if parameter_name == "initial_temperature":
             
@@ -794,17 +824,17 @@ class StorageTank( Device ):
                     value = [ float(v) for v in value ]
                     assert len( value ) == self._n_nodes
                 except:
-                    raise ValueError("StorageTank: Parameter 'initial_temperature' must be a single numeric value or a list of numeric values. In the latter case, its length must be equal to n_nodes.")
+                    raise ValueError( "StorageTank: Parameter 'initial_temperature' must be a single numeric value or a list of numeric values. In the latter case, its length must be equal to n_nodes." )
                 
         if parameter_name == "inlet_mode":
             
             try:
                 value = str(value)
             except:
-                raise ValueError("StorageTank: Parameter 'inlet_mode' must be a string.")
+                raise ValueError( "StorageTank: Parameter 'inlet_mode' must be a string." )
                 
             if not value in [ "fixed_inlets", "temperature_seeking", "AFD" ]:
-                raise ValueError("StorageTank: Parameter 'inlet_mode' must be one of the strings: 'fixed_inlets', 'temperature_seeking' or 'AFD'.")
+                raise ValueError( "StorageTank: Parameter 'inlet_mode' must be one of the strings: 'fixed_inlets', 'temperature_seeking' or 'AFD'." )
                 
         if parameter_name == "flow_alloc_coeff":
             
@@ -1491,12 +1521,12 @@ class StorageTank( Device ):
         it = 0
         while True:
             T_avg_list_new, T_final_list_new = self._iteration( inlet_flowrates_distribution, inlet_temps,
-                                                                Tamb, time_step, T_avg_list_previous        )
+                                                                Tamb, time_step, T_avg_list_previous )
             it = it + 1
             
-            if all( abs( T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
-                    abs( T_final_list_previous[ i ] - T_final_list_new[ i ] )  <=  self._internal_tolerance 
-                    for i in range( self._n_nodes ) ):
+            if all( [ abs(   T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
+                      abs(   T_final_list_previous[ i ] - T_final_list_new[ i ] )  <=  self._internal_tolerance 
+                    for i in range( self._n_nodes ) ] ):
                 
                 self._internal_convergence = True
                 self._iterations = it
@@ -1506,6 +1536,7 @@ class StorageTank( Device ):
                 self._iterations = it
                 break
             T_avg_list_previous = T_avg_list_new
+            T_final_list_previous = T_final_list_new
         # Nodes are mixed if temperature inversions are detected (see StorageTank._mix_nodes method)
         T_final_list_new = self._mix_nodes( T_final_list_new )
         # Outputs are defined

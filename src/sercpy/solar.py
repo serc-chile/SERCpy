@@ -813,8 +813,8 @@ class SolarField( Device ):
         Object that models each indidual collector of the solar field.
     
     input_convergence : bool
-        Boolean value stating whether convergence was achieved the last time the method
-        `SolarField.compute_outputs` was called. The concept of 'convergence'
+        Boolean value stating whether input convergence was achieved the last time the method
+        `SolarField.compute_outputs` was called. The concept of "input convergence"
         refers to whether the inputs of the SolarField instance are similar enough
         in consecutive iterations of a time step, so that no further computation is needed.
     
