@@ -812,7 +812,7 @@ class SolarField( Device ):
     collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
         Object that models each indidual collector of the solar field.
     
-    convergence : bool
+    input_convergence : bool
         Boolean value stating whether convergence was achieved the last time the method
         `SolarField.compute_outputs` was called. The concept of 'convergence'
         refers to whether the inputs of the SolarField instance are similar enough
@@ -1052,11 +1052,11 @@ class SolarField( Device ):
         return self._collector
     
     @property
-    def convergence(self):
+    def input_convergence(self):
         "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_convergence" ):
             raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
-        return self._convergence
+        return self._input_convergence
     
     @property
     def useful_power(self):
@@ -2069,9 +2069,9 @@ class SolarField( Device ):
                                   temp_normalization_range: Optional[ float ] = None,
                                   h_normalization_range: Optional[ float ] = None ):
         """
-        Method for the user to establish the convergence criteria of the `SolarField` instance.
+        Establish the convergence criteria of the `SolarField` instance in the context of a simulation.
         
-        When used in the context of a simulation, a `SolarField` instance determines that convergence has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
+        When used in the context of a simulation, a `SolarField` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
         The aforementioned "margin" or "tolerance" is set by this method.
         When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
         
@@ -2178,7 +2178,7 @@ class SolarField( Device ):
             
     def _set_last_inputs( self, flowrate, state_in ):
         """
-        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether convergence is achieved.
+        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether input convergence is achieved.
 
         Parameters
         ----------
@@ -2224,7 +2224,7 @@ class SolarField( Device ):
         if self._temp_tolerance is not None:
             convergence = convergence and abs( state_in.T - self._state_in_last.T ) <= self._temp_tolerance
             
-        self._convergence = convergence
+        self._input_convergence = convergence
 
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
                          state_in = None, flowrate = None,
@@ -2235,10 +2235,10 @@ class SolarField( Device ):
         """
         Method to compute the outputs of the solar field.
         
-        The following attributes of the `SolarField` instance are updated when this method is called, unless convergence is achieved:
+        The following attributes of the `SolarField` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
             
-            - convergence
-            - outlet
+            - input_convergence
+            - outlet (state and flowrate)
             - useful_power
             - wasted_power
             - vapor_flowrate
@@ -2252,8 +2252,8 @@ class SolarField( Device ):
         Parameters
         ----------
         operating_conditions : dict
-            Dictionary returned by an instance of `sercpy.operating_conditions.OperatingConditions` when its method `get_conditions` is called.
-
+            Dictionary returned by an :doc:`OperatingConditions </operating_conditions/operating_conditions>` instance when its method `get_conditions` is called.
+        
         iteration_number : int
             Number of the iteration.
         
@@ -2297,7 +2297,7 @@ class SolarField( Device ):
             if any([ variable is None for variable in [ state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth, Tamb, Tmains ] ]):
                 raise TypeError("SolarField.compute_outputs: Not all arguments needed for manual mode were provided. Arguments needed: state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth,  Tamb, Tmains.")
             
-            self._convergence = False
+            self._input_convergence = False
                 
             irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows = self.compute_poa_irradiance( GHI, DNI, DHI, solar_apparent_zenith, solar_azimuth, doy = doy,  )
             
@@ -2326,15 +2326,15 @@ class SolarField( Device ):
                 flowrate = self._inlet.flowrate
                 state_in = self._inlet.state
             except AttributeError:
-                self._convergence = False
+                self._input_convergence = False
                 return
             
             if iteration_number == 0:
                 self._set_last_inputs(flowrate, state_in)
-                self._convergence = False
+                self._input_convergence = False
             else:
                 self._compute_convergence(flowrate, state_in)
-                if self._convergence:
+                if self._input_convergence:
                     return
                 else:
                     self._set_last_inputs(flowrate, state_in)

@@ -56,18 +56,18 @@ class Outlet:
 class Device:
     
     @property
-    def convergence(self):
+    def input_convergence(self):
         if hasattr( self, "_convergence" ):
-            return self._convergence
+            return self._input_convergence
         return True
     
-    @convergence.setter
-    def convergence(self, value):
+    @input_convergence.setter
+    def input_convergence(self, value):
         try:
             value = bool( value )
         except:
             raise TypeError("Device: convergence must be a boolean value.")
-        self._convergence = value
+        self._input_convergence = value
     
     def update_state(self):
         return

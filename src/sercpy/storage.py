@@ -175,9 +175,9 @@ class StorageTank( Device ):
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
-    def convergence(self):
+    def input_convergence(self):
         "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        return self._convergence
+        return self._input_convergence
     
     @property
     def dE(self):
@@ -345,7 +345,7 @@ class StorageTank( Device ):
     def aspect_ratio(self):
         "Aspect ratio of the tank; i.e., the ratio between the height and the diameter."
         return self._aspect_ratio
-        
+    
     @property
     def height(self):
         "Internal height of the tank (m)."
@@ -367,9 +367,9 @@ class StorageTank( Device ):
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
-    def convergence(self):
+    def input_convergence(self):
         "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        return self._convergence
+        return self._input_convergence
     
     @property
     def dE(self):
@@ -1219,7 +1219,7 @@ class StorageTank( Device ):
         Parameters
         ----------
         **kwargs : :doc:`/devices/outlet`
-            Keyword arguments named `inlet_<i>`, where ``<i>`` is an
+            Keyword arguments named `inlet_<i>`, where `<i>` is an
             integer between 1 and the number of inlet ports of the tank.
             (`inlet_1`, `inlet_2`, ...). 
     
@@ -1257,13 +1257,13 @@ class StorageTank( Device ):
                                   temp_normalization_range: Optional[ float ] = None,
                                   h_normalization_range: Optional[ float ] = None ):
         """
-        Method for the user to establish the convergence criteria of the `StorageTank` instance.
+        Establish the convergence criteria of the `StorageTank` instance in the context of a simulation.
         
-        When used in the context of a simulation, a `StorageTank` instance determines that convergence has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
+        When used in the context of a simulation, a `StorageTank` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
         The aforementioned "margin" or "tolerance" is set by this method.
         When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
         
-        The parameter `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
+        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
         
         For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
         Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
@@ -1273,11 +1273,10 @@ class StorageTank( Device ):
             - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
             - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
         
+        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
+        
         Parameters
         ----------
-        
-        Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion for more details.
-        
         relative_tolerance : float
             Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `StorageTank`
             class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
@@ -1374,7 +1373,7 @@ class StorageTank( Device ):
         flowrate_list : list of float
             List of flowrate values received by the storage tank (one per inlet) (kg/s).
         state_in_list : sercpy.fluids.FluidState
-            List of fluid states received by the solar field (one per inlet).
+            List of fluid states received by the storage tank (one per inlet).
         
         Returns
         -------
@@ -1397,18 +1396,18 @@ class StorageTank( Device ):
             if self._temp_tolerance is not None:
                 convergence = convergence and abs( state_in.T - self._state_in_last[ i ].T ) <= self._temp_tolerance
             
-        self._convergence = convergence
+        self._input_convergence = convergence
         
     def _set_last_inputs( self, inlet_flowrates, inlet_states ):
         """
-        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether convergence is achieved.
+        Method that updates the last inputs received by the `StorageTank` instance. These attributes are then used to evaluate the whether input convergence is achieved.
         
         Parameters
         ----------
-        flowrate : float
-            Flowrate received by the solar field (kg/s).
-        state_in : sercpy.fluids.FluidState
-            State of the fluid received by the solar field.
+        inlet_flowrates : list of float
+            List of flowrates entering the tank (kg/s) (one per inlet).
+        inlet_states : list of sercpy.fluids.FluidState
+            List of fluid states of the flows entering the tank (one per inlet).
         
         Returns
         -------
@@ -1423,37 +1422,44 @@ class StorageTank( Device ):
                         inlet_flowrates = None, inlet_states = None,
                         Tamb = None, time_step = None):
         """
-        Method that determines the average temperatures of the nodes during the current time step and the temperatures of the nodes at the end of the time step.
-        It also yields energetic results, the number of iterations, and information on whether convergence was achieved.
-        ATTENTION: This method does NOT update the nodes' temperatures when it is used. I.e. the attribute Tank.node_temperatures continues to be the same after using this method.
-        In order to update the nodes' temperatures to the values determined by this method, the Tank.update_temperature method has to be used after using this method.
-
+        Method to compute the outputs of the solar field.
+        
+        The following attributes of the `SolarField` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+            
+            - input_convergence
+            - outlet_1, outlet_2, outlet_3, etc. (state and flowrate of each one)
+            - dE
+            - Q_loss
+            - internal_convergence
+            - iterations
+        
+        **The first two parameters are meant to be used in the context of a simulation.
+        All the other parameters are keyword only and are meant for users to obtain results outside of simulations.**
+        
         Parameters
         ----------
-            - inlet_1_mass_flow : float or int (positive or zero)
-                  mass flow rate entering the tank through inlet 1
-            - inlet_1_h : float or int
-                  enthalpy of the flow entering the tank through inlet 1
-            - inlet_2_mass_flow : float or int (positive or zero)
-                  mass flow rate entering the tank through inlet 2
-            - inlet_2_h : float or int
-                  enthalpy of the flow entering the tank through inlet 2
-            - Tamb : float or int
-                  ambient temperature
-            - time_step : float or int  (positive)
-                  time step value (time units)
-
+        operating_conditions : dict
+            Dictionary returned by an :doc:`OperatingConditions </operating_conditions/operating_conditions>` instance when its method `get_conditions` is called.
+        
+        iteration_number : int
+            Number of the iteration.
+        
+        inlet_flowrates : list of float
+            List of flowrates entering the tank (kg/s) (one per inlet).
+        
+        inlet_states : list of :doc:`FluidState </fluids/fluidstate_class`
+            List of :doc:`FluidState </fluids/fluidstate_class` instances defining the state of the fluid entering the tank (one per inlet)
+        
+        Tamb : float
+            Ambient temperature surrounding the tank (°C).
+        
+        time_step : float
+            Time step in seconds.
+        
         Returns
         -------
-            dictionary
-                the returned object is a dictionary with the following keys:
-                    - 'outlet_1_h' : enthalpy of the flow leaving the tank through outlet 1
-                    - 'outlet_2_h' : enthalpy of the flow leaving the tank through outlet 2
-                    - 'flow_1_Q' : thermal power RECEIVED BY THE TANK from flow 1 (i.e. the flow entering through inlet 1 and leaving through outlet 1)
-                    - 'flow_2_Q' : thermal power RECEIVED BY THE TANK from flow 2 (i.e. the flow entering through inlet 2 and leaving through outlet 2)
-                    - 'Q_loss' : Heat losses through the walls of the tank (in power units). It is positive when the tank loses energy.
-                    - 'iterations' : Number of iterations executed.
-                    - 'maxIt' : Boolean value which is True if the maximum number of allowed iterations was reached without achieving convergence, and False otherwise
+        None
+        
         """
         
         if not hasattr(self, "_inlet_nodes"):
@@ -1462,7 +1468,7 @@ class StorageTank( Device ):
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ inlet_flowrates, inlet_states, Tamb, time_step ] ]):
                 raise TypeError("StorageTank.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: inlet_flowrates, inlet_states, Tamb, time_step.")
-            self._convergence = False
+            self._input_convergence = False
             
         elif operating_conditions is None or iteration_number is None:
             raise TypeError("StorageTank.compute_outputs: Both 'operating_conditions' and 'operating_conditions' must be provided in simulation mode. None of them must be provided in manual mode.")
@@ -1488,10 +1494,10 @@ class StorageTank( Device ):
                 
             if iteration_number == 0:
                 self._set_last_inputs(inlet_flowrates, inlet_states)
-                self._convergence = False
+                self._input_convergence = False
             else:
                 self._compute_convergence(inlet_flowrates, inlet_states)
-                if self._convergence:
+                if self._input_convergence:
                     return
                 else:
                     self._set_last_inputs(inlet_flowrates, inlet_states)
