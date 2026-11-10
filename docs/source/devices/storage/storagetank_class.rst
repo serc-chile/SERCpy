@@ -53,7 +53,7 @@ Inlet flow modeling
 
 As already stated, the flows leaving the tank are assumed to have the same temperature as the node where the outlet is physically located.
 
-For inlet flows, there is a harder question to answer: which node does an entering flow actually *enter*? This question comes from a simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located, the flow tends rise or sink due to density differences.
+For inlet flows, there is a harder question to answer: which node does an entering flow actually *enter*? This question is worth asking due to a simple fact: when an entering flow has a different temperature from the fluid inside the tank at the height where the inlet is located, the flow tends rise or sink due to density differences.
 
 The user can set how inlet flows are modeled through the parameter `inlet_mode`. This parameter must be a string and can have three values:
 
