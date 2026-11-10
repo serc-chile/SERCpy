@@ -218,7 +218,7 @@ class SolarCollector:
             if self._width > self._length:
                 raise ValueError("SolarCollector: length must be equal to or larger than width.")
         elif area is None and ( length is None or width is None ):
-            raise ValueError("SolarCollector: Length and width must be provided if area is not provided.")
+            raise ValueError("SolarCollector: Either the collector's area or its length and width must be provided.")
         elif area is None:
             self._length = self._validate_argument("length", length)
             self._width = self._validate_argument("width", width)
@@ -806,8 +806,8 @@ class SolarField( Device ):
     
     Attributes
     ----------
-    outlet : sercpy.devices.outlet
-        Instance of the class sercpy.devices.Outlet representing the main fluid outlet of the solar field.
+    outlet : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing the main fluid outlet of the solar field.
     
     collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
         Object that models each indidual collector of the solar field.

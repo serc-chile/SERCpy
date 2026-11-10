@@ -127,7 +127,8 @@ class StorageTank( Device ):
         In the former case, all nodes are initialized with the same temperature.
         In the latter case, the length of the list has to be equal to `n_nodes`.
         The first value of the list corresponds to the top node of the tank;
-        the last value corresponds to the bottom node.
+        the last value corresponds to the bottom node. If not provided,
+        it defaults to `20`.
     
     inlet_mode : str, optional
         String specifying how the flows that enter the tank through its
@@ -155,8 +156,8 @@ class StorageTank( Device ):
         
     Attributes
     ----------
-    outlet_1, outlet_2, ... : :doc:`Oultet </devices/oultet>`
-        "Instance of the class `sercpy.devices.Outlet </devices/oultet>` representing the outlet ports of the storage tank. The total number of outlets depends on the number of inlet/outlet pairs set by the user."
+    outlet_1, outlet_2, ... : :ref:`Outlet <class_outlet>`
+        "Instance of the class :doc:`sercpy.devices.Outlet <class_outlet>` representing the outlet ports of the storage tank. The total number of outlets depends on the number of inlet/outlet pairs set by the user."
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Object that models the fluid stored by the tank.
