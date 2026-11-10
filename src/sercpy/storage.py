@@ -155,6 +155,9 @@ class StorageTank( Device ):
         
     Attributes
     ----------
+    outlet_1, outlet_2, ... : :doc:`Oultet </devices/oultet>`
+        "Instance of the class `sercpy.devices.Outlet </devices/oultet>` representing the outlet ports of the storage tank. The total number of outlets depends on the number of inlet/outlet pairs set by the user."
+    
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Object that models the fluid stored by the tank.
     
@@ -1432,14 +1435,14 @@ class StorageTank( Device ):
         The following attributes of the `StorageTank` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
             
             - input_convergence
-            - outlet_1, outlet_2, outlet_3, etc. (state and flowrate of each one)
+            - outlet_1, outlet_2, outlet_3, etc. (state and flowrate of each outlet)
             - dE
             - Q_loss
             - internal_convergence
             - iterations
         
         **The first two parameters are meant to be used in the context of a simulation.
-        All the other parameters are keyword only and are meant for users to obtain results outside of simulations.**
+        All the other parameters are keyword-only and are meant for users to obtain results outside of simulations.**
         
         Parameters
         ----------
@@ -1453,7 +1456,7 @@ class StorageTank( Device ):
             List of flowrates entering the tank (kg/s) (one per inlet).
         
         inlet_states : list of :doc:`FluidState </fluids/fluidstate_class`
-            List of :doc:`FluidState </fluids/fluidstate_class` instances defining the state of the fluid entering the tank (one per inlet)
+            List of :doc:`FluidState </fluids/fluidstate_class>` instances defining the state of the fluid entering the tank (one per inlet)
         
         Tamb : float
             Ambient temperature surrounding the tank (°C).
@@ -1524,9 +1527,8 @@ class StorageTank( Device ):
                                                                 Tamb, time_step, T_avg_list_previous )
             it = it + 1
             
-            if all( [ abs(   T_avg_list_previous[ i ]   - T_avg_list_new[ i ]   )  <=  self._internal_tolerance  and 
-                      abs(   T_final_list_previous[ i ] - T_final_list_new[ i ] )  <=  self._internal_tolerance 
-                    for i in range( self._n_nodes ) ] ):
+            if ( all( abs( T_avg_1   - T_avg_2   ) < self._internal_tolerance for T_avg_1  , T_avg_2   in zip( T_avg_list_previous  , T_avg_list_new  ) ) and
+                 all( abs( T_final_1 - T_final_2 ) < self._internal_tolerance for T_final_1, T_final_2 in zip( T_final_list_previous, T_final_list_new) )     ):
                 
                 self._internal_convergence = True
                 self._iterations = it
@@ -1559,8 +1561,19 @@ class StorageTank( Device ):
     
     def update_state( self ):
         """
-        Method to update the nodes' temperatures to the result computed the last time the method Tank.compute_outputs was used.
-        If only the Tank is being simulated, this method should be used right after the Tank.compute_outputs method.
-        If a whole system is being simulated, this method should be used when the rest of the system achieves convergence.
+        Update the nodes' temperatures.
+        
+        This method set the nodes' temperatures to the values computed at the end of the time step,
+        the last time the method `Tank.compute_outputs was used`.
+        
+        This method also updates the following attributes of the `StorageTank` instance:
+            
+            - top_temp
+            - bottom_temp
+            
+        Returns
+        -------
+        None
+        
         """
         self._node_temperatures = self._new_temperatures

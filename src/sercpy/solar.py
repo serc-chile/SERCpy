@@ -1047,6 +1047,11 @@ class SolarField( Device ):
         return self._outlet
     
     @property
+    def inlet(self):
+        "Instance of the class sercpy.devices.Outlet representing another device's outlet from where the heat transfer fluid enters the solar field."
+        return self._inlet
+    
+    @property
     def collector(self):
         "Instance of the class sercpy.solar.Collector. It models the individual collectors used to build the solar field."
         return self._collector
@@ -2247,7 +2252,7 @@ class SolarField( Device ):
             - vapor_release_convergence
         
         **The first two parameters are meant to be used in the context of a simulation.
-        All the other parameters are keyword only and are meant for users to obtain results outside of simulations.**
+        All the other parameters are keyword-only and are meant for users to obtain results outside of simulations.**
         
         Parameters
         ----------

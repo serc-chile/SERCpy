@@ -8,9 +8,25 @@ Created on Wed Oct 14 09:46:22 2026
 from .fluids import FluidState
 
 class Outlet:
+    """
+    This very simple class has two concrete goals:
+        
+        1. To store the conditions of the flow that is leaving a device. These conditions are: its thermodynamic state and its flowrate.
+        2. To pass the aforementioned information to the device that receives the flow.
+        
+    Instances of this class are meant to be attributes of the devices that make up a thermal system. A connection between two devices can be set in the following way:
+        
+    .. code-block:: python
+
+      solar_field.set_connections( inlet = heat_exchanger.outlet_source )
+    
+    After doing this, `solar_field` will compute its outputs using the flow data extracted from `heat_exchanger.outlet_source`, which is one of the two outlets of `heat_exchanger`.
+    
+    """
     
     @property
     def state(self):
+        "Inste"
         if not hasattr( self, "_state" ):
             raise AttributeError("Outlet: Attribute 'state' has not been defined.")
         return self._state
