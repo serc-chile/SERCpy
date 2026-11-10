@@ -149,7 +149,7 @@ class StorageTank( Device ):
     Attributes
     ----------
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
-        Instance of the class sercpy.fluids.Fluid, which models the fluid stored by the tank.
+        Object that models the fluid stored by the tank.
     
     n_nodes : int
         Number of nodes into which the tank is discretized.
@@ -169,56 +169,29 @@ class StorageTank( Device ):
     top_temp : float
         Temperature of tank's top node (°C) at the beginning of the time step. It is equal to the maximum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs).
     
-    @property
-    def bottom_temp(self):
-        "Temperature of tank's bottom node (°C) at the beginning of the time step. It is equal to the minimum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs)."
-        return self._node_temperatures[ self._n_nodes - 1 ]
+    bottom_temp : float
+        Temperature of tank's bottom node (°C) at the beginning of the time step. It is equal to the minimum temperature inside the tank. The value of this attribute gets updated when the method StorageTank.update_temperatures is called (NOT with StorageTank.compute_outputs).
     
-    @property
-    def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        return self._input_convergence
+    input_convergence : bool
+        Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.
     
-    @property
-    def dE(self):
-        "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
-        if not hasattr( self, "_dE" ):
-            raise AttributeError("StorageTank: Attribute 'dE' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
-        return self._dE
+    dE : float
+        Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
     
-    @property
-    def Q_loss(self):
-        "Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
-        if not hasattr( self, "_Q_loss" ):
-            raise AttributeError("StorageTank: Attribute 'Q_loss' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
-        return self._Q_loss
+    Q_loss : float
+        Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
     
-    @property
-    def internal_convergence(self):
-        "Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
-        if not hasattr( self, "_internal_convergence" ):
-            raise AttributeError("StorageTank: Attribute 'internal_convergence' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
-        return self._internal_convergence
+    internal_convergence : bool
+        Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called.
     
-    @property
-    def iterations(self):
-        "Number of internal iterations performed the last time the method StorageTank.compute_outputs was called."
-        return self._iterations
+    iterations : int
+        Number of internal iterations performed the last time the method StorageTank.compute_outputs was called.
     
-    @property
-    def io_positions_defined(self):
-        "Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`"
-        return hasattr( self, "_n_io_pairs" )
+    io_positions_defined : bool
+        Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`
     
-    @property
-    def ready_to_simulate(self):
-        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined."
-        if not hasattr( self, "_n_io_pairs" ):
-            return False
-        for i in range( len( self._n_io_pairs ) ):
-            if not hasattr( self, "_inlet_" + str( i + 1 ) ):
-                return False
-        return True
+    ready_to_simulate : bool
+        Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined.
     
     """
     def __init__( self, *,
