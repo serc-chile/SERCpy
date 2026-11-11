@@ -157,7 +157,10 @@ class StorageTank( Device ):
     Attributes
     ----------
     outlet_1, outlet_2, ... : :ref:`Outlet <class_outlet>`
-        "Instance of the class :doc:`sercpy.devices.Outlet <class_outlet>` representing the outlet ports of the storage tank. The total number of outlets depends on the number of inlet/outlet pairs set by the user."
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing the outlet ports of the storage tank.
+        The total number of outlets depends on the number
+        of inlet/outlet pairs set by the user.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Object that models the fluid stored by the tank.
