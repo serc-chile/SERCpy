@@ -1,8 +1,7 @@
 SolarCollector
 ==============
 
-Instances of the class `SolarCollector` store the features of the individual collectors that make up a solar field, such as the size and the parameters of the efficiency curve.
-
+Instances of the class `SolarCollector` model the performance of the individual collectors that make up a solar field.
 
 .. currentmodule:: sercpy.solar
 
