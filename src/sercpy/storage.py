@@ -1521,9 +1521,13 @@ class StorageTank( Device ):
         
         inlet_flowrates_distribution = self._set_inlet_flows( inlet_flowrates, inlet_temps )
         
+        if iteration_number is None or iteration_number == 0:
+            self._T_avg_list_init = self._node_temperatures
+            self._T_final_list_init = self._node_temperatures
+        
         # The result of "iteration 0" is defined as the current nodes' temperatures
-        T_avg_list_previous = self._node_temperatures
-        T_final_list_previous = self._node_temperatures
+        T_avg_list_previous = self._T_avg_list_init
+        T_final_list_previous = self._T_final_list_init
         # Outputs are determined by using the Tank.iteration method iteratively
         it = 0
         while True:
@@ -1543,6 +1547,10 @@ class StorageTank( Device ):
                 break
             T_avg_list_previous = T_avg_list_new
             T_final_list_previous = T_final_list_new
+        
+        self._T_avg_list_init = T_avg_list_new
+        self._T_final_list_init = T_final_list_new
+            
         # Nodes are mixed if temperature inversions are detected (see StorageTank._mix_nodes method)
         T_final_list_new = self._mix_nodes( T_final_list_new )
         # Outputs are defined

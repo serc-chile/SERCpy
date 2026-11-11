@@ -30,10 +30,10 @@ class OperatingConditions:
         Object from which the demand data (i.e. demanded flowrate, temperature setpoint and inlet temperature of the heat transfer flow) is extracted.
     
     time_step_min : int, optional
-        Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step( time_step_min )`.
+        Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step`.
     
     time_step : int, optional
-        Time step in default time units (i.e., seconds). Its value must be equivalent to one of the possible time step lengths specified for `time_step_min`.
+        Simulation time step in seconds. Its value must be equivalent to one of the allowed time step lengths mentioned for `time_step_min`.
     
     include_solar_position : bool, optional
         Whether to include the solar position data in the yearly profiles (`"zenith"`, `"apparent_zenith"`, and `"azimuth"`). This is not necessary for standard simulations carried out by SERCpy, and it may extend initialization time of the object. Therefore, it defaults to False.
@@ -41,11 +41,11 @@ class OperatingConditions:
     Attributes
     ----------
     time_step : int
-        Time step length in minutes. It must be established by the user at initialization, or by using the method `OperatingConditions.set_time_step`.
+        Time step length in seconds.
     
     time_step_min : int
-        Alias for `time_step`.
-        
+        Time step length in minutes.
+    
     time_steps_per_year : int
         Number of time steps per year. E.g. with a 6-minute time step, this value would be `87600`.
     
@@ -54,14 +54,14 @@ class OperatingConditions:
     
     time_steps_per_hour : int
         Number of time steps per hour. E.g. with a 6-minute time step, this value would be `10`.
-        
+    
     Methods
     -------
     get_conditions( time_step_number )
         Get a dictionary with the operating conditions of the system at the instant defined by `time_step_number`. This includes both meteorological- and demand conditions. The number introduced represents an "index" within the yearly profile. Returns: dict.
     
-    set_time_step( time_step_min )
-        Method to set the simulation time step. It can be used to modify another time step value previously established. Returns: None
+    set_time_step( *, time_step_min = None, time_step = None )
+        Method to set the simulation time step. It can be used to modify another time step value previously established. The time step can be specified in minutes (keyword argument `time_step_min`), or in seconds (keyword argument `time_step`). Returns: None
         
     to_df()
         Get a `pandas.DataFrame` containing the conditions dataset of the whole simulation year. Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
@@ -102,6 +102,9 @@ class OperatingConditions:
         demand_df = demand_profile.get_demand_conditions( date_times )
         
         for column in demand_df.columns.tolist():
+            
+            if column == "timestamp":
+                continue
             
             self._minutal_profiles[ column ] = demand_df[ column ].values
         

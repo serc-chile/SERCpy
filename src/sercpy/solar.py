@@ -485,7 +485,7 @@ class SolarCollector:
         
         To take this into account, the value returned by this method should be multiplied by the efficiency determined with the "standard formula" mentioned above.
         
-        The correction factor is obtained with the method discussed on page 307 (Section 6.20) of the book **Solar Engineering of Thermal Processes** by John A. Duffie and William A. Beckman. ISBN: `978-0-471-69867-8 <https://search.worldcat.org/title/427546132>`_.
+        The correction factor is obtained with the method discussed on page 307 (Section 6.20) of the book **Solar Engineering of Thermal Processes** by John A. Duffie and William A. Beckman, 3rd Edition. ISBN: `978-0-471-69867-8 <https://search.worldcat.org/title/427546132>`_.
         
         Parameters
         ----------
