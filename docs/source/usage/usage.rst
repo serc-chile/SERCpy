@@ -12,6 +12,8 @@ To use SERCpy, first install it using pip:
 
    (.venv) $ pip install sercpy
 
+.. _apy_key_storing:
+
 Setting the API key for "Energias Renovables" by Chile's Ministry of Energy
 ---------------------------------------------------------------------------
 
