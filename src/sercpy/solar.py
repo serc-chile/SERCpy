@@ -671,16 +671,13 @@ field_allowed_arguments = [
     "coll_azimuth",
     "ground_albedo",
     "total_colls",
-    "coll_rows",
-    "colls_per_row",
+    "colls_in_series",
     "coll_disposition",
     "tube_direction",
-    "non_shadeable_rows",
     "non_shadeable_colls",
     "ground_fraction_covered",
     "row_spacing",
     "clear_horizon",
-    "row_mode",
     "release_vapor",
     "vapor_tolerance",
     "max_iterations",
@@ -695,6 +692,9 @@ class SolarField( Device ):
     ----------
     collector : :doc:`SolarCollector <solar_collector_class>`
         Object that models each indidual collector of the solar field.
+        
+    total_colls : int, optional
+        Number of collectors that make up the solar field.
     
     coll_tilt : float, optional
         Tilt angle of each collector with respect to the ground. If not provided,
@@ -711,44 +711,13 @@ class SolarField( Device ):
         The fraction is expressed as a decimal value in the range 0 - 1.
         If not provided, this parameter will be automatically set by a
         `MeteoProfile` instance when the method `MeteoProfile.compute_poa_irradiance` is called.
-    
-    total_colls : int, optional
-        Number of collectors that make up the solar field. If not provided,
-        it can be computed as `coll_rows*colls_per_row`.
-    
-    coll_rows : int, optional
-        Number of collector groups that make up the solar field. This parameter
-        only matters for the model's results if the argument `row_mode` is set to
-        `"series"`, or if the argument `non_shadeable_rows` is provided. If not provided,
-        its value can be determined as `total_cols/colls_per_row` (this result must be an integer).
-    
-    colls_per_row : int, optional
-        Number of collectors making up each collector row. This parameter only
-        matters for the model's results if the argument `row_mode` is set to `"series"`,
-        or if the argument `non_shadeable_rows` is provided. If not provided, its value
-        can be determined as `total_cols/coll_rows` (this result must be an integer).
         
-    row_mode : str, optional
-        Parameter defining whether the collectors in a row are arranged in series or in parallel.
-        Possible values for this argument: `"series"`, `"parallel"`.
-        If arranged in series (common for heat pipe evacuated tube collectors), the heat transfer
-        fluid passes from one collector to another one,
-        entering each one of them with the
-        temperature it left the previous one with.
-        If arranged in parallel (common for flat plate collectors), the heat transfer
-        fluid flow gets equally distributed among all
-        the collectors, entering all of them with the same temperature.
-        In the latter case, it is actually not
-        mandatory to specify `coll_rows` or `colls_per_row`,
-        since the number of collectors per row only
-        makes a difference when they are arranged in series.
-        IF not provided, this parpameter defaults to `"parallel"`.
-    
-    coll_disposition : str, optional
-        String identifying whether the tilted side of the collector is the short
-        side or the long side. The former case can be identified with the strings
-        `"horizontal"` and `"landscape"`. The latter case can be identified
-        with the strings `"vertical"` and `"portrait"`.
+    colls_in_series : int
+        Number of collectors arranged in series. In a group of collectors arranged in series,
+        the heat transfer fluid passes from one collector to another one,
+        entering each one of them with the temperature it left the previous one with.
+        If provided, this value must be a divisor of `total_colls`.
+        If not provided, it defaults to `1` (i.e., collectors are not arranged in series).
     
     tube_direction : str, optional
         This parameter only makes a difference for collectors that have biaxial IAM
@@ -757,36 +726,33 @@ class SolarField( Device ):
         In the two former cases (both are interpreted exactly the same way),
         the tubes point towards the ground
         (not perpendicularly; the angle depends on the tilt of the collector),
-        whereas in the latter case, the tubes are parallel to the ground. 
-    
-    non_shadeable_rows : int, optional
-        Number of collector rows that are not subject to self-shading.
-        Note that more than one collector row may be at the front of the collector field,
-        since a collector row may be defined as a group of collectors connected in series
-        (see the argument `row_mode`). This argument cannot be provided together with `non_shadeable_colls`,
-        since both arguments provide the same information in different ways.
+        whereas in the latter case, the tubes are parallel to the ground.
     
     non_shadeable_colls : int, optional
         Number of collectors that are not subject to self-shading.
-        If the number of collectors per row has been specified, this
-        argument must be equivalent to an entire number of rows
-        (i.e. `non_shadeable_colls/colls_per_row` must be a whole number).
-        This argument is useful when the number of rows
-        is not being taken into account. This argument cannot be provided
-        together with `non_shadeable_rows`, since both arguments provide the same
-        information in different ways.
+        It must be a multiple of `colls_in_series` (if that parameter is provided).
+        If not provided, it is assumed that roughly 1/3 of the collectors are on the
+        first row (i.e., they are not subject to self-shading).
     
     ground_fraction_covered : float, optional
-        Ratio between the tilted side of the solar collectors and the row spacing between them.
+        Ratio between the tilted side of the solar collectors and the spacing between collector rows.
         This parameter is relevant for modeling of self-shading. This value can be computed internally if
         the attributes `length` and `width` of the object `collector` have been correctly defined,
-        and if the arguments `coll_disposition` and `row_spacing` are provided for this class.
+        and if the parameters `coll_disposition` and `row_spacing` of this class are provided.
     
     row_spacing : float, optional
-        Distance between collector rows (m).
+        Distance between collector rows (m). Ignored if `ground_fraction_covered` is provided.
+        
+    coll_disposition : str, optional
+        String identifying whether the tilted side of the collector is the short
+        side or the long side. The former case can be identified with the strings
+        `"horizontal"` and `"landscape"`. The latter case can be identified
+        with the strings `"vertical"` and `"portrait"`. This parameter is ignored if 
+        `ground_fraction_covered` is specified.
         
     clear_horizon : bool
-        Boolean value defining whether the non-shadeable rows receive diffuse irradiance from the horizon.
+        Boolean value defining whether the collectors that are
+        not subject to self-shading receive diffuse irradiance from the horizon.
     
     release_vapor : bool, optional
         If this parameter is set to `True`, the vapor produced when the saturation
@@ -879,16 +845,13 @@ class SolarField( Device ):
     def __init__( self, *,
             
             collector: SolarCollector,
+            total_colls: int,
             coll_tilt: Optional[ float ] = None,
             coll_azimuth: Optional[ float ] = None,
-            total_colls: Optional[ int ] = None,
-            coll_rows: Optional[ int ] = None,
-            colls_per_row: Optional[ int ] = None,
+            colls_in_series: Optional[ int ] = None,
             ground_albedo: Optional[ int ] = None,
-            row_mode: Optional[ str ] = None,
             coll_disposition: Optional[ str ] = None,
             tube_direction: Optional[ str ] = None,
-            non_shadeable_rows: Optional[ int ] = None,
             non_shadeable_colls: Optional[ int ] = None,
             ground_fraction_covered: Optional[ float ] = None,
             row_spacing: Optional[ float ] = None,
@@ -897,7 +860,14 @@ class SolarField( Device ):
             vapor_tolerance: Optional[ float ] = None,
             max_iterations: Optional[ int ] = None, ):
         
+        if collector is None:
+            raise TypeError("SolarField: Parameter 'collector' cannot be None.")
+            
+        if total_colls is None:
+            raise TypeError("SolarField: Parameter 'total_colls' cannot be None.")
+        
         self._collector = self._validate_argument("collector", collector)
+        self._total_colls = self._validate_argument( "total_colls", total_colls )
         self._coll_tilt = self._validate_argument("coll_tilt", coll_tilt)
         self._coll_azimuth = self._validate_argument("coll_azimuth", coll_azimuth)
         self._ground_albedo = self._validate_argument( "ground_albedo", ground_albedo )
@@ -922,79 +892,32 @@ class SolarField( Device ):
             self._albedo_mode = 'auto'
         else:
             self._albedo_mode = 'manual'
-        
-        if row_mode is None:
-            self._row_mode = 'PARALLEL'
+            
+        if colls_in_series is not None:
+            self._colls_in_series = self._validate_argument("colls_in_series", colls_in_series)
         else:
-            self._row_mode = self._validate_argument("row_mode", row_mode)
+            self._colls_in_series = 1
+            
+        if self._total_colls%self._colls_in_series != 0:
+            raise ValueError("SolarField: Argument 'colls_in_series' must be a divisor of 'total_colls'.")
+            
+        self._coll_rows = self._total_colls // self._colls_in_series
+        self._colls_per_row = self._colls_in_series
         
-        if total_colls is not None and coll_rows is not None and colls_per_row is not None:
-            self._total_colls = self._validate_argument("total_colls", total_colls)
-            self._coll_rows = self._validate_argument("coll_rows", coll_rows)
-            self._colls_per_row = self._validate_argument("colls_per_row", colls_per_row)
-            if not ( self._total_colls%self._coll_rows == 0  and  self._total_colls // self._coll_rows == self._colls_per_row ):
-                raise ValueError("SolarField: Values of 'total_colls', 'coll_rows' and 'colls_per_row' are inconsistent. colls_per_row must be equal to total_colls/coll_rows.")
-        
-        elif total_colls is not None and coll_rows is not None:
-            self._total_colls = self._validate_argument("total_colls", total_colls)
-            self._coll_rows = self._validate_argument("coll_rows", coll_rows)
-            if not ( self._total_colls%self._coll_rows == 0 ):
-                raise ValueError("SolarField: 'total_colls' must be divisible by 'coll_rows'.")
-            self._colls_per_row = self._total_colls // self._coll_rows
-        
-        elif coll_rows is not None and colls_per_row is not None:
-            self._coll_rows = self._validate_argument("coll_rows", coll_rows)
-            self._colls_per_row = self._validate_argument("colls_per_row", colls_per_row)
-            self._total_colls = self._coll_rows*self._colls_per_row
-        
-        elif total_colls is not None and colls_per_row is not None:
-            self._total_colls = self._validate_argument("total_colls", total_colls)
-            self._colls_per_row = self._validate_argument("colls_per_row", colls_per_row)
-            if not self._total_colls%self._colls_per_row == 0:
-                raise ValueError("SolarField: 'total_colls' must be divisible by 'colls_per_row'.")
-            self._coll_rows = self._total_colls // self._colls_per_row
-        
-        elif total_colls is not None:
-            if self._row_mode == 'SERIES':
-                raise ValueError("SolarField: Number of collectors per row, or number of rows, must be provided along with 'total_colls' if argument 'row_mode' is set to 'series'.")
-            if non_shadeable_rows is not None:
-                raise ValueError("SolarField: Argument 'non_shadeable_rows' was provided but not the number of collector rows nor the number of collectors per row.")
-            self._total_colls = self._validate_argument("total_colls", total_colls)
-            self._coll_rows = self._total_colls
-            self._colls_per_row = 1
-        
-        elif coll_rows is not None:
-            raise ValueError("SolarField: Number of collectors cannot be determined. 'coll_rows' must be provided along with 'total_colls' or 'colls_per_row'.")
-        
-        elif colls_per_row is not None:
-            raise ValueError("SolarField: Number of collectors cannot be determined. 'colls_per_row' must be provided along with 'total_colls' or 'coll_rows'.")
-        
+        if non_shadeable_colls is not None:
+            non_shadeable_colls = self._validate_argument("non_shadeable_colls", non_shadeable_colls)
+            if non_shadeable_colls%self._colls_in_series != 0:
+                raise ValueError("SolarField: Argument 'non_shadeable_colls' must be a multiple of 'colls_in_series'.")
+            self._non_shadeable_rows = non_shadeable_colls // self._colls_in_series
         else:
-            raise ValueError("SolarField: Number of collectors was not provided. Arguments: 'total_colls', 'coll_rows', 'colls_per_row'.")
+            self._non_shadeable_rows = max( [ int( self._coll_rows/3 ) , 1 ] )
+            
+        self._shadeable_rows = self._coll_rows - self._non_shadeable_rows
         
         if tube_direction is not None:
             self._tube_direction = self._validate_argument( "tube_direction", tube_direction )
         else:
             self._tube_direction = 'VERTICAL'
-            
-        if non_shadeable_rows is not None and non_shadeable_colls is not None:
-            raise ValueError( "SolarField: The arguments 'non_shadeable_rows' and 'non_shadeable_colls' cannot be provided together." )
-        elif non_shadeable_rows is not None:
-            self._non_shadeable_rows = self._validate_argument("non_shadeable_rows", non_shadeable_rows)
-            if self._non_shadeable_rows > self._coll_rows:
-                raise ValueError(f"SolarField: 'non_shadeable_rows' ({self._non_shadeable_rows}) cannot be larger than 'coll_rows' ({self._coll_rows}).")
-        elif non_shadeable_colls is not None:
-            non_shadeable_colls = self._validate_argument("non_shadeable_colls", non_shadeable_colls)
-            if not non_shadeable_colls%self._colls_per_row == 0:
-                raise ValueError(f"SolarField: 'non_shadeable_colls' must correspond to an entire number of rows (i.e. it must be a multiple of 'colls_per_row' which is { self._colls_per_row }).")
-            self._non_shadeable_rows = non_shadeable_colls // self._colls_per_row
-            if self._non_shadeable_rows > self._coll_rows:
-                raise ValueError(f"SolarField: 'non_shadeable_rows' ({self._non_shadeable_rows}) cannot be larger than 'coll_rows' ({self._coll_rows}).")
-        else:
-            self._non_shadeable_rows = max( [ int( self._coll_rows * 0.5 ) , 1 ] )
-            
-        self._shadeable_rows = self._coll_rows - self._non_shadeable_rows
-        
         
         ground_fraction_covered = self._validate_argument("ground_fraction_covered", ground_fraction_covered)
         row_spacing = self._validate_argument("row_spacing", row_spacing)
@@ -1728,17 +1651,36 @@ class SolarField( Device ):
             if not ( value >= 0 and value < 360 ):
                 raise ValueError("SolarField: Argument 'coll_azimuth' must be in the range 0 <= coll_azimuth < 360.")
         
-        if argument_name in [ 'total_colls',
-                              'coll_rows',
-                              'colls_per_row',
-                              'non_shadeable_rows',
-                              'non_shadeable_colls',
-                              ]:
+        if argument_name == 'total_colls':
             try:
                 assert value.is_integer()
                 value = int( value )
             except:
-                raise ValueError(f"SolarField: Argument '{ argument_name }' must be an integer value.")
+                raise TypeError("SolarField: Argument 'total_colls' must be an integer value.")
+                
+            if not value >= 1:
+                raise ValueError("SolarField: Argument 'total_colls' must be >= 1.")
+                
+        if argument_name == "colls_in_series":
+            try:
+                assert value.is_integer()
+                value = int( value )
+            except:
+                raise TypeError("SolarField: Argument 'colls_in_series' must be an integer value.")
+                
+            if not value >= 1:
+                raise ValueError("SolarField: Argument 'colls_in_series' must be >= 1.")
+                
+        if argument_name == "non_shadeable_colls":
+            try:
+                assert value.is_integer()
+                value = int( value )
+            except:
+                raise TypeError("SolarField: Argument 'non_shadeable_colls' must be an integer value.")
+                
+            if not value >= 0:
+                raise ValueError("SolarField: Argument 'non_shadeable_colls' must be >= 0.")
+            
                 
         if argument_name == 'ground_albedo':
             try:
@@ -1775,15 +1717,6 @@ class SolarField( Device ):
                 raise TypeError(f"SolarField: Argument '{argument_name}' must be converible to type 'float'.")
             if not value > 0:
                 raise TypeError(f"SolarField: Argument '{argument_name}' must be larger than zero.")
-                
-        if argument_name == 'row_mode':
-            try:
-                value = str(value).upper()
-            except:
-                raise TypeError("SolarField: Argument 'row_mode' must a string.")
-            
-            if not value in [ 'SERIES', 'PARALLEL' ]:
-                raise ValueError("SolarField: Argument 'row_mode' must be one of the strings: 'series', or 'parallel'.")
                 
         if argument_name == 'clear_horizon':
             try:
