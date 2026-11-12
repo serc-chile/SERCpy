@@ -795,7 +795,7 @@ class SolarField( Device ):
         when water is used as heat transfer fluid. This parameter defaults to `True`.
     
     vapor_tolerance : float, optional
-        Only relevant of `release_vapor` is set to `True`. This argument defines
+        Only relevant if `release_vapor` is set to `True`. This argument defines
         the relative difference allowed between the vapor flowrate being released
         and the water flowrate being introduced from the distribution network to
         replace it. Allowed range: `1e-8` to `1e-1`. If not provided, it defaults to `1e-3`.

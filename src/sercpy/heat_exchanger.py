@@ -25,16 +25,17 @@ class HeatExchanger( Device ):
     Model for a counter-flow :math:`\varepsilon`-NTU heat exchanger.
     
     If not enough parameters are provided, the model is automatically converted
-    to a constant-effectiveness heat exchanger. The drawback of this model is that effectiveness is not
-    computed as a function of the operating flowrate.
+    to a constant-effectiveness heat exchanger. The drawback of this model,
+    as its name suggests, is that effectiveness is not
+    computed as a function of the operating flowrates.
     
-    In order for the :math:`\epsilon`-NTU model to be applied, the overall heat
+    In order for the :math:`\varepsilon`-NTU model to be applied, the overall heat
     transfer coefficient (also called "UA") must be either provided by the user or
     computed internally. For the latter option, the following parameters must be
     specified:
         
         - The rated effectiveness, i.e., the effectiveness of the heat exchanger when it operates under nominal conditions.
-        - The rated water flowrate, i.e., the nominal flowrate of the heat exchanger.
+        - The rated water flowrate, i.e., the nominal flowrate of the heat exchanger. Water is assumed as heat transfer fluid to compute UA; nevertheless, any :doc:`Fluid </fluids/fluid_class>` can be used to obtain results for an already initialized model.
         
     If only the rated effectiveness of the heat exchanger is provided, constant effectiveness is assumed.
     
@@ -45,6 +46,8 @@ class HeatExchanger( Device ):
     
     rated_effectiveness : float
         Rated effectiveness of the heat exchanger (i.e., under nominal conditions). Valid range: `0.05 <= rated_effectiveness < 1`.
+        This parameter must be specified if `UA` is not provided. If provided along with `rated_water_flowrate`,
+        `UA` is computed from these two parameters. Otherwise, constant effectiveness is assumed.
     
     rated_water_flowrate : float
         Nominal water flowrate of the heat exchanger (kg/s).
@@ -68,8 +71,38 @@ class HeatExchanger( Device ):
         
     Attributes
     ----------
+    outlet_source : :doc:`Outlet </devices/outlet>`
+        Instance of the class :doc:`sercpy.devices.Outlet </devices/outlet>` representing the outlet on the source side (or hot side) of the heat exchanger.
     
+    outlet_load : :doc:`Outlet </devices/outlet>`
+        Instance of the class :doc:`sercpy.devices.Outlet </devices/outlet>` representing the outlet on the load side (or cold side) of the heat exchanger.
     
+    constant_effectiveness : bool
+        Boolean value with the value `True` if the constant effectiveness model is being used instead of the effectiveness-NTU model.
+    
+    effectiveness : float
+        Effectiveness of the heat exchanger. If the :math:`\varepsilon`-NTU model is being used, it corresponds to the value obtained the last time the method `HeatExchanger.compute_outputs` was called. Otherwise, it is the constant effectiveness of the heat exchanger.
+        
+    input_convergence : bool
+        Boolean value stating whether convergence was achieved the last time the method `HeatExchanger.compute_outputs` was called. The concept of "convergence" refers to whether the inputs of the `HeatExchanger` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.
+    
+    useful_power : float
+        Useful power transferred to the load flow (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+    
+    wasted_power : float
+        Thermal power used to generate undesired vapor that is then released (W). This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+    
+    vapor_flowrate : float
+        Undesired vapor being released from the heat exchanger (kg/s). This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+    
+    iterations : int
+        Number of iterations carried out the last time the method `HeatExchanger.compute_outputs` was called. An iteration process is only necessary when undesired vapor is being produced and released on the load side of the heat exchanger.
+    
+    vapor_release_convergence : bool
+        Boolean value stating whether convergence for the vapor release modeling was achieved the last time the method `HeatExchanger.compute_outputs` was called. If no vapor is released, this value will be `True`.
+    
+    ready_to_simulate : bool
+        Boolean value stating whether all attributes needed for the `HeatExchanger` instance to be used in a simulation have been established.
     
     """
     def __init__(self, *,
@@ -110,7 +143,7 @@ class HeatExchanger( Device ):
         # Case 3: Only effectiveness is provided. Constant-effectiveness HX is used
         elif rated_effectiveness is not None:
             
-            self._effectiveness = self._validate_argument("rated_effectiveness", rated_effectiveness)
+            self._rated_effectiveness = self._validate_argument("rated_effectiveness", rated_effectiveness)
             self._UA = None
         
         else:
@@ -143,6 +176,20 @@ class HeatExchanger( Device ):
     def outlet_load(self):
         "Instance of the class sercpy.devices.Outlet representing the outlet on the load side (or cold side) of the heat exchanger."
         return self._outlet_load
+    
+    @property
+    def constant_effectiveness(self):
+        "Boolean value with the value 'True' if the constant effectiveness model is being used instead of the effectiveness-NTU model."
+        return self._UA is None
+    
+    @property
+    def effectiveness(self):
+        "Effectiveness of the heat exchanger. If the effectiveness-NTU model is being used, it corresponds to the value obtained the last time the method 'HeatExchanger.compute_outputs' was called. Otherwise, it is the constant effectiveness of the heat exchanger."
+        if self._UA is None:
+            return self._rated_effectiveness
+        if not hasattr( self, "_effectiveness" ):
+            raise AttributeError("HeatExchanger: Attribute 'effectiveness' has not been computed yet. This attribute gets computed after calling the method HeatExchanger.compute_outputs.")
+        return self._effectiveness
         
     @property
     def input_convergence(self):
@@ -153,7 +200,7 @@ class HeatExchanger( Device ):
     
     @property
     def useful_power(self):
-        "Useful power transferred to the load flow (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        "Useful power transferred to the load flow (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'HeatExchanger.compute_outputs' is called."
         if not hasattr( self, "_useful_power" ):
             raise AttributeError("HeatExchanger: Attribute 'useful_power' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
         return self._useful_power
@@ -171,13 +218,6 @@ class HeatExchanger( Device ):
         if not hasattr( self, "_vapor_flowrate" ):
             raise AttributeError("HeatExchanger: Attribute 'vapor_flowrate' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
         return self._vapor_flowrate
-    
-    @property
-    def effectiveness(self):
-        "Effectiveness obtained for the heat exchanger the last time the method 'HeatExchanger.compute_outputs' was called."
-        if not hasattr( self, "_effectiveness" ):
-            raise AttributeError("HeatExchanger: Attribute 'effectiveness' has not been computed yet. This attribute gets computed after calling the method HeatExchanger.compute_outputs.")
-        return self._effectiveness
 
     @property
     def iterations(self):
@@ -292,10 +332,10 @@ class HeatExchanger( Device ):
                 
         return value
     
-    def compute_effectiveness(self, m_in_source, cp_source, m_in_load, cp_load):
+    def _compute_effectiveness(self, m_in_source, cp_source, m_in_load, cp_load):
         
         if self._UA is None:
-            return self._effectiveness
+            return self._rated_effectiveness
         
         C_min = min([ m_in_source*cp_source, m_in_load*cp_load ])
         C_max = max([ m_in_source*cp_source, m_in_load*cp_load ])
@@ -412,7 +452,7 @@ class HeatExchanger( Device ):
                              'iterations': {'output_type': 'int', 'value': 0},
                              'maxIt': {'output_type': 'bool', 'value': False} }
             return
-        epsilon = self.compute_effectiveness(m_in_source, self.fluid_props_source.liquid_spec_heat , m_in_load, self.fluid_props_load.liquid_spec_heat)
+        epsilon = self._compute_effectiveness(m_in_source, self.fluid_props_source.liquid_spec_heat , m_in_load, self.fluid_props_load.liquid_spec_heat)
         T_in_source = self.fluid_props_source.h_to_T(h_in_source)
         m_mains = 0
         it = 0
