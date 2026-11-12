@@ -693,7 +693,7 @@ class SolarField( Device ):
     collector : :doc:`SolarCollector <solar_collector_class>`
         Object that models each indidual collector of the solar field.
         
-    total_colls : int, optional
+    total_colls : int
         Number of collectors that make up the solar field.
     
     coll_tilt : float, optional
