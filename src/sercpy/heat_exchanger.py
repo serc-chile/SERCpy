@@ -8,6 +8,7 @@ Created on Wed Nov 11 16:07:23 2026
 from .devices import Device, Outlet
 from scipy.optimize import root_scalar
 import numpy as np
+from typing import Optional
 
 HX_allowed_arguments = [
     
@@ -42,12 +43,16 @@ class HeatExchanger( Device ):
     Parameters
     ----------
     UA : float
-        Overall heat transfer coefficient of the heat exchanger (W/K). If provided, `rated_effectiveness` and `rated_water_flowrate` are ignored.
+        Overall heat transfer coefficient of the heat exchanger (W/K).
+        If provided, `rated_effectiveness` and `rated_water_flowrate` are ignored.
     
     rated_effectiveness : float
-        Rated effectiveness of the heat exchanger (i.e., under nominal conditions). Valid range: `0.05 <= rated_effectiveness < 1`.
-        This parameter must be specified if `UA` is not provided. If provided along with `rated_water_flowrate`,
-        `UA` is computed from these two parameters. Otherwise, constant effectiveness is assumed.
+        Rated effectiveness of the heat exchanger (i.e., under nominal conditions).
+        Valid range: `0.05 <= rated_effectiveness < 1`.
+        This parameter must be specified if `UA` is not provided.
+        If provided along with `rated_water_flowrate`,
+        `UA` is computed from these two parameters.
+        Otherwise, constant effectiveness is assumed.
     
     rated_water_flowrate : float
         Nominal water flowrate of the heat exchanger (kg/s).
@@ -71,38 +76,62 @@ class HeatExchanger( Device ):
         
     Attributes
     ----------
-    outlet_source : :doc:`Outlet </devices/outlet>`
-        Instance of the class :doc:`sercpy.devices.Outlet </devices/outlet>` representing the outlet on the source side (or hot side) of the heat exchanger.
+    outlet_source : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing the outlet on the source side (or hot side) of the heat exchanger.
     
-    outlet_load : :doc:`Outlet </devices/outlet>`
-        Instance of the class :doc:`sercpy.devices.Outlet </devices/outlet>` representing the outlet on the load side (or cold side) of the heat exchanger.
+    outlet_load : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing the outlet on the load side (or cold side) of the heat exchanger.
     
     constant_effectiveness : bool
-        Boolean value with the value `True` if the constant effectiveness model is being used instead of the effectiveness-NTU model.
+        Boolean value with the value `True` if the constant
+        effectiveness model is being used instead of the effectiveness-NTU model.
     
     effectiveness : float
-        Effectiveness of the heat exchanger. If the :math:`\varepsilon`-NTU model is being used, it corresponds to the value obtained the last time the method `HeatExchanger.compute_outputs` was called. Otherwise, it is the constant effectiveness of the heat exchanger.
+        Effectiveness of the heat exchanger. If the :math:`\varepsilon`-NTU model
+        is being used, it corresponds to the value obtained the last time the
+        method `HeatExchanger.compute_outputs` was called. Otherwise, it is the
+        constant effectiveness of the heat exchanger.
         
     input_convergence : bool
-        Boolean value stating whether convergence was achieved the last time the method `HeatExchanger.compute_outputs` was called. The concept of "convergence" refers to whether the inputs of the `HeatExchanger` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.
+        Boolean value stating whether convergence was achieved the last time the
+        method `HeatExchanger.compute_outputs` was called. The concept of
+        "convergence" refers to whether the inputs of the `HeatExchanger`
+        instance are similar enough in consecutive iterations of a simulation
+        time step, so that no further computation is needed.
     
     useful_power : float
-        Useful power transferred to the load flow (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+        Useful power transferred to the load flow (W). The word 'useful'
+        is used to differentiate this value from the power used to
+        generate undesired vapor that is then released. This attribute
+        gets updated every time the method `HeatExchanger.compute_outputs` is called.
     
     wasted_power : float
-        Thermal power used to generate undesired vapor that is then released (W). This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+        Thermal power used to generate undesired vapor that is then
+        released (W). This attribute gets updated every time the
+        method `HeatExchanger.compute_outputs` is called.
     
     vapor_flowrate : float
-        Undesired vapor being released from the heat exchanger (kg/s). This attribute gets updated every time the method `HeatExchanger.compute_outputs` is called.
+        Undesired vapor being released from the heat exchanger (kg/s).
+        This attribute gets updated every time the method
+        `HeatExchanger.compute_outputs` is called.
     
     iterations : int
-        Number of iterations carried out the last time the method `HeatExchanger.compute_outputs` was called. An iteration process is only necessary when undesired vapor is being produced and released on the load side of the heat exchanger.
+        Number of iterations carried out the last time the method
+        `HeatExchanger.compute_outputs` was called. An iteration
+        process is only necessary when undesired vapor is being
+        produced and released on the load side of the heat exchanger.
     
     vapor_release_convergence : bool
-        Boolean value stating whether convergence for the vapor release modeling was achieved the last time the method `HeatExchanger.compute_outputs` was called. If no vapor is released, this value will be `True`.
+        Boolean value stating whether convergence for the vapor release
+        modeling was achieved the last time the method `HeatExchanger.compute_outputs`
+        was called. If no vapor is released, this value will be `True`.
     
     ready_to_simulate : bool
-        Boolean value stating whether all attributes needed for the `HeatExchanger` instance to be used in a simulation have been established.
+        Boolean value stating whether all attributes needed for the
+        `HeatExchanger` instance to be used in a
+        simulation have been established.
     
     """
     def __init__(self, *,
@@ -332,13 +361,13 @@ class HeatExchanger( Device ):
                 
         return value
     
-    def _compute_effectiveness(self, m_in_source, cp_source, m_in_load, cp_load):
+    def _compute_effectiveness(self, flowrate_source, cp_source, flowrate_load, cp_load):
         
         if self._UA is None:
             return self._rated_effectiveness
         
-        C_min = min([ m_in_source*cp_source, m_in_load*cp_load ])
-        C_max = max([ m_in_source*cp_source, m_in_load*cp_load ])
+        C_min = min([ flowrate_source*cp_source, flowrate_load*cp_load ])
+        C_max = max([ flowrate_source*cp_source, flowrate_load*cp_load ])
         C_rel = C_min/C_max
         assert C_rel <= 1
         if C_min == 0:
@@ -352,6 +381,32 @@ class HeatExchanger( Device ):
         return epsilon
     
     def set_connections( self, *, inlet_source = None, inlet_load = None ):
+        """
+        Specify the devices to which the heat exchanger's inlet ports are connected.
+        
+        Both arguments must be instances of :ref:`sercpy.devices.Outlet <class_outlet>`.
+        
+        Inlets can be re-defined as many times as needed by using this method.
+        
+        The method does not expect both inlets to be defined at the same time. However, both inlets must be defined before
+        carrying out a simulation using the `HeatExchanger` instance.
+        
+        Parameters
+        ----------
+        inlet_source : :ref:`Outlet <class_outlet>`
+            Inlet on the source side (or hot side) of the heat exchanger.
+        
+        inlet_load : :ref:`Outlet <class_outlet>`
+            Inlet on the load side (or cold side) of the heat exchanger.
+    
+        Raises
+        ------
+        ValueError
+            If a keyword does not match the expected format
+        TypeError
+            If the arguments provided are not instances of sercpy.devices.Outlet
+        
+        """
         
         if inlet_source is not None and not isinstance( inlet_source, Outlet ):
             raise TypeError( "HeatExchanger.set_connections: Parameter 'inlet_source' must be an instance of sercpy.fluids.Outlet." )
@@ -362,23 +417,194 @@ class HeatExchanger( Device ):
             raise TypeError( "HeatExchanger.set_connections: Parameter 'inlet_load' must be an instance of sercpy.fluids.Outlet." )
         elif inlet_load is not None:
             self._inlet_load = inlet_load
+            
+    def set_convergence_criteria( self, *,
+                                  relative_tolerance: float,
+                                  temp_tolerance: Optional[ float ] = None,
+                                  h_tolerance: Optional[ float ] = None,
+                                  temp_normalization_range: Optional[ float ] = None,
+                                  h_normalization_range: Optional[ float ] = None ):
+        """
+        Establish the convergence criteria of the `HeatExchanger` instance in the context of a simulation.
+        
+        When used in the context of a simulation, a `HeatExchanger` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
+        The aforementioned "margin" or "tolerance" is set by this method.
+        When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
+        
+        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
+        
+        For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
+        Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
+        
+        There are two ways of setting the tolerances for temperature and specific enthalpy:
+            
+            - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
+            - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
+        
+        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
+        
+        Parameters
+        ----------
+        relative_tolerance : float
+            Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `HeatExchanger`
+            class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
+        
+        temp_tolerance : float, optional
+            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
+        
+        h_tolerance : float, optional
+            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
+        
+        temp_normalization_range : float, optional
+            Normalization range for temperature. See the description above for more details.
+        
+        h_normalization_range : float, optional
+            Normalization range for specific enthalpy. See the description above for more details.
+        
+        Returns
+        -------
+        None.
+        
+        """
+        try:
+            relative_tolerance = float( relative_tolerance )
+        except:
+            raise TypeError("HeatExchanger.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'.")
+        
+        self._relative_tolerance = relative_tolerance
+        
+        if sum( [ variable is not None for variable in [ 
+                
+                temp_tolerance,
+                h_tolerance,
+                temp_normalization_range,
+                h_normalization_range,
+                
+                ] ] ) != 1:
+            
+            raise ValueError("HeatExchanger.set_convergence_criteria: One and only one of the optional parameters must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
+        
+        if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
+            raise ValueError("HeatExchanger.set_convergence_criteria: At least one of the following parameters must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
+        
+        elif temp_tolerance is not None and temp_normalization_range is not None:
+            raise ValueError("HeatExchanger.set_convergence_criteria: Parameters 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
+        
+        elif h_tolerance is not None and h_normalization_range is not None:
+            raise ValueError("HeatExchanger.set_convergence_criteria: Parameters 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
+            
+        if temp_tolerance is not None:
+            try:
+                temp_tolerance = float( temp_tolerance )
+            except:
+                raise TypeError("HeatExchanger.set_convergence_criteria: 'temp_tolerance' must be convertible to type 'float'.")
+            self._temp_tolerance = temp_tolerance
+            
+        elif temp_normalization_range is not None:
+            try:
+                temp_normalization_range = float( temp_normalization_range )
+            except:
+                raise TypeError("HeatExchanger.set_convergence_criteria: 'temp_normalization_range' must be convertible to type 'float'.")
+            self._temp_tolerance = relative_tolerance*temp_normalization_range
+        
+        else:
+            self._temp_tolerance = None
+        
+        if h_tolerance is not None:
+            try:
+                h_tolerance = float( h_tolerance )
+            except:
+                raise TypeError("HeatExchanger.set_convergence_criteria: 'h_tolerance' must be convertible to type 'float'.")
+            self._h_tolerance = h_tolerance
+        elif h_normalization_range is not None:
+            try:
+                h_normalization_range = float( h_normalization_range )
+            except:
+                raise TypeError("HeatExchanger.set_convergence_criteria: 'h_normalization_range' must be convertible to type 'float'.")
+            self._h_tolerance = relative_tolerance*h_normalization_range
+        
+        else:
+            self._h_tolerance = None
+        
+        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
+            raise ValueError(f"HeatExchanger.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
+        
+        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
+            raise ValueError(f"HeatExchanger.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
+        
+    def _set_last_inputs( self, flowrate_source, state_in_source, flowrate_load, state_in_load):
+        """
+        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether input convergence is achieved.
+        
+        Parameters
+        ----------
+        flowrate_source : float
+            Flowrate received by the solar field (kg/s).
+        state_in : sercpy.fluids.FluidState
+            State of the fluid received by the solar field.
+            
+        Returns
+        -------
+        None.
+        
+        """
+        
+        self._flowrate_source_last = flowrate_source
+        self._state_in_source_last = state_in_source
+        self._flowrate_load_last = flowrate_load
+        self._state_in_load_last = state_in_load
+        
+    def _compute_input_convergence(self, flowrate_source, state_in_source, flowrate_load, state_in_load):
+        """
+        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
+        
+        Parameters
+        ----------
+        flowrate : float
+            Flowrate received by the solar field (kg/s).
+        state_in : sercpy.fluids.FluidState
+            State of the fluid received by the solar field.
+        
+        Returns
+        -------
+        None.
+        
+        """
+        convergence = True
+        if flowrate_source == 0 or self._flowrate_source_last == 0:
+            convergence = convergence and flowrate_source == self._flowrate_source_last
+        elif flowrate_source != self._flowrate_source_last:
+            convergence = convergence and abs( flowrate_source - self._flowrate_source_last ) / min( [ flowrate_source  , self._flowrate_source_last ] ) <= self._relative_tolerance
+        
+        if flowrate_load == 0 or self._flowrate_load_last == 0:
+            convergence = convergence and flowrate_load == self._flowrate_load_last
+        elif flowrate_load != self._flowrate_load_last:
+            convergence = convergence and abs( flowrate_load - self._flowrate_load_last ) / min( [ flowrate_load  , self._flowrate_load_last ] ) <= self._relative_tolerance
+
+        if self._h_tolerance is not None:
+            convergence = convergence and abs( state_in_source.h - self._state_in_source_last.h ) <= self._h_tolerance
+            convergence = convergence and abs( state_in_load.h - self._state_in_load_last.h ) <= self._h_tolerance
+        
+        if self._temp_tolerance is not None:
+            convergence = convergence and abs( state_in_source.T - self._state_in_source_last.T ) <= self._temp_tolerance
+            convergence = convergence and abs( state_in_load.T - self._state_in_load_last.T ) <= self._temp_tolerance
+            
+        self._input_convergence = convergence
     
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
-                         state_in = None, flowrate = None,
-                         GHI = None, DNI = None, DHI = None,
-                         solar_apparent_zenith = None, solar_azimuth = None, 
-                         Tamb = None, Tmains = None, doy = None ):
-        """
+                         flowrate_source = None, state_in_source = None,
+                         flowrate_load = None, state_in_load = None,
+                         Tmains = None, ):
+        r"""
         Method to compute the outputs of the heat exchanger.
         
         The following attributes of the `HeatExchanger` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
             
             - input_convergence
-            - outlet (state and flowrate)
+            - effectiveness. This attribute gets updated only if the :math:`\varepsilon`-NTU model is being used
             - useful_power
             - wasted_power
             - vapor_flowrate
-            - efficiency
             - iterations
             - vapor_release_convergence
         
@@ -393,36 +619,24 @@ class HeatExchanger( Device ):
         iteration_number : int
             Number of the iteration.
         
-        state_in : :doc:`FluidState </fluids/fluidstate_class>`
-            Object defining the thermodynamic state of the fluid as it enters the solar field.
+        flowrate_source : float
+            Mass flowrate on the source side (or hot side) of the heat exchanger (kg/s).
         
-        flowrate : float
-            Mass flowrate entering the solar field (kg/s).
+        state_in_source : :doc:<FluidState </fluids/fluidstate_class>`
+            Thermodynamic state of the fluid entering the heat exchanger in its source side (or hot side).
         
-        GHI : float
-            Global horizontal irradiance (W/m2).
+        flowrate_load : float
+            Mass flowrate on the load side (or cold side) of the heat exchanger (kg/s).
         
-        DNI : float
-            Direct normal irradiance (W/m2).
+        state_in_load : :doc:<FluidState </fluids/fluidstate_class>`
+            Thermodynamic state of the fluid entering the heat exchanger in its load side (or cold side).
         
-        DHI : float
-            Diffuse horizontal irradiance (W/m2).
-        
-        solar_apparent_zenith : float
-            Apparent zenithal angle of the solar position (degrees, °).
-        
-        solar_azimuth : float
-            Azimuthal angle of the solar position (degrees, °).
-        
-        Tamb : float
-            Temperature of the environment surrounding the collector (°C).
-        
-        Tmains : float
-            Mains water temperature. Not needed if: (1) the argument `release_vapor` has been set to `False` at initialization,
-            or (2) boiling is not supported for the fluid that is entering the collector.
-        
-        doy : int
-            Integer defining the day of the year (1 to 365).
+        Tmains : float, optional
+            Temperature of the water in the distribution network. This parameter
+            is only needed when the fluid in the load side of the heat exchanger
+            is water, and if the parameter `release_vapor` was set to `True` at
+            initialization (or if this parameter was ommited, since `True` is its
+            default value).
         
         Returns
         -------
@@ -430,105 +644,176 @@ class HeatExchanger( Device ):
         
         """
         
-        
-        
-        
-        m_in_source = inputs[0]
-        h_in_source = inputs[1]
-        m_in_load = inputs[2]
-        h_in_load = inputs[3]
-        T_mains = inputs[4]
-        
-        h_mains = self.fluid_props_load.T_to_h(T_mains)
-        
-        if m_in_source == 0 or m_in_load == 0:
-            self.outputs = { 'load_outlet_h': {'output_type': 'h', 'value': h_in_load},
-                             'source_outlet_h':{'output_type': 'h', 'value': h_in_source},
-                             'load_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_load},
-                             'source_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_source},
-                             'steam_flowrate':{'output_type': 'flowrate', 'value': 0},
-                             'useful_power': {'output_type': 'power', 'value': 0},
-                             'wasted_power': {'output_type': 'power', 'value': 0},
-                             'iterations': {'output_type': 'int', 'value': 0},
-                             'maxIt': {'output_type': 'bool', 'value': False} }
-            return
-        epsilon = self._compute_effectiveness(m_in_source, self.fluid_props_source.liquid_spec_heat , m_in_load, self.fluid_props_load.liquid_spec_heat)
-        T_in_source = self.fluid_props_source.h_to_T(h_in_source)
-        m_mains = 0
-        it = 0
-        
-        if self._release_vapor and fluid.can_boil:
+        if operating_conditions is None and iteration_number is None:
+            if any([ variable is None for variable in [ flowrate_source, state_in_source, flowrate_load, state_in_load ] ]):
+                raise TypeError("HeatExchanger.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: flowrate_source, state_in_source, flowrate_load, state_in_load.")
+            self._input_convergence = False
             
-            while True:
-                new_m_in_load = m_in_load + m_mains
-                new_h_in_load = (m_in_load*h_in_load + m_mains*h_mains)/new_m_in_load
-                new_T_in_load = self.fluid_props_load.h_to_T(new_h_in_load)
-                if new_T_in_load >= self.fluid_props_source.T_sat:
-                    raise ValueError('Load temperature entering heat exchanger is higher than the saturation temperature of the source fluid')
-                h_out_source_hyp = self.fluid_props_source.T_to_h(new_T_in_load)
-                if T_in_source >= self.fluid_props_load.T_sat:
-                    h_out_load_hyp = self.fluid_props_load.h_sat_liq + self.fluid_props_load.liquid_spec_heat*(T_in_source - self.fluid_props_load.T_sat)
-                else:
-                    h_out_load_hyp = self.fluid_props_load.T_to_h(T_in_source)
-                if T_in_source > new_T_in_load:
-                    Q_max = min([ m_in_source*(h_in_source - h_out_source_hyp),
-                                 new_m_in_load*(h_out_load_hyp - new_h_in_load) ])
-                else:
-                    Q_max = -min([ m_in_source*(h_out_source_hyp - h_in_source),
-                                  new_m_in_load*(new_h_in_load - h_out_load_hyp) ])
-                h_out_source = h_in_source - epsilon*Q_max/m_in_source
-                h_out_load = new_h_in_load + epsilon*Q_max/new_m_in_load
-                m_vap = new_m_in_load*self.fluid_props_load.quality(h_out_load)
-                it = it + 1
-                if m_mains == m_vap or abs(m_mains - m_vap)/max([ m_mains, m_vap ]) < self.tolerance:
-                    maxIt = False
-                    break
-                if it == self.maxIt:
-                    maxIt = True
-                    break
-                Q_useful = m_in_load*(self.fluid_props_load.h_sat_liq - h_in_load)
-                Q_actual = new_m_in_load*(h_out_load - new_h_in_load)
-                Q_waste = Q_actual - Q_useful
-                m_mains = Q_waste/(self.fluid_props_load.h_sat_vap - h_mains)
-            if m_vap > 0:
-                self.outputs = { 'load_outlet_h': {'output_type': 'h', 'value': self.fluid_props_load.h_sat_liq},
-                                 'source_outlet_h':{'output_type': 'h', 'value': h_out_source},
-                                 'load_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_load},
-                                 'source_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_source},
-                                 'steam_flowrate':{'output_type': 'flowrate', 'value': m_vap},
-                                 'useful_power': {'output_type': 'power', 'value': Q_useful},
-                                 'wasted_power': {'output_type': 'power', 'value': Q_waste},
-                                 'iterations': {'output_type': 'int', 'value': it},
-                                 'maxIt': {'output_type': 'bool', 'value': maxIt} }
-                return
+        elif operating_conditions is None or iteration_number is None:
+            raise TypeError("HeatExchanger.compute_outputs: Both 'operating_conditions' and 'operating_conditions' must be provided in simulation mode. None of them must be provided in manual mode.")
+        
         else:
             
-            maxIt = False
-            new_m_in_load = m_in_load
-            new_h_in_load = h_in_load
-            new_T_in_load = self.fluid_props_load.h_to_T(new_h_in_load)
-            if new_T_in_load >= self.fluid_props_source.T_sat:
-                raise ValueError('Load temperature entering heat exchanger is higher than the saturation temperature of the source fluid')
-            h_out_source_hyp = self.fluid_props_source.T_to_h(new_T_in_load)
-            if T_in_source >= self.fluid_props_load.T_sat:
-                h_out_load_hyp = self.fluid_props_load.h_sat_liq + self.fluid_props_load.liquid_spec_heat*(T_in_source - self.fluid_props_load.T_sat)
-            else:
-                h_out_load_hyp = self.fluid_props_load.T_to_h(T_in_source)
-            if T_in_source > new_T_in_load:
-                Q_max = min([ m_in_source*(h_in_source - h_out_source_hyp),
-                              new_m_in_load*(h_out_load_hyp - new_h_in_load) ])
-            else:
-                Q_max = -min([ m_in_source*(h_out_source_hyp - h_in_source),
-                               new_m_in_load*(new_h_in_load - h_out_load_hyp) ])
-            h_out_source = h_in_source - epsilon*Q_max/m_in_source
-            h_out_load = new_h_in_load + epsilon*Q_max/new_m_in_load
+            if type( operating_conditions ) is not dict:
+                raise TypeError("HeatExchanger.compute_outputs: Parameter 'operating_conditions' must be a dictionary.")
+            if not ( type( iteration_number ) is int and iteration_number >= 0 ):
+                raise TypeError("HeatExchanger.compute_outputs: Parameter 'iteration_number' must be an 'int'. Its value msut be >= 0.")
 
-        self.outputs = { 'load_outlet_h': {'output_type': 'h', 'value': h_out_load},
-                         'source_outlet_h':{'output_type': 'h', 'value': h_out_source},
-                         'load_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_load},
-                         'source_outlet_flowrate': {'output_type': 'flowrate', 'value': m_in_source},
-                         'steam_flowrate':{'output_type': 'flowrate', 'value': 0},
-                         'useful_power': {'output_type': 'power', 'value': new_m_in_load*(h_out_load - new_h_in_load)},
-                         'wasted_power': {'output_type': 'power', 'value': 0},
-                         'iterations': {'output_type': 'int', 'value': it},
-                         'maxIt': {'output_type': 'bool', 'value': maxIt} }
+            if not hasattr( self, "_inlet_source" ):
+                raise AttributeError( "HeatExchanger.compute_outputs: Attribute 'inlet_source' is not defined. Use the method HeatExchanger.set_connections." )
+            if not hasattr( self, "_inlet_load" ):
+                raise AttributeError( "HeatExchanger.compute_outputs: Attribute 'inlet_load' is not defined. Use the method HeatExchanger.set_connections." )
+            
+            flowrate_source = self._inlet_source.flowrate
+            state_in_source = self._inlet_source.state
+            flowrate_load = self._inlet_load.flowrate
+            state_in_load = self._inlet_load.state
+                
+            if iteration_number == 0:
+                self._set_last_inputs(flowrate_source, state_in_source, flowrate_load, state_in_load)
+                self._input_convergence = False
+            else:
+                self._compute_input_convergence(flowrate_source, state_in_source, flowrate_load, state_in_load)
+                if self._input_convergence:
+                    return
+                else:
+                    self._set_last_inputs(flowrate_source, state_in_source, flowrate_load, state_in_load)
+            
+            Tmains = operating_conditions[ 'Tmains' ]
+            
+        self._outlet_source.flowrate = flowrate_source
+        self._outlet_load.flowrate = flowrate_load
+        
+        if flowrate_source == 0 or flowrate_load == 0:
+            
+            self._outlet_source.state = state_in_source
+            self._outlet_load.state = state_in_load
+            self._effectiveness = np.nan
+            self._useful_power = 0
+            self._wasted_power = 0
+            self._vapor_flowrate = 0
+            self._iterations = 0
+            self._vapor_release_convergence = True
+            
+            return
+        
+        fluid_source = state_in_source.fluid
+        fluid_load = state_in_load.fluid
+        
+        h_mains = fluid_load.state( T = Tmains )
+        
+        epsilon = self._compute_effectiveness( flowrate_source, state_in_source.cp, flowrate_load, state_in_load.cp)
+        T_in_source = state_in_source.T
+        
+        self._effectiveness = epsilon
+        
+        if self._release_vapor and fluid_load.can_boil:
+            
+            if Tmains is None:
+                raise TypeError("HeatExchanger.compute_outputs: Tmains must be provided if water is the load fluid and 'release_vapor' was set to 'True' at initialization (or was not provided).")
+            
+            flowrate_mains = 0
+            it = 0
+            
+            while True:
+                
+                total_flowrate_load = flowrate_load + flowrate_mains
+                total_h_in_load = ( flowrate_load*state_in_load.h + flowrate_mains*h_mains ) / total_flowrate_load
+                total_T_in_load = fluid_load.state( h = total_h_in_load ).T
+                
+                if fluid_source.can_boil and total_T_in_load >= fluid_source.T_sat:
+                    raise ValueError(f"HeatExchanger: Inlet load temperature ({ total_T_in_load } °C) is higher than (or equal to) the source fluid's saturation temperature: { fluid_source.T_sat } °C.")
+                
+                h_out_source_hyp = fluid_source.state( T = total_T_in_load )
+                
+                if T_in_source >= fluid_load.T_sat:
+                    
+                    if hasattr( fluid_load, "cp_ref" ):
+                        load_liquid_cp = fluid_load.cp_ref
+                    else:
+                        load_liquid_cp = fluid_load.state( T = fluid_load.T_sat - 1.5 ).cp
+                    
+                    h_out_load_hyp = fluid_load.h_sat_liq + load_liquid_cp*(T_in_source - fluid_load.T_sat)
+                else:
+                    h_out_load_hyp = fluid_load.state( T = T_in_source ).h
+                    
+                Q_max = min( [ flowrate_source     * abs( h_out_source_hyp - state_in_source.h  ),
+                               total_flowrate_load * abs( h_out_load_hyp   - total_h_in_load    )   ] )
+                
+                if not ( T_in_source > total_T_in_load ):
+                    Q_max = -Q_max
+                
+                h_out_source = state_in_source.h - epsilon * Q_max / flowrate_source
+                h_out_load = total_h_in_load + epsilon * Q_max / total_flowrate_load
+                
+                vapor_flowrate = total_flowrate_load * fluid_load.state( h = h_out_load ).Q
+                
+                it = it + 1
+                
+                Q_useful = flowrate_load * ( min( [ h_out_load, fluid_load.h_sat_liq ] ) - state_in_load.h )
+                Q_actual = total_flowrate_load * ( h_out_load - total_h_in_load )
+                Q_waste = Q_actual - Q_useful
+                
+                if flowrate_mains == vapor_flowrate or abs( flowrate_mains - vapor_flowrate ) / max( [ flowrate_mains, vapor_flowrate ] ) < self._vapor_tolerance:
+                    
+                    self._vapor_release_convergence = True
+                    break
+                
+                if it == self.maxIt:
+                    self._vapor_release_convergence = False
+                    break
+                
+                if flowrate_mains > 0 and vapor_flowrate == 0:
+                    flowrate_mains = 0.5*flowrate_mains
+                else:
+                    assert h_out_load > fluid_load.h_sat_liq
+                    flowrate_mains = Q_waste / ( fluid_load.h_sat_vap - h_mains )
+            
+            self._outlet_source.state = fluid_source.state( h = h_out_source )
+            self._outlet_load.state = fluid_load.state( h = min( [ h_out_load, fluid_load.h_sat_liq ] ) )
+            self._useful_power = Q_useful
+            self._wasted_power = Q_waste
+            self._vapor_flowrate = vapor_flowrate
+            self._iterations = it
+            
+            return
+        
+        else:
+            
+            self._iterations = 1
+            self._vapor_release_convergence = True
+            self._vapor_flowrate = 0
+            self._wasted_power = 0
+            
+            T_in_load = state_in_load.T
+            
+            if fluid_source.can_boil and T_in_load >= fluid_source.T_sat:
+                raise ValueError(f"HeatExchanger: Inlet load temperature ({ T_in_load } °C) is higher than (or equal to) the source fluid's saturation temperature: { fluid_source.T_sat } °C.")
+            
+            h_out_source_hyp = fluid_source.state( T = T_in_load )
+            
+            if fluid_load.can_boil and T_in_source >= fluid_load.T_sat:
+                
+                if hasattr( fluid_load, "cp_ref" ):
+                    load_liquid_cp = fluid_load.cp_ref
+                else:
+                    load_liquid_cp = fluid_load.state( T = fluid_load.T_sat - 1.5 ).cp
+                
+                h_out_load_hyp = fluid_load.h_sat_liq + load_liquid_cp*(T_in_source - fluid_load.T_sat)
+            else:
+                h_out_load_hyp = fluid_load.state( T = T_in_source ).h
+                
+            Q_max = min( [ flowrate_source * abs( h_out_source_hyp - state_in_source.h  ),
+                           flowrate_load   * abs( h_out_load_hyp   - state_in_load.h    )   ] )
+            
+            if not ( T_in_source > T_in_load ):
+                Q_max = -Q_max
+            
+            h_out_source = state_in_source.h - epsilon * Q_max / flowrate_source
+            h_out_load = state_in_load.h + epsilon * Q_max / flowrate_load
+            
+            Q_useful = flowrate_load * (  h_out_load - state_in_load.h )
+            
+            self._outlet_source.state = fluid_source.state( h = h_out_source )
+            self._outlet_load.state = fluid_load.state( h = h_out_load )
+            self._useful_power = Q_useful

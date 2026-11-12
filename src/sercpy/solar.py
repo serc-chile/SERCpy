@@ -2020,7 +2020,7 @@ class SolarField( Device ):
                     maxIt = True
                     break
                 if flowrate_mains > 0 and vapor_flowrate == 0:
-                    vapor_flowrate = 0.5*vapor_flowrate
+                    flowrate_mains = 0.5*flowrate_mains
                 else:
                     assert mixture_state.h > fluid.h_sat_liq
                     Q_useful = flowrate_in*( fluid.h_sat_liq - h_in )
@@ -2046,11 +2046,13 @@ class SolarField( Device ):
         """
         Method to specify the device to which the solar field's flow inlet is connected.
         
-        The single argument of this method has to be an instance of `sercpy.devices.Outlet`, which is expected to belong to another device of the thermal system.
+        The single argument of this method has to be an instance of :ref:`sercpy.devices.Outlet <class_outlet>`, which is expected to belong to another device of the thermal system.
+        
+        The inlet can be re-defined as many times as needed by using this method.
         
         Parameters
         ----------
-        inlet : sercpy.devices.Outlet
+        inlet : :ref:`Outlet <class_outlet>`
             Outlet from which the flowrate that enters the solar field comes.
         
         Returns
@@ -2180,27 +2182,27 @@ class SolarField( Device ):
     def _set_last_inputs( self, flowrate, state_in ):
         """
         Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether input convergence is achieved.
-
+        
         Parameters
         ----------
         flowrate : float
             Flowrate received by the solar field (kg/s).
         state_in : sercpy.fluids.FluidState
             State of the fluid received by the solar field.
-
+            
         Returns
         -------
         None.
-
+        
         """
         
         self._flowrate_last = flowrate
         self._state_in_last = state_in
         
-    def _compute_convergence(self, flowrate, state_in ):
+    def _compute_input_convergence(self, flowrate, state_in ):
         """
         Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
-
+        
         Parameters
         ----------
         flowrate : float
@@ -2334,7 +2336,7 @@ class SolarField( Device ):
                 self._set_last_inputs(flowrate, state_in)
                 self._input_convergence = False
             else:
-                self._compute_convergence(flowrate, state_in)
+                self._compute_input_convergence(flowrate, state_in)
                 if self._input_convergence:
                     return
                 else:

@@ -463,11 +463,11 @@ class StorageTank( Device ):
         When the number of nodes of the tank is modified, the length of these two lists has to be modified.
         
         This function carries out this process in a way that conserves the internal energy of the tank.
-
+        
         Returns
         -------
         None
-
+        
         """
         n_nodes_old = len( self._node_temperatures )
         node_interfaces_old = np.linspace( 0, 1, n_nodes_old + 1 ).astype(float).tolist()
@@ -1224,19 +1224,19 @@ class StorageTank( Device ):
         """
         Specify the devices to which the storage tank's inlet ports are connected.
         
-        All arguments provided must be instances of `sercpy.devices.Outlet`.
+        All arguments provided must be instances of :ref:`sercpy.devices.Outlet <class_outlet>`.
         
         Inlets can be re-defined as many times as needed by using this method.
         
         The total number of inlets expected to be specified by this method is equal to the number of inlets defined when providing the
         argument `io_relative_heights`, either at initialization or with the method :meth:`StorageTank.set_io_relative_heights`.
         
-        The method does not expect all inlets to be defined at the same time. However, all inlets must be defined before calling
-        the method :meth:`StorageTank.compute_outputs` for the first time.
+        The method does not expect all inlets to be defined at the same time. However, all inlets must be defined before
+        carrying out a simulation using the `StorageTank` instance.
         
         Parameters
         ----------
-        **kwargs : :doc:`/devices/outlet`
+        **kwargs : :ref:`Outlet <class_outlet>`
             Keyword arguments named `inlet_<i>`, where `<i>` is an
             integer between 1 and the number of inlet ports of the tank.
             (`inlet_1`, `inlet_2`, ...). 
@@ -1246,7 +1246,7 @@ class StorageTank( Device ):
         ValueError
             If a keyword does not match the expected format
         TypeError
-            If the arguments provided are not instances of sercpy.devices.outlet
+            If the arguments provided are not instances of sercpy.devices.Outlet
         
         """
         
@@ -1382,7 +1382,7 @@ class StorageTank( Device ):
         if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
             raise ValueError(f"StorageTank.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
     
-    def _compute_convergence(self, flowrate_list, state_in_list ):
+    def _compute_input_convergence(self, flowrate_list, state_in_list ):
         """
         Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
 
@@ -1514,7 +1514,7 @@ class StorageTank( Device ):
                 self._set_last_inputs(inlet_flowrates, inlet_states)
                 self._input_convergence = False
             else:
-                self._compute_convergence(inlet_flowrates, inlet_states)
+                self._compute_input_convergence(inlet_flowrates, inlet_states)
                 if self._input_convergence:
                     return
                 else:
