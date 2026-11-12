@@ -601,6 +601,8 @@ class HeatExchanger( Device ):
         The following attributes of the `HeatExchanger` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
             
             - input_convergence
+            - outlet_source (state and flowrate)
+            - outlet_load (state and flowrate)
             - effectiveness. This attribute gets updated only if the :math:`\varepsilon`-NTU model is being used
             - useful_power
             - wasted_power
