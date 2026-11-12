@@ -622,20 +622,20 @@ class HeatExchanger( Device ):
         flowrate_source : float
             Mass flowrate on the source side (or hot side) of the heat exchanger (kg/s).
         
-        state_in_source : :doc:<FluidState </fluids/fluidstate_class>`
+        state_in_source : :doc:`FluidState </fluids/fluidstate_class>`
             Thermodynamic state of the fluid entering the heat exchanger in its source side (or hot side).
         
         flowrate_load : float
             Mass flowrate on the load side (or cold side) of the heat exchanger (kg/s).
         
-        state_in_load : :doc:<FluidState </fluids/fluidstate_class>`
+        state_in_load : :doc:`FluidState </fluids/fluidstate_class>`
             Thermodynamic state of the fluid entering the heat exchanger in its load side (or cold side).
         
         Tmains : float, optional
             Temperature of the water in the distribution network. This parameter
             is only needed when the fluid in the load side of the heat exchanger
             is water, and if the parameter `release_vapor` was set to `True` at
-            initialization (or if this parameter was ommited, since `True` is its
+            initialization (or if this parameter was omitted, since `True` is its
             default value).
         
         Returns
