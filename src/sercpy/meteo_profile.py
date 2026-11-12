@@ -110,7 +110,9 @@ class MeteoProfile:
         Irradiance fraction reflected by the ground. If not provided, it defaults to 0.2.
     
     api_key : str, optional
-        User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__. Only needed when no data file is provided by the user. An alternative to providing this argument is using the function `config.set_api_key` to store the key permanently.
+        User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+        Only needed when no data file is provided by the user.
+        An alternative to providing this argument is :ref:`using the function config.set_api_key <apy_key_storing>` to store the key permanently.
     
     tmy_file_path : str, optional
         Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class </examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
