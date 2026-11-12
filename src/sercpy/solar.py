@@ -803,6 +803,7 @@ class SolarField( Device ):
     max_iterations : int, optional
         Maximum number of iterations allowed when computing the vapor
         being released due to boiling of the heat transfer fluid.
+        If not provided, it defaults to `30`.
     
     Attributes
     ----------
@@ -819,7 +820,7 @@ class SolarField( Device ):
         in consecutive iterations of a time step, so that no further computation is needed.
     
     useful_power : float
-        Useful power trasnferred to the heat transfer fluid (W). The word
+        Useful power transferred to the heat transfer fluid (W). The word
         'useful' is used to differentiate this value from the power used to
         generate undesired vapor that is then released. This attribute gets
         updated every time the method `SolarField.compute_outputs` is called.
@@ -871,7 +872,7 @@ class SolarField( Device ):
     
     ready_to_simulate : bool
         Boolean value stating whether all attributes needed for
-        the collector to be used in a simulation have been computed.
+        the collector to be used in a simulation have been established.
     
     """
     
@@ -1037,7 +1038,7 @@ class SolarField( Device ):
         if max_iterations is not None:
             self._max_iterations = self._validate_argument("max_iterations", max_iterations)
         else:
-            self._max_iterations = 100
+            self._max_iterations = 30
         
         self._outlet = Outlet()
     
@@ -1047,11 +1048,6 @@ class SolarField( Device ):
         return self._outlet
     
     @property
-    def inlet(self):
-        "Instance of the class sercpy.devices.Outlet representing another device's outlet from where the heat transfer fluid enters the solar field."
-        return self._inlet
-    
-    @property
     def collector(self):
         "Instance of the class sercpy.solar.Collector. It models the individual collectors used to build the solar field."
         return self._collector
@@ -1059,50 +1055,50 @@ class SolarField( Device ):
     @property
     def input_convergence(self):
         "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        if not hasattr( self, "_convergence" ):
-            raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+        if not hasattr( self, "_input_convergence" ):
+            raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._input_convergence
     
     @property
     def useful_power(self):
-        "Useful power trasnferred to the heat transfer fluid (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        "Useful power transferred to the heat transfer fluid (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_useful_power" ):
-            raise AttributeError("SolarField: Attribute 'useful_power' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'useful_power' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._useful_power
     
     @property
     def wasted_power(self):
         "Thermal power used to generate undesired vapor that is then released (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_wasted_power" ):
-            raise AttributeError("SolarField: Attribute 'wasted_power' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'wasted_power' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._wasted_power
     
     @property
     def vapor_flowrate(self):
         "Undesired vapor being released from the solar field (kg/s). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_vapor_flowrate" ):
-            raise AttributeError("SolarField: Attribute 'vapor_flowrate' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'vapor_flowrate' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._vapor_flowrate
     
     @property
     def efficiency(self):
         "Ratio between the useful power and the total available energy, which is computed as the irradiance on the collectors' plane, multiplied by the solar field's total area."
         if not hasattr( self, "_efficiency" ):
-            raise AttributeError("SolarField: Attribute 'efficiency' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'efficiency' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._efficiency
     
     @property
     def iterations(self):
         "Number of iterations carried out the last time the method SolarField.compute_outputs was called. An iteration process is only necessary when undesired vapor is being produced and released due to overheating of the collectors."
         if not hasattr( self, "_iterations" ):
-            raise AttributeError("SolarField: Attribute 'iterations' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'iterations' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._iterations
     
     @property
     def vapor_release_convergence(self):
         "Boolean value stating whether convergence for the vapor release modeling was achieved the last time the method SolarField.compute_outputs was called. If no vapor is released, this value will be True."
         if not hasattr( self, "_vapor_release_convergence" ):
-            raise AttributeError("SolarField: Attribute 'vapor_release_convergence' has not been computed yet. This attribute gets computed after calling the method SolarField.compute_outputs.")
+            raise AttributeError("SolarField: Attribute 'vapor_release_convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._vapor_release_convergence
     
     @property
@@ -1149,7 +1145,7 @@ class SolarField( Device ):
     
     @property
     def ready_to_simulate(self):
-        "Boolean value stating whether all attributes needed for the collector to be used in a simulation have been computed."
+        "Boolean value stating whether all attributes needed for the SolarField instance to be used in a simulation have been established."
         return all( [
             
             self._coll_tilt is not None,

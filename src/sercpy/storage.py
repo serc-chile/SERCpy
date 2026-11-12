@@ -145,7 +145,7 @@ class StorageTank( Device ):
         If not provided, it defaults to `-0.5`.
     
     internal_tolerance : float, optional
-        Maximum temperature discrepancy (°C) allowed between successive **internal**
+        Maximum temperature discrepancy (°C) allowed between consecutive **internal**
         iterations of the model so that convergence is achieved.
         Valid range: `1e-8` to `1e-1`. If not specified, it defaults to `1e-4`.
     
@@ -205,22 +205,22 @@ class StorageTank( Device ):
     dE : float
         Energy change of the fluid stored inside the tank during the last time
         step computed (J). This attribute gets updated every
-        time the method `SolarField.compute_outputs` is called.
+        time the method `StorageTank.compute_outputs` is called.
     
     Q_loss : float
         Heat loss rate to the environment during the last time step
         computed (W). This attribute gets updated every
-        time the method `SolarField.compute_outputs` is called.
+        time the method `StorageTank.compute_outputs` is called.
     
     internal_convergence : bool
         Boolean value stating whether convergence was achieved
         for the internal energy balance of the storage tank.
         This attribute gets updated every time the
-        method `SolarField.compute_outputs` is called.
+        method `StorageTank.compute_outputs` is called.
     
     iterations : int
         Number of internal iterations performed
-        the last time the method `SolarField.compute_outputs` was called.
+        the last time the method `StorageTank.compute_outputs` was called.
     
     io_positions_defined : bool
         Boolean value stating whether the positions of the inlet- and
@@ -230,7 +230,7 @@ class StorageTank( Device ):
     ready_to_simulate : bool
         Boolean value stating whether all the attributes that
         are necessary for the StorageTank to be used
-        in a simulation have already been defined.
+        in a simulation have already been established.
     
     """
     def __init__( self, *,
@@ -380,26 +380,28 @@ class StorageTank( Device ):
     
     @property
     def input_convergence(self):
+        if not hasattr( self, "_input_convergence" ):
+            raise AttributeError("StorageTank: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'StorageTank.compute_outputs' is called.")
         "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         return self._input_convergence
     
     @property
     def dE(self):
-        "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'StorageTank.compute_outputs' is called."
         if not hasattr( self, "_dE" ):
             raise AttributeError("StorageTank: Attribute 'dE' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._dE
     
     @property
     def Q_loss(self):
-        "Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        "Heat loss rate to the environment during the last time step computed (W). This attribute gets updated every time the method 'StorageTank.compute_outputs' is called."
         if not hasattr( self, "_Q_loss" ):
             raise AttributeError("StorageTank: Attribute 'Q_loss' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._Q_loss
     
     @property
     def internal_convergence(self):
-        "Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
+        "Boolean value stating whether convergence was achieved for the internal energy balance of the storage tank. This attribute gets updated every time the method 'StorageTank.compute_outputs' is called."
         if not hasattr( self, "_internal_convergence" ):
             raise AttributeError("StorageTank: Attribute 'internal_convergence' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._internal_convergence
@@ -407,6 +409,8 @@ class StorageTank( Device ):
     @property
     def iterations(self):
         "Number of internal iterations performed the last time the method StorageTank.compute_outputs was called."
+        if not hasattr( self, "_iterations" ):
+            raise AttributeError("StorageTank: Attribute 'iterations' has not been computed yet. This attribute is computed when the method 'StorageTank.compute_outputs' is called.")
         return self._iterations
     
     @property
@@ -416,7 +420,7 @@ class StorageTank( Device ):
     
     @property
     def ready_to_simulate(self):
-        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been defined."
+        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been established."
         if not hasattr( self, "_n_io_pairs" ):
             return False
         for i in range( len( self._n_io_pairs ) ):
@@ -434,12 +438,14 @@ class StorageTank( Device ):
         if not value >= 1:
             raise ValueError("StorageTank: 'n_nodes' must be >= 1.")
         self._n_nodes = int( value )
-        self._io_nodes_from_relative_heights()
         node_mass = self._fluid_density * self._volume / self._n_nodes
         self._node_thermal_capacity = node_mass * self._fluid_cp
         self._node_height = self._height / self._n_nodes
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
         self._update_temp_after_n_node_updating()
+        if hasattr( self, "_io_relative_heights" ):
+            self._io_nodes_from_relative_heights()
+        
     
     def _update_temp_after_n_node_updating( self ):
         """

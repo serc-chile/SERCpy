@@ -22,7 +22,6 @@ class OperatingConditions:
     
     Parameters
     ----------
-    
     meteo_profile : :doc:`MeteoProfile </meteo_profile/meteo_profile_class>`
         Object from which the meteorological data (ambient temperature, irradiance, mains water temperature, etc) is extracted.
     
@@ -230,16 +229,15 @@ class OperatingConditions:
             
             - `OperatingConditions` instances for which the time step has not been defined previously.
             - `OperatingConditions` instances for which the time step was already defined, in order to re-define the time step, thus reconstructing the profiles that are provided to the simulations.
-
+        
+        **Only one of the parameters must be provided.**
+        
         Parameters
         ----------
-        
-        Only one of the parameters must be provided.
-        
         time_step_min : int
             Time step in minutes. Valid values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.
         time_step : int
-            Time step in default time units (i.e., seconds). Its value must be equivalent to one of the possible time step lengths specified for `time_step_min`.
+            Time step in seconds. Its value must be equivalent to one of the possible time step lengths specified for `time_step_min`.
 
         Raises
         ------

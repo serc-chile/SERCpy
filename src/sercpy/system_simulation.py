@@ -2,7 +2,7 @@
 """
 Created on Tue Oct 27 15:44:20 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 class IterationsCounter:
