@@ -22,10 +22,11 @@ HX_allowed_arguments = [
 
 class HeatExchanger( Device ):
     r"""
-    Model for a counter-flow :math:`\epsilon`-NTU heat exchanger.
+    Model for a counter-flow :math:`\varepsilon`-NTU heat exchanger.
     
     If not enough parameters are provided, the model is automatically converted
-    to a constant-effectiveness heat exchanger.
+    to a constant-effectiveness heat exchanger. The drawback of this model is that effectiveness is not
+    computed as a function of the operating flowrate.
     
     In order for the :math:`\epsilon`-NTU model to be applied, the overall heat
     transfer coefficient (also called "UA") must be either provided by the user or
@@ -40,12 +41,35 @@ class HeatExchanger( Device ):
     Parameters
     ----------
     UA : float
-        Overall heat transfer coefficient of the heat exchanger (W/K).
+        Overall heat transfer coefficient of the heat exchanger (W/K). If provided, `rated_effectiveness` and `rated_water_flowrate` are ignored.
     
     rated_effectiveness : float
-        
+        Rated effectiveness of the heat exchanger (i.e., under nominal conditions). Valid range: `0.05 <= rated_effectiveness < 1`.
     
-    In addition to providing this parameter directly, there is also the option of 
+    rated_water_flowrate : float
+        Nominal water flowrate of the heat exchanger (kg/s).
+    
+    release_vapor : bool, optional
+        If this parameter is set to `True`, the vapor produced when the saturation
+        temperature of the load flow is achieved will be released and
+        replaced with water from the distribution network. This mode is only available
+        when water is used as heat transfer fluid. This parameter defaults to `True`.
+    
+    vapor_tolerance : float, optional
+        Only relevant if `release_vapor` is set to `True`. This argument defines
+        the relative difference allowed between the vapor flowrate being released
+        and the water flowrate being introduced from the distribution network to
+        replace it. Allowed range: `1e-8` to `1e-1`. If not provided, it defaults to `1e-3`.
+        
+    max_iterations : int, optional
+        Maximum number of iterations allowed when computing the vapor
+        being released due to boiling of the heat transfer fluid.
+        If not provided, it defaults to `30`.
+        
+    Attributes
+    ----------
+    
+    
     
     """
     def __init__(self, *,
@@ -230,8 +254,8 @@ class HeatExchanger( Device ):
             except:
                 raise TypeError("HeatExchanger: Parameter 'rated_effectiveness' must be convertible to type 'float'.")
             
-            if not ( value >= 0.05 and value <= 1 ):
-                raise ValueError("HeatExchanger: Parameter 'rated_effectiveness' must be in the range 0.05 <= rated_effectiveness <= 1.")
+            if not ( value >= 0.05 and value < 1 ):
+                raise ValueError("HeatExchanger: Parameter 'rated_effectiveness' must be in the range 0.05 <= rated_effectiveness < 1.")
             
         if argument_name == "rated_water_flowrate":
             try:
