@@ -164,7 +164,7 @@ class HeatExchanger( Device ):
                 return NTU / ( 1 + NTU )
             
             self._UA = float( root_scalar( lambda UA: compute_effectiveness_init( UA ) - rated_effectiveness,
-                                           x0 = 1000, bracket = [ 1, np.inf ], xtol = 1e-5 ).root )
+                                           x0 = 1000, xtol = 1e-5 ).root )
             
             if not abs( compute_effectiveness_init( self._UA ) - rated_effectiveness) <= 1e-4:
                 raise ValueError( "HeatExchanger: UA factor could not be determined." )
@@ -662,9 +662,9 @@ class HeatExchanger( Device ):
                 raise TypeError("HeatExchanger.compute_outputs: Parameter 'iteration_number' must be an 'int'. Its value msut be >= 0.")
 
             if not hasattr( self, "_inlet_source" ):
-                raise AttributeError( "HeatExchanger.compute_outputs: Attribute 'inlet_source' is not defined. Use the method HeatExchanger.set_connections." )
+                raise AttributeError( "HeatExchanger.compute_outputs: inlet_source has not been defined. Use the method HeatExchanger.set_connections." )
             if not hasattr( self, "_inlet_load" ):
-                raise AttributeError( "HeatExchanger.compute_outputs: Attribute 'inlet_load' is not defined. Use the method HeatExchanger.set_connections." )
+                raise AttributeError( "HeatExchanger.compute_outputs: inlet_load has not been defined. Use the method HeatExchanger.set_connections." )
             
             flowrate_source = self._inlet_source.flowrate
             state_in_source = self._inlet_source.state
@@ -702,7 +702,7 @@ class HeatExchanger( Device ):
         fluid_source = state_in_source.fluid
         fluid_load = state_in_load.fluid
         
-        h_mains = fluid_load.state( T = Tmains )
+        h_mains = fluid_load.state( T = Tmains ).h
         
         epsilon = self._compute_effectiveness( flowrate_source, state_in_source.cp, flowrate_load, state_in_load.cp)
         T_in_source = state_in_source.T
@@ -726,7 +726,7 @@ class HeatExchanger( Device ):
                 if fluid_source.can_boil and total_T_in_load >= fluid_source.T_sat:
                     raise ValueError(f"HeatExchanger: Inlet load temperature ({ total_T_in_load } °C) is higher than (or equal to) the source fluid's saturation temperature: { fluid_source.T_sat } °C.")
                 
-                h_out_source_hyp = fluid_source.state( T = total_T_in_load )
+                h_out_source_hyp = fluid_source.state( T = total_T_in_load ).h
                 
                 if T_in_source >= fluid_load.T_sat:
                     
@@ -761,7 +761,7 @@ class HeatExchanger( Device ):
                     self._vapor_release_convergence = True
                     break
                 
-                if it == self.maxIt:
+                if it == self._max_iterations:
                     self._vapor_release_convergence = False
                     break
                 
@@ -792,7 +792,7 @@ class HeatExchanger( Device ):
             if fluid_source.can_boil and T_in_load >= fluid_source.T_sat:
                 raise ValueError(f"HeatExchanger: Inlet load temperature ({ T_in_load } °C) is higher than (or equal to) the source fluid's saturation temperature: { fluid_source.T_sat } °C.")
             
-            h_out_source_hyp = fluid_source.state( T = T_in_load )
+            h_out_source_hyp = fluid_source.state( T = T_in_load ).h
             
             if fluid_load.can_boil and T_in_source >= fluid_load.T_sat:
                 

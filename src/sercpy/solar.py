@@ -1937,11 +1937,8 @@ class SolarField( Device ):
                 
                 mixture_state = fluid.state( h = h_mix_init )
                 
-                if self._row_mode == 'SERIES':
-                    for i in range( self._colls_per_row ):
-                        mixture_state = self._collector.compute_outlet_state(flowrate_mix, mixture_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor)
-                else:
-                    mixture_state = self._collector.compute_outlet_state( flowrate_mix / self._colls_per_row , mixture_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor)
+                for i in range( self._colls_per_row ):
+                    mixture_state = self._collector.compute_outlet_state(flowrate_mix, mixture_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor)
                 
                 vapor_flowrate = mixture_state.Q*flowrate_mix
                 
@@ -1968,11 +1965,10 @@ class SolarField( Device ):
         else:
             
             fluid_state = state_in
-            if self._row_mode == 'SERIES':
-                for i in range(self._colls_per_row):
-                    fluid_state = self._collector.compute_outlet_state( flowrate_in, fluid_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor )
-            else:
-                fluid_state = self._collector.compute_outlet_state( flowrate_in / self._colls_per_row , fluid_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor )
+            
+            for i in range(self._colls_per_row):
+                fluid_state = self._collector.compute_outlet_state( flowrate_in, fluid_state, irradiance, IAM_factor, Tamb, flowrate_correction_factor )
+
             return fluid_state, 0, 0, 0, True
         
     def set_connections( self, *, inlet ):
@@ -2257,6 +2253,9 @@ class SolarField( Device ):
                 raise TypeError("SolarField.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
             if not ( type( iteration_number ) is int and iteration_number >= 0 ):
                 raise TypeError("SolarField.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
+                
+            if not hasattr( self, "_inlet" ):
+                raise AttributeError( "SolarField.compute_outputs: inlet has not been defined. Use the method SolarField.set_connections." )
             
             try:
                 flowrate = self._inlet.flowrate
@@ -2302,13 +2301,8 @@ class SolarField( Device ):
         
         flowrate_each_row = flowrate / self._coll_rows
         fluid = state_in.fluid
-        
-        if self._row_mode == 'PARALLEL':
-            flowrate_each_collector = flowrate_each_row / self._colls_per_row
-        else:
-            flowrate_each_collector = flowrate_each_row
             
-        flowrate_correction_factor = self._collector.compute_flowrate_correction_factor( fluid, flowrate_each_collector )
+        flowrate_correction_factor = self._collector.compute_flowrate_correction_factor( fluid, flowrate_each_row )
         
         # Suffix "NS" for NON-shadeable rows
         if irradiance_first_row > 0:

@@ -1502,7 +1502,7 @@ class StorageTank( Device ):
             inlet_states = []
             for i in range( len( self._inlet_nodes ) ):
                 if not hasattr( self, "_inlet_" + str( i + 1 ) ):
-                    raise AttributeError( f"StorageTank.compute_outputs: Attribute '{ 'inlet_' + str( i + 1 ) }' is not defined. Use the method StorageTank.set_connections." )
+                    raise AttributeError( f"StorageTank.compute_outputs: { 'inlet_' + str( i + 1 ) } has not been defined. Use the method StorageTank.set_connections." )
                 outlet = getattr( self, "_inlet_" + str( i + 1 ) )
                 inlet_flowrates.append( outlet.flowrate )
                 inlet_state = outlet.state
