@@ -17,7 +17,7 @@ A general rule that applies to all fluid names is that upper- and lower cases ar
 Water
 ~~~~~
 
-For pure water, acceptable names are `"w"` and `"water"`.
+For pure water, acceptable names are `"w"` and `"water"`. This is the only type of fluid for which boiling is modeled; therefore, a pressure must be specified when initializing it (parameter `p` or `P` of `Fluid`). It must be the absolute pressure expressed in Pa (Pascal).
 
 Water-glycol mixtures
 ~~~~~~~~~~~~~~~~~~~~~
