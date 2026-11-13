@@ -50,7 +50,7 @@ class HeatExchanger( Device ):
     
     rated_effectiveness : float
         Rated effectiveness of the heat exchanger (i.e., under nominal conditions).
-        Valid range: `0.05 <= rated_effectiveness < 1`.
+        Valid range: `0.05 <= rated_effectiveness <= 0.999`.
         This parameter must be specified if `UA` is not provided.
         If provided along with `rated_water_flowrate`,
         `UA` is computed from these two parameters.
@@ -158,18 +158,9 @@ class HeatExchanger( Device ):
             rated_water_flowrate = self._validate_argument("rated_water_flowrate", rated_water_flowrate)
             
             cp = 4184
-            m_in = rated_water_flowrate
-            C_min = m_in*cp
+            C = rated_water_flowrate*cp
             
-            def compute_effectiveness_init( UA ):
-                NTU = UA / C_min
-                return NTU / ( 1 + NTU )
-            
-            self._UA = float( root_scalar( lambda UA: compute_effectiveness_init( UA ) - rated_effectiveness,
-                                           x0 = 1000, xtol = 1e-5 ).root )
-            
-            if not abs( compute_effectiveness_init( self._UA ) - rated_effectiveness) <= 1e-4:
-                raise ValueError( "HeatExchanger: UA factor could not be determined." )
+            self._UA = C * rated_effectiveness / ( 1 - rated_effectiveness )
         
         # Case 3: Only effectiveness is provided. Constant-effectiveness HX is used
         elif rated_effectiveness is not None:
@@ -325,8 +316,8 @@ class HeatExchanger( Device ):
             except:
                 raise TypeError("HeatExchanger: Parameter 'rated_effectiveness' must be convertible to type 'float'.")
             
-            if not ( value >= 0.05 and value < 1 ):
-                raise ValueError("HeatExchanger: Parameter 'rated_effectiveness' must be in the range 0.05 <= rated_effectiveness < 1.")
+            if not ( value >= 0.05 and value <= 0.999 ):
+                raise ValueError("HeatExchanger: Parameter 'rated_effectiveness' must be in the range 0.05 <= rated_effectiveness <= 0.999.")
             
         if argument_name == "rated_water_flowrate":
             try:
