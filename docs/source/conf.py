@@ -36,6 +36,7 @@ autodoc_default_options = {
 }
 napoleon_custom_sections = [('Attributes', 'params_style'),
                             ('Methods', 'params_style')]
+napoleon_use_param = False
 
 # Prevent Notebooks from being executed
 nbsphinx_execute = 'never'
