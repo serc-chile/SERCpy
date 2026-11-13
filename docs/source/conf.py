@@ -6,7 +6,7 @@ project = 'SERCpy'
 copyright = '2026, SERC Chile'
 author = 'Adrian Riebel'
 
-release = '0.2.1'
+release = '0.2.2'
 version = '0.2'
 
 # -- General configuration
