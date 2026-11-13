@@ -398,13 +398,6 @@ class HeatExchanger( Device ):
         
         inlet_load : :ref:`Outlet <class_outlet>`
             Inlet on the load side (or cold side) of the heat exchanger.
-    
-        Raises
-        ------
-        ValueError
-            If a keyword does not match the expected format
-        TypeError
-            If the arguments provided are not instances of sercpy.devices.Outlet
         
         """
         

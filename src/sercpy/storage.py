@@ -1239,14 +1239,6 @@ class StorageTank( Device ):
         inlet_1, inlet_2, ... : :ref:`Outlet <class_outlet>`
             Keyword arguments named `inlet_<i>`, where `<i>` is an
             integer between 1 and the number of inlet ports of the tank.
-            (`inlet_1`, `inlet_2`, ...). 
-    
-        Raises
-        ------
-        ValueError
-            If a keyword does not match the expected format
-        TypeError
-            If the arguments provided are not instances of sercpy.devices.Outlet
         
         """
         
