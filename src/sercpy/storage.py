@@ -38,17 +38,18 @@ class StorageTank( Device ):
     
     This class models sensible heat storage tanks with a liquid storage medium.
     
-    This model discretizes a tank dividing its volume into
+    The tank is discretized by dividing its volume into
     vertically-stacked equally-sized parts, known as "nodes".
     
     This is a computationally cheap way of modeling stratified tanks, i.e.,
     tanks in which there is a noticeable temperature difference between the top
     part and the bottom part, with the top part being hotter.
     
-    It is based on the models presented by Newton in 1995 [1]_, which
-    have been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
+    The main energy balance calculation method
+    is based on an analytical model presented by Newton in 1995 [1]_, which
+    has been featured in simulation programs such as `TRNSYS <https://www.trnsys.com/>`_.
     
-    It also features the model known as "Advanced Flowrate Distribution",
+    This class also features the model known as "Advanced Flowrate Distribution",
     presented by Saloux and Candanedo in 2019 [2]_.
     
     The tank can have as many inlets and outlets as the user requires.
