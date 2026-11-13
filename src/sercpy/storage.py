@@ -1236,7 +1236,7 @@ class StorageTank( Device ):
         
         Parameters
         ----------
-        **kwargs : :ref:`Outlet <class_outlet>`
+        inlet_1, inlet_2, ... : :ref:`Outlet <class_outlet>`
             Keyword arguments named `inlet_<i>`, where `<i>` is an
             integer between 1 and the number of inlet ports of the tank.
             (`inlet_1`, `inlet_2`, ...). 
