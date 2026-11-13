@@ -2377,7 +2377,7 @@ def example_solar_field( field_gross_area, latitude = None, ):
     a2 = 0.01
     coll_IAM = 0.05
     
-    if field_gross_area < 10:
+    if field_gross_area < 12:
         raise ValueError( "example_solar_field: field_gross_area cannot be less than 10." )
     
     if latitude is not None:
@@ -2409,6 +2409,8 @@ def example_solar_field( field_gross_area, latitude = None, ):
         coll_tilt = coll_tilt,
         coll_azimuth = coll_azimuth,
         total_colls = n_colls,
+        non_shadeable_colls = int( n_colls*0.5 ),
+        ground_fraction_covered = 0.6,
         
         )
     

@@ -37,8 +37,8 @@ class HeatExchanger( Device ):
         
         - The **rated effectiveness**, i.e., the effectiveness of the heat exchanger when it operates under nominal conditions.
         - The **rated water flowrate**, i.e., the nominal flowrate of the heat exchanger.
-        Water is assumed as heat transfer fluid to compute UA; nevertheless, any :doc:`Fluid </fluids/fluid_class>` can be used
-        to obtain results with an already initialized instance.
+          Water is assumed as heat transfer fluid to compute UA; nevertheless, any :doc:`Fluid </fluids/fluid_class>` can be used
+          to obtain results with an already initialized instance.
         
     If only the rated effectiveness of the heat exchanger is provided, constant effectiveness is assumed.
     
