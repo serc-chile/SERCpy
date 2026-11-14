@@ -405,11 +405,11 @@ class HeatExchanger( Device ):
             self._inlet_load = inlet_load
             
     def set_convergence_criteria( self, *,
-                                  relative_tolerance: float,
-                                  temp_tolerance: Optional[ float ] = None,
-                                  h_tolerance: Optional[ float ] = None,
-                                  temp_normalization_range: Optional[ float ] = None,
-                                  h_normalization_range: Optional[ float ] = None ):
+                                  relative_tolerance,
+                                  temp_tolerance,
+                                  h_tolerance,
+                                  temp_normalization_range,
+                                  h_normalization_range ):
         """
         Establish the convergence criteria of the `HeatExchanger` instance in the context of a simulation.
         
