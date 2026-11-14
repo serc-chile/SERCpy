@@ -15,6 +15,7 @@ The concept of "device" in the context of **SERCpy**, encompasses the classes th
   solar/solar
   storage/storagetank_class
   heat_exchanger/heat_exchanger_class
+  pump/pump
 
 .. _class_outlet:
 
