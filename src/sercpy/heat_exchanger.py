@@ -215,9 +215,9 @@ class HeatExchanger( Device ):
         
     @property
     def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method HeatExchanger.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the HeatExchanger instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        "Boolean value stating whether convergence was achieved the last time the method HeatExchanger.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the HeatExchanger instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_convergence" ):
-            raise AttributeError("HeatExchanger: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
+            raise AttributeError("HeatExchanger: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
         return self._input_convergence
     
     @property
@@ -652,10 +652,14 @@ class HeatExchanger( Device ):
             if not hasattr( self, "_inlet_load" ):
                 raise AttributeError( "HeatExchanger.compute_outputs: inlet_load has not been defined. Use the method HeatExchanger.set_connections." )
             
-            flowrate_source = self._inlet_source.flowrate
-            state_in_source = self._inlet_source.state
-            flowrate_load = self._inlet_load.flowrate
-            state_in_load = self._inlet_load.state
+            try:
+                flowrate_source = self._inlet_source.flowrate
+                state_in_source = self._inlet_source.state
+                flowrate_load = self._inlet_load.flowrate
+                state_in_load = self._inlet_load.state
+            except AttributeError:
+                self._input_convergence = False
+                return
                 
             if iteration_number == 0:
                 self._set_last_inputs(flowrate_source, state_in_source, flowrate_load, state_in_load)

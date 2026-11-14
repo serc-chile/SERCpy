@@ -383,7 +383,7 @@ class StorageTank( Device ):
     def input_convergence(self):
         if not hasattr( self, "_input_convergence" ):
             raise AttributeError("StorageTank: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'StorageTank.compute_outputs' is called.")
-        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         return self._input_convergence
     
     @property
@@ -1497,8 +1497,12 @@ class StorageTank( Device ):
                 if not hasattr( self, "_inlet_" + str( i + 1 ) ):
                     raise AttributeError( f"StorageTank.compute_outputs: { 'inlet_' + str( i + 1 ) } has not been defined. Use the method StorageTank.set_connections." )
                 outlet = getattr( self, "_inlet_" + str( i + 1 ) )
-                inlet_flowrates.append( outlet.flowrate )
-                inlet_state = outlet.state
+                try:
+                    inlet_flowrates.append( outlet.flowrate )
+                    inlet_state = outlet.state
+                except AttributeError:
+                    self._input_convergence = False
+                    return
                 if not inlet_state.fluid is self._stored_fluid:
                     raise ValueError(f"StorageTank.compute_outputs: Fluid entering through inlet {i + 1} is not the same fluid that is stored by the tank.")
                 inlet_states.append( inlet_state )

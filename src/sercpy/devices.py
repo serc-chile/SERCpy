@@ -36,7 +36,6 @@ class Outlet:
     
     @property
     def state(self):
-        "Inste"
         if not hasattr( self, "_state" ):
             raise AttributeError("Outlet: Attribute 'state' has not been defined.")
         return self._state
@@ -55,6 +54,9 @@ class Outlet:
     
     @flowrate.setter
     def flowrate(self, flowrate):
+        if flowrate is None:
+            self._flowrate = None
+            return
         try:
             flowrate = float(flowrate)
         except:
@@ -78,6 +80,32 @@ class Outlet:
         if not hasattr( self, "_state" ):
             raise AttributeError("Outlet: Attribute 'state' has not been defined.")
         return self._state.h
+    
+class ControlSignal:
+    
+    @property
+    def signal_value(self):
+        if not hasattr( self, "_signal_value" ):
+            raise AttributeError("ControlSignal: signal value has not been assigned.")
+        return self._signal_value
+    
+    @signal_value.setter
+    def signal_value( self, value ):
+        try:
+            value = float( value )
+        except:
+            raise TypeError("ControlSignal: signal value must be a float.")
+        if not ( value >= 0 and value <= 1 ):
+            raise ValueError("ControlSignal: signal value must be in the range 0 <= signal_value <= 1.")
+        self._signal_value = value
+    
+    @property
+    def signal(self):
+        return self.signal_value
+    
+    @signal.setter
+    def signal(self, value):
+        self.signal_value = value
 
 class Device:
     

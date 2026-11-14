@@ -433,12 +433,12 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         Only needed if a conversion between mass and volumes (or flowrates involving volumes and masses) is being carried out. The default is None.
     density_units : str, optional
         Units in which the density of the fluid is being expressed. The default is `"kg/m3"`.
-
+    
     Raises
     ------
     UnitsError
         If the conversion is not possible.
-
+    
     Returns
     -------
     float or np.array
@@ -462,6 +462,9 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         goal_units = str( goal_units )
     except:
         raise UnitsError("convert_units: Argument 'goal_units' must be convertible to type str.")
+        
+    if original_units == goal_units:
+        return input_value
     
     if density is not None:
         try:

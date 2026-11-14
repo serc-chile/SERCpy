@@ -977,9 +977,9 @@ class SolarField( Device ):
     
     @property
     def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_input_convergence" ):
-            raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
+            raise AttributeError("SolarField: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
         return self._input_convergence
     
     @property
@@ -2369,7 +2369,7 @@ def example_solar_field( field_gross_area, latitude = None, ):
     solar_field : SolarField
         Generic instance of the class SolarField.
 
-    """
+    """    
     
     coll_area = 2
     n0 = 0.75
