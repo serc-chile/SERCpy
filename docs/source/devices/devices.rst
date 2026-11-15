@@ -6,7 +6,7 @@ The concept of "device" in the context of **SERCpy**, encompasses the classes th
 - :doc:`Solar collectors and solar fields <solar/solar>`
 - :doc:`Storage tanks <storage/storagetank_class>`
 - :doc:`Heat Exchangers <heat_exchanger/heat_exchanger_class>`
-- Controllers
+- :doc:`Controllers <controller/controller>`
 
 
 .. toctree::
@@ -15,6 +15,7 @@ The concept of "device" in the context of **SERCpy**, encompasses the classes th
   solar/solar
   storage/storagetank_class
   heat_exchanger/heat_exchanger_class
+  controller/controller
   pump/pump
 
 .. _class_outlet:
