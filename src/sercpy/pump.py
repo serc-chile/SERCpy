@@ -2,7 +2,7 @@
 """
 Created on Fri Nov 13 16:14:16 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 from .devices import Outlet
@@ -163,6 +163,13 @@ class Pump:
         return self._outlet
     
     @property
+    def inlet(self):
+        "Instance of the class sercpy.devices.Outlet representing an outlet of another device from which the `Pump` instance takes its inputs."
+        if not hasattr( self, "_inlet" ):
+            raise AttributeError("Pump: Attribute 'inlet' has not been defined. This is done with the method Pump.set_connections.")
+        return self._inlet
+    
+    @property
     def input_convergence(self):
         "Boolean value stating whether convergence was achieved the last time the method Pump.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the `Pump` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_input_convergence" ):
@@ -193,6 +200,10 @@ class Pump:
             return 'kg/s'
         else:
             return 'm3/s'
+        
+    @inlet.setter
+    def inlet(self, value):
+        raise AttributeError("Pump: Attribute 'inlet' must be set with the method `Pump.set_connections.`")
     
     def _validate_argument( self, argument_name, value ):
         """

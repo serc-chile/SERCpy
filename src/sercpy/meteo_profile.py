@@ -93,7 +93,7 @@ class MeteoProfile:
     
     The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
     
-    It is strongly recommended to follow the :doc:`tutorial on the use of this class </examples/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
+    It is strongly recommended to follow the :doc:`tutorial on the use of this class </meteo_profile/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
     
     Parameters
     ----------
@@ -115,7 +115,7 @@ class MeteoProfile:
         An alternative to providing this argument is :ref:`using the function config.set_api_key <apy_key_storing>` to store the key permanently.
     
     tmy_file_path : str, optional
-        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class </examples/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
+        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class </meteo_profile/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
         In the next arguments, the terms 'custom format' and 'custom file' refer to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
     
     ghi_col_name : str, optional

@@ -9,9 +9,9 @@ class ControlSignal:
     """
     Object that stores the control signal of a controller.
     
-    Like the class :ref:`Outlet <class_outlet>`, it has the purpose of storing the
-    signal value of a `Controller`, and to establish the connection with the devices that
-    will receive the signal sent by the controller.
+    Like the class :ref:`Outlet <class_outlet>`, it has the purpose of being used
+    to establish the connection between the controller and the devices
+    that receive its signals.
     
     Attributes
     ----------
