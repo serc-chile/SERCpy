@@ -13,4 +13,3 @@ Methods
 
    HeatExchanger.compute_outputs
    HeatExchanger.set_connections
-   HeatExchanger.set_convergence_criteria
