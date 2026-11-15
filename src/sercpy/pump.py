@@ -5,7 +5,8 @@ Created on Fri Nov 13 16:14:16 2026
 @author: adria
 """
 
-from .devices import Outlet, ControlSignal
+from .devices import Outlet
+from .controller import ControlSignal
 from .units import get_unit_type, convert_units
 import warnings
 
