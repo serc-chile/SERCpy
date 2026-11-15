@@ -8,7 +8,6 @@ Created on Fri Nov 13 16:14:16 2026
 from .devices import Outlet, ControlSignal
 from .units import get_unit_type, convert_units
 import warnings
-from typing import Optional
 
 pump_allowed_arguments = [
     
@@ -79,7 +78,9 @@ class Pump:
         `Pump` instance takes its inputs. It must be set with the
         method `Pump.set_connections`.
         
-    control_signal : 
+    control_signal : :ref:`ControlSignal <control_signal_class>`
+        Instance of the class :ref:`ControlSignal <control_signal_class>`
+        representing the control signal of the Controller that controls the pump.
     
     input_convergence : bool
         Boolean value stating whether convergence was achieved the last time the method Pump.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the `Pump` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.

@@ -6,9 +6,7 @@ Created on Wed Nov 11 16:07:23 2026
 """
 
 from .devices import Device, Outlet
-from scipy.optimize import root_scalar
 import numpy as np
-from typing import Optional
 
 HX_allowed_arguments = [
     
