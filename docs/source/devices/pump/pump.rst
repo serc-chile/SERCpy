@@ -13,4 +13,3 @@ Methods
 
    Pump.compute_outputs
    Pump.set_connections
-   Pump.set_convergence_criteria
