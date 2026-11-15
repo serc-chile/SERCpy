@@ -85,6 +85,18 @@ class HeatExchanger( Device ):
     outlet_load : :ref:`Outlet <class_outlet>`
         Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
         representing the outlet on the load side (or cold side) of the heat exchanger.
+        
+    inlet_source : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing an outlet of another device from which the
+        heat source flow of the heat exchanger comes. It must be set with the
+        method `HeatExchanger.set_connections`.
+    
+    inlet_load : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing an outlet of another device from which the
+        heat load flow of the heat exchanger comes. It must be set with the
+        method `HeatExchanger.set_connections`.
     
     constant_effectiveness : bool
         Boolean value with the value `True` if the constant
@@ -200,6 +212,20 @@ class HeatExchanger( Device ):
         return self._outlet_load
     
     @property
+    def inlet_source(self):
+        "Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing an outlet of another device from which the heat source flow of the heat exchanger comes."
+        if not hasattr( self, "_inlet_source" ):
+            raise AttributeError("HeatExchanger: Attribute 'inlet_source' has not been defined. This is done with the method HeatExchanger.set_connections.")
+        return self._inlet_source
+        
+    @property
+    def inlet_load(self):
+        "Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing an outlet of another device from which the heat load flow of the heat exchanger comes."
+        if not hasattr( self, "_inlet_load" ):
+            raise AttributeError("HeatExchanger: Attribute 'inlet_load' has not been defined. This is done with the method HeatExchanger.set_connections.")
+        return self._inlet_load
+    
+    @property
     def constant_effectiveness(self):
         "Boolean value with the value 'True' if the constant effectiveness model is being used instead of the effectiveness-NTU model."
         return self._UA is None
@@ -266,6 +292,14 @@ class HeatExchanger( Device ):
             hasattr( self, "_inlet_load" ),
             
             ] )
+    
+    @inlet_source.setter
+    def inlet_source(self, value):
+        raise AttributeError("HeatExchanger: Attribute 'inlet_source' must be set with the method `HeatExchanger.set_connections.`")
+        
+    @inlet_load.setter
+    def inlet_load(self, value):
+        raise AttributeError("HeatExchanger: Attribute 'inlet_load' must be set with the method `HeatExchanger.set_connections.`")
         
     @staticmethod
     def _validate_argument( argument_name, value ):
@@ -403,179 +437,6 @@ class HeatExchanger( Device ):
             raise TypeError( "HeatExchanger.set_connections: Parameter 'inlet_load' must be an instance of sercpy.fluids.Outlet." )
         elif inlet_load is not None:
             self._inlet_load = inlet_load
-            
-    def set_convergence_criteria( self, *,
-                                  relative_tolerance,
-                                  temp_tolerance,
-                                  h_tolerance,
-                                  temp_normalization_range,
-                                  h_normalization_range ):
-        """
-        Establish the convergence criteria of the `HeatExchanger` instance in the context of a simulation.
-        
-        When used in the context of a simulation, a `HeatExchanger` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
-        The aforementioned "margin" or "tolerance" is set by this method.
-        When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
-        
-        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
-        
-        For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
-        Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
-        
-        There are two ways of setting the tolerances for temperature and specific enthalpy:
-            
-            - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
-            - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
-        
-        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
-        
-        Parameters
-        ----------
-        relative_tolerance : float
-            Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `HeatExchanger`
-            class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
-        
-        temp_tolerance : float, optional
-            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
-        
-        h_tolerance : float, optional
-            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
-        
-        temp_normalization_range : float, optional
-            Normalization range for temperature. See the description above for more details.
-        
-        h_normalization_range : float, optional
-            Normalization range for specific enthalpy. See the description above for more details.
-        
-        Returns
-        -------
-        None.
-        
-        """
-        try:
-            relative_tolerance = float( relative_tolerance )
-        except:
-            raise TypeError("HeatExchanger.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'.")
-        
-        self._relative_tolerance = relative_tolerance
-        
-        if sum( [ variable is not None for variable in [ 
-                
-                temp_tolerance,
-                h_tolerance,
-                temp_normalization_range,
-                h_normalization_range,
-                
-                ] ] ) != 1:
-            
-            raise ValueError("HeatExchanger.set_convergence_criteria: One and only one of the optional parameters must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
-        
-        if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
-            raise ValueError("HeatExchanger.set_convergence_criteria: At least one of the following parameters must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
-        
-        elif temp_tolerance is not None and temp_normalization_range is not None:
-            raise ValueError("HeatExchanger.set_convergence_criteria: Parameters 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
-        
-        elif h_tolerance is not None and h_normalization_range is not None:
-            raise ValueError("HeatExchanger.set_convergence_criteria: Parameters 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
-            
-        if temp_tolerance is not None:
-            try:
-                temp_tolerance = float( temp_tolerance )
-            except:
-                raise TypeError("HeatExchanger.set_convergence_criteria: 'temp_tolerance' must be convertible to type 'float'.")
-            self._temp_tolerance = temp_tolerance
-            
-        elif temp_normalization_range is not None:
-            try:
-                temp_normalization_range = float( temp_normalization_range )
-            except:
-                raise TypeError("HeatExchanger.set_convergence_criteria: 'temp_normalization_range' must be convertible to type 'float'.")
-            self._temp_tolerance = relative_tolerance*temp_normalization_range
-        
-        else:
-            self._temp_tolerance = None
-        
-        if h_tolerance is not None:
-            try:
-                h_tolerance = float( h_tolerance )
-            except:
-                raise TypeError("HeatExchanger.set_convergence_criteria: 'h_tolerance' must be convertible to type 'float'.")
-            self._h_tolerance = h_tolerance
-        elif h_normalization_range is not None:
-            try:
-                h_normalization_range = float( h_normalization_range )
-            except:
-                raise TypeError("HeatExchanger.set_convergence_criteria: 'h_normalization_range' must be convertible to type 'float'.")
-            self._h_tolerance = relative_tolerance*h_normalization_range
-        
-        else:
-            self._h_tolerance = None
-        
-        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
-            raise ValueError(f"HeatExchanger.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
-        
-        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
-            raise ValueError(f"HeatExchanger.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
-        
-    def _set_last_inputs( self, flowrate_source, state_in_source, flowrate_load, state_in_load):
-        """
-        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether input convergence is achieved.
-        
-        Parameters
-        ----------
-        flowrate_source : float
-            Flowrate received by the solar field (kg/s).
-        state_in : sercpy.fluids.FluidState
-            State of the fluid received by the solar field.
-            
-        Returns
-        -------
-        None.
-        
-        """
-        
-        self._flowrate_source_last = flowrate_source
-        self._state_in_source_last = state_in_source
-        self._flowrate_load_last = flowrate_load
-        self._state_in_load_last = state_in_load
-        
-    def _compute_input_convergence(self, flowrate_source, state_in_source, flowrate_load, state_in_load):
-        """
-        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
-        
-        Parameters
-        ----------
-        flowrate : float
-            Flowrate received by the solar field (kg/s).
-        state_in : sercpy.fluids.FluidState
-            State of the fluid received by the solar field.
-        
-        Returns
-        -------
-        None.
-        
-        """
-        convergence = True
-        if flowrate_source == 0 or self._flowrate_source_last == 0:
-            convergence = convergence and flowrate_source == self._flowrate_source_last
-        elif flowrate_source != self._flowrate_source_last:
-            convergence = convergence and abs( flowrate_source - self._flowrate_source_last ) / min( [ flowrate_source  , self._flowrate_source_last ] ) <= self._relative_tolerance
-        
-        if flowrate_load == 0 or self._flowrate_load_last == 0:
-            convergence = convergence and flowrate_load == self._flowrate_load_last
-        elif flowrate_load != self._flowrate_load_last:
-            convergence = convergence and abs( flowrate_load - self._flowrate_load_last ) / min( [ flowrate_load  , self._flowrate_load_last ] ) <= self._relative_tolerance
-
-        if self._h_tolerance is not None:
-            convergence = convergence and abs( state_in_source.h - self._state_in_source_last.h ) <= self._h_tolerance
-            convergence = convergence and abs( state_in_load.h - self._state_in_load_last.h ) <= self._h_tolerance
-        
-        if self._temp_tolerance is not None:
-            convergence = convergence and abs( state_in_source.T - self._state_in_source_last.T ) <= self._temp_tolerance
-            convergence = convergence and abs( state_in_load.T - self._state_in_load_last.T ) <= self._temp_tolerance
-            
-        self._input_convergence = convergence
     
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
                          flowrate_source = None, state_in_source = None,
@@ -662,14 +523,14 @@ class HeatExchanger( Device ):
                 return
                 
             if iteration_number == 0:
-                self._set_last_inputs(flowrate_source, state_in_source, flowrate_load, state_in_load)
+                self._relative_inputs_last, self._state_inputs_last = [ flowrate_source, flowrate_load ], [ state_in_source, state_in_load ]
                 self._input_convergence = False
             else:
-                self._compute_input_convergence(flowrate_source, state_in_source, flowrate_load, state_in_load)
+                self._compute_input_convergence(
+                    relative_inputs = [ flowrate_source, flowrate_load ],
+                    state_inputs = [ state_in_source, state_in_load ]  )
                 if self._input_convergence:
                     return
-                else:
-                    self._set_last_inputs(flowrate_source, state_in_source, flowrate_load, state_in_load)
             
             Tmains = operating_conditions[ 'Tmains' ]
             

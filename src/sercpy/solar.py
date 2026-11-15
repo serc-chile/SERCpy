@@ -774,7 +774,14 @@ class SolarField( Device ):
     Attributes
     ----------
     outlet : :ref:`Outlet <class_outlet>`
-        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing the main fluid outlet of the solar field.
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing the main fluid outlet of the solar field.
+        
+    inlet : :ref:`Outlet <class_outlet>`
+        Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing an outlet of another device from which the
+        `SolarField` instance takes its inputs. It must be set with the
+        method `SolarField.set_connections`.
     
     collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
         Object that models each indidual collector of the solar field.
@@ -971,6 +978,13 @@ class SolarField( Device ):
         return self._outlet
     
     @property
+    def inlet(self):
+        "Instance of the class sercpy.devices.Outlet representing an outlet of another device from which the `SolarField` instance takes its inputs."
+        if not hasattr( self, "_inlet" ):
+            raise AttributeError("SolarField: Attribute 'inlet' has not been defined. This is done with the method SolarField.set_connections.")
+        return self._inlet
+    
+    @property
     def collector(self):
         "Instance of the class sercpy.solar.Collector. It models the individual collectors used to build the solar field."
         return self._collector
@@ -1098,6 +1112,10 @@ class SolarField( Device ):
         self._coll_azimuth = self._validate_argument("coll_azimuth", value)
         if self._coll_tilt is not None:
             self._compute_rotation_matrix()
+            
+    @inlet.setter
+    def inlet(self, value):
+        raise AttributeError("SolarField: Attribute 'inlet' must be set with the method `SolarField.set_connections.`")
     
     def set_auto_attributes( self, *, coll_tilt, coll_azimuth, ground_albedo ):
         """
@@ -1993,170 +2011,6 @@ class SolarField( Device ):
             raise ValueError("SolarField.set_inputs: 'outlet' must be an instance of sercpy.devices.Outlet.")
         
         self._inlet = inlet
-    
-    def set_convergence_criteria( self, *,
-                                  relative_tolerance,
-                                  temp_tolerance,
-                                  h_tolerance,
-                                  temp_normalization_range,
-                                  h_normalization_range ):
-        """
-        Establish the convergence criteria of the `SolarField` instance in the context of a simulation.
-        
-        When used in the context of a simulation, a `SolarField` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
-        The aforementioned "margin" or "tolerance" is set by this method.
-        When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
-        
-        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
-        
-        For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
-        Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
-        
-        There are two ways of setting the tolerances for temperature and specific enthalpy:
-            
-            - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
-            - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
-        
-        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
-        
-        Parameters
-        ----------
-        relative_tolerance : float
-            Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `SolarField`
-            class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
-        
-        temp_tolerance : float, optional
-            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
-        
-        h_tolerance : float, optional
-            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
-        
-        temp_normalization_range : float, optional
-            Normalization range for temperature. See the description above for more details.
-        
-        h_normalization_range : float, optional
-            Normalization range for specific enthalpy. See the description above for more details.
-        
-        Returns
-        -------
-        None.
-        
-        """
-        try:
-            relative_tolerance = float( relative_tolerance )
-        except:
-            raise TypeError("SolarField.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'.")
-        
-        self._relative_tolerance = relative_tolerance
-        
-        if sum( [ variable is not None for variable in [ 
-                
-                temp_tolerance,
-                h_tolerance,
-                temp_normalization_range,
-                h_normalization_range,
-                
-                ] ] ) != 1:
-            
-            raise ValueError("SolarField.set_convergence_criteria: One and only one of the optional arguments must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
-        
-        if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
-            raise ValueError("SolarField.set_convergence_criteria: At least one of the following arguments must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
-        
-        elif temp_tolerance is not None and temp_normalization_range is not None:
-            raise ValueError("SolarField.set_convergence_criteria: Arguments 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
-        
-        elif h_tolerance is not None and h_normalization_range is not None:
-            raise ValueError("SolarField.set_convergence_criteria: Arguments 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
-            
-        if temp_tolerance is not None:
-            try:
-                temp_tolerance = float( temp_tolerance )
-            except:
-                raise TypeError("SolarField.set_convergence_criteria: 'temp_tolerance' must be convertible to type 'float'.")
-            self._temp_tolerance = temp_tolerance
-            
-        elif temp_normalization_range is not None:
-            try:
-                temp_normalization_range = float( temp_normalization_range )
-            except:
-                raise TypeError("SolarField.set_convergence_criteria: 'temp_normalization_range' must be convertible to type 'float'.")
-            self._temp_tolerance = relative_tolerance*temp_normalization_range
-        
-        else:
-            self._temp_tolerance = None
-        
-        if h_tolerance is not None:
-            try:
-                h_tolerance = float( h_tolerance )
-            except:
-                raise TypeError("SolarField.set_convergence_criteria: 'h_tolerance' must be convertible to type 'float'.")
-            self._h_tolerance = h_tolerance
-        elif h_normalization_range is not None:
-            try:
-                h_normalization_range = float( h_normalization_range )
-            except:
-                raise TypeError("SolarField.set_convergence_criteria: 'h_normalization_range' must be convertible to type 'float'.")
-            self._h_tolerance = relative_tolerance*h_normalization_range
-        
-        else:
-            self._h_tolerance = None
-        
-        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
-            raise ValueError(f"SolarField.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
-        
-        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
-            raise ValueError(f"SolarField.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
-            
-    def _set_last_inputs( self, flowrate, state_in ):
-        """
-        Method that updates the last inputs received by the SolarField instance. These attributes are then used to evaluate the whether input convergence is achieved.
-        
-        Parameters
-        ----------
-        flowrate : float
-            Flowrate received by the solar field (kg/s).
-        state_in : sercpy.fluids.FluidState
-            State of the fluid received by the solar field.
-            
-        Returns
-        -------
-        None.
-        
-        """
-        
-        self._flowrate_last = flowrate
-        self._state_in_last = state_in
-        
-    def _compute_input_convergence(self, flowrate, state_in ):
-        """
-        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
-        
-        Parameters
-        ----------
-        flowrate : float
-            Flowrate received by the solar field (kg/s).
-        state_in : sercpy.fluids.FluidState
-            State of the fluid received by the solar field.
-        
-        Returns
-        -------
-        None.
-        
-        """
-        convergence = True
-        if flowrate == 0 or self._flowrate_last == 0:
-            convergence = convergence and flowrate == self._flowrate_last
-        elif flowrate != self._flowrate_last:
-            convergence = convergence and abs( flowrate - self._flowrate_last ) / min( [ flowrate  , self._flowrate_last ] ) <= self._relative_tolerance
-        
-        if self._h_tolerance is not None:
-            convergence = convergence and abs( state_in.h - self._state_in_last.h ) <= self._h_tolerance
-        
-        if self._temp_tolerance is not None:
-            convergence = convergence and abs( state_in.T - self._state_in_last.T ) <= self._temp_tolerance
-            
-        self._input_convergence = convergence
 
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
                          state_in = None, flowrate = None,
@@ -2265,14 +2119,14 @@ class SolarField( Device ):
                 return
             
             if iteration_number == 0:
-                self._set_last_inputs(flowrate, state_in)
+                self._relative_inputs_last, self._state_inputs_last = [ flowrate ], [ state_in ]
                 self._input_convergence = False
             else:
-                self._compute_input_convergence(flowrate, state_in)
+                self._compute_input_convergence(
+                    relative_inputs = [ flowrate ],
+                    state_inputs = [ state_in ] )
                 if self._input_convergence:
                     return
-                else:
-                    self._set_last_inputs(flowrate, state_in)
         
         if flowrate == 0:
             self._outlet.flowrate = 0

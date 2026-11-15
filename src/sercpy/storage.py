@@ -1260,174 +1260,6 @@ class StorageTank( Device ):
             if not isinstance( kwargs[ inlet_name ] , Outlet ):
                 raise TypeError(f"StorageTank.set_connections: {inlet_name} is expected to be an instance of sercpy.devices.Outlet.")
             setattr( self, '_' + inlet_name , kwargs[ inlet_name ] )
-            
-    def set_convergence_criteria( self, *,
-                                  relative_tolerance,
-                                  temp_tolerance,
-                                  h_tolerance,
-                                  temp_normalization_range,
-                                  h_normalization_range ):
-        """
-        Establish the convergence criteria of the `StorageTank` instance in the context of a simulation.
-        
-        When used in the context of a simulation, a `StorageTank` instance determines that "input convergence" has been achieved when the inputs received by it in consecutive iterations of the same time step differ in less that a certain margin.
-        The aforementioned "margin" or "tolerance" is set by this method.
-        When covergence is achieved for all components of a simulation, the results are recorded for the current time step and the simulation proceeds to the following time step.
-        
-        The argument `relative_tolerance` is the relative discrepancy allowed between any type of input (flowrate, power, etc.) but temperature and specific enthalpy.
-        
-        For temperature and specific enthalpy, convergence is not evaluated in terms of relative differences but in terms of absolute differences (°C for temperature, J/kg for specific enthalpy).
-        Moreover, it is only mandatory to set a tolerance for **ONE** of these two quantities (though the user may also specify values for both of them).
-        
-        There are two ways of setting the tolerances for temperature and specific enthalpy:
-            
-            - By directly setting their values (e.g. 0.01 °C for temperature, 50 J/kg for enthalpy).
-            - By setting a "normalization range". The absolute tolerance is then determined with the result `relative_tolerance * normalization_range`. E.g.: if the value of `relative_tolerance` has been set to 1e-3, and the normalization range for temperature is set to 30 °C (which may be the difference between the maximum and minimum temperatures at which the system operates), then the absolute tolerance for temperature would be 0.03 °C.
-        
-        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
-        
-        Parameters
-        ----------
-        relative_tolerance : float
-            Maximum relative difference allowed for all input types except temperature and specific enthalpy. In the case of the `StorageTank`
-            class, this amounts to flowrate only. Valid range: `1e-6` to `1e-1`.
-        
-        temp_tolerance : float, optional
-            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
-        
-        h_tolerance : float, optional
-            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
-        
-        temp_normalization_range : float, optional
-            Normalization range for temperature. See the description above for more details.
-        
-        h_normalization_range : float, optional
-            Normalization range for specific enthalpy. See the description above for more details.
-        
-        Returns
-        -------
-        None.
-        
-        """
-        try:
-            relative_tolerance = float( relative_tolerance )
-        except:
-            raise TypeError("StorageTank.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'.")
-        
-        self._relative_tolerance = relative_tolerance
-        
-        if sum( [ variable is not None for variable in [ 
-                
-                temp_tolerance,
-                h_tolerance,
-                temp_normalization_range,
-                h_normalization_range,
-                
-                ] ] ) != 1:
-            
-            raise ValueError("StorageTank.set_convergence_criteria: One and only one of the optional parameters must be provided: 'temp_tolerance', 'h_tolerance', 'temp_normalization_range', 'h_normalization_range'.")
-        
-        if all([ variable is None for variable in [ temp_tolerance, temp_normalization_range, h_tolerance, h_normalization_range ] ]):
-            raise ValueError("StorageTank.set_convergence_criteria: At least one of the following parameters must be provided: 'temp_tolerance', 'temp_normalization_range', 'h_tolerance', 'h_normalization_range'.")
-        
-        elif temp_tolerance is not None and temp_normalization_range is not None:
-            raise ValueError("StorageTank.set_convergence_criteria: Parameters 'temp_tolerance' and 'temp_normalization_range' cannot be provided together.")
-        
-        elif h_tolerance is not None and h_normalization_range is not None:
-            raise ValueError("StorageTank.set_convergence_criteria: Parameters 'h_tolerance' and 'h_normalization_range' cannot be provided together.")
-            
-        if temp_tolerance is not None:
-            try:
-                temp_tolerance = float( temp_tolerance )
-            except:
-                raise TypeError("StorageTank.set_convergence_criteria: 'temp_tolerance' must be convertible to type 'float'.")
-            self._temp_tolerance = temp_tolerance
-            
-        elif temp_normalization_range is not None:
-            try:
-                temp_normalization_range = float( temp_normalization_range )
-            except:
-                raise TypeError("StorageTank.set_convergence_criteria: 'temp_normalization_range' must be convertible to type 'float'.")
-            self._temp_tolerance = relative_tolerance*temp_normalization_range
-        
-        else:
-            self._temp_tolerance = None
-        
-        if h_tolerance is not None:
-            try:
-                h_tolerance = float( h_tolerance )
-            except:
-                raise TypeError("StorageTank.set_convergence_criteria: 'h_tolerance' must be convertible to type 'float'.")
-            self._h_tolerance = h_tolerance
-        elif h_normalization_range is not None:
-            try:
-                h_normalization_range = float( h_normalization_range )
-            except:
-                raise TypeError("StorageTank.set_convergence_criteria: 'h_normalization_range' must be convertible to type 'float'.")
-            self._h_tolerance = relative_tolerance*h_normalization_range
-        
-        else:
-            self._h_tolerance = None
-        
-        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
-            raise ValueError(f"StorageTank.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
-        
-        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
-            raise ValueError(f"StorageTank.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
-    
-    def _compute_input_convergence(self, flowrate_list, state_in_list ):
-        """
-        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
-
-        Parameters
-        ----------
-        flowrate_list : list of float
-            List of flowrate values received by the storage tank (one per inlet) (kg/s).
-        state_in_list : sercpy.fluids.FluidState
-            List of fluid states received by the storage tank (one per inlet).
-        
-        Returns
-        -------
-        None.
-        
-        """
-        convergence = True
-        
-        for i, flowrate in enumerate( flowrate_list ):
-            
-            if flowrate == 0 or self._flowrate_last == 0:
-                convergence = convergence and flowrate == self._flowrate_last[ i ]
-            elif flowrate != self._flowrate_last:
-                convergence = convergence and abs( flowrate - self._flowrate_last[ i ] ) / min( [ flowrate  , self._flowrate_last[ i ] ] ) <= self._relative_tolerance
-        
-        for i, state_in in enumerate( state_in_list ):
-            if self._h_tolerance is not None:
-                convergence = convergence and abs( state_in.h - self._state_in_last[ i ].h ) <= self._h_tolerance
-            
-            if self._temp_tolerance is not None:
-                convergence = convergence and abs( state_in.T - self._state_in_last[ i ].T ) <= self._temp_tolerance
-            
-        self._input_convergence = convergence
-        
-    def _set_last_inputs( self, inlet_flowrates, inlet_states ):
-        """
-        Method that updates the last inputs received by the `StorageTank` instance. These attributes are then used to evaluate the whether input convergence is achieved.
-        
-        Parameters
-        ----------
-        inlet_flowrates : list of float
-            List of flowrates entering the tank (kg/s) (one per inlet).
-        inlet_states : list of sercpy.fluids.FluidState
-            List of fluid states of the flows entering the tank (one per inlet).
-        
-        Returns
-        -------
-        None.
-        
-        """
-        
-        self._flowrate_last = inlet_flowrates
-        self._state_in_last = inlet_states
     
     def compute_outputs(self, operating_conditions, iteration_number, *,
                         inlet_flowrates = None, inlet_states = None,
@@ -1508,14 +1340,14 @@ class StorageTank( Device ):
                 inlet_states.append( inlet_state )
                 
             if iteration_number == 0:
-                self._set_last_inputs(inlet_flowrates, inlet_states)
+                self._relative_inputs_last,  = inlet_flowrates, inlet_states
                 self._input_convergence = False
             else:
-                self._compute_input_convergence(inlet_flowrates, inlet_states)
+                self._compute_input_convergence(
+                    relative_inputs = inlet_flowrates,
+                    state_inputs = inlet_states )
                 if self._input_convergence:
                     return
-                else:
-                    self._set_last_inputs(inlet_flowrates, inlet_states)
             
             Tamb = operating_conditions[ 'Tamb' ]
             time_step = operating_conditions[ 'time_step' ]
