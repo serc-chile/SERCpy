@@ -16,7 +16,6 @@ Methods
    StorageTank.compute_outputs
    StorageTank.update_state
    StorageTank.set_connections
-   StorageTank.set_convergence_criteria
    StorageTank.change_geometry
    StorageTank.set_io_relative_heights
 
