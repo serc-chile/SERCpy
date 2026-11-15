@@ -15,6 +15,5 @@ Methods
 
    SolarField.compute_outputs
    SolarField.set_connections
-   SolarField.set_convergence_criteria
    SolarField.compute_poa_irradiance
    SolarField.compute_incidence_angles
