@@ -5,7 +5,7 @@ The first and most fundamental step for achieving an accurate simulation of a so
 
 Another factor that can greatly influence the performance of a solar energy system, and contribute to determine the scale of the storage device needed, is how power demand by the thermal load and availability of solar irradiance are sinchronized in time. In addition to the features of the class :doc:`DemandProfile <demand_profile_class>`, which allow the user to establish highly detailed demand profiles, the class :doc:`MeteoProfile <meteo_profile_class>` can automatically detect the time zone to which a certain location belongs; this includes the eventual use of daylight saving time. Why is this important? Not considering this factor would cause that, in practice, energy demand gets displaced in time by one hour during approximately half of the year. 
 
-Follow the :doc:`examples/MeteoProfile_tutorial` to get familiarized with the different construction modes of the class and some of the most relevant construction parameters, and then see the :doc:`documentation of the class and its methods <meteo_profile_class>` to delve deeper into the available functionalities and the parameters they work with.
+Follow the :doc:`tutorial on the class <MeteoProfile_tutorial>` to get familiarized with the different construction modes of the class and some of the most relevant construction parameters, and then see the :doc:`documentation of the class and its methods <meteo_profile_class>` to delve deeper into the available functionalities and the parameters they work with.
 
 .. toctree::
   :maxdepth: 3
