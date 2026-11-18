@@ -29,11 +29,38 @@ The positions of the inlet- and outlet ports in the tank can be specified at ini
 
 The parameter `io_relative_heights` expresses the height of each port as a `float <https://docs.python.org/3.15/builtins/functions.html#float>`_ number in the range 0 - 1, where `0` corresponds to the bottom of the tank, and `1` corresponds to the top of the tank. The expected format for this parameter is a list of pairs, as follows:
 
-`io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`
+.. code-block:: python
+    
+    from sercpy.storage import StorageTank
+    from sercpy.fluids import Fluid
+    
+    # Define the fluid that will be stored in the tank
+    heat_storage_fluid = Fluid( "water", p = 600000, T_ref = 60 )
+    
+    # The first inlet/outlet pair is the one from which water gets extracted from the tank, heated, and re-introduced
+    # Hence, the inlet is at the top and the outlet is at the bottom
+    # This is not a strict rule; the first inlet/outlet pair could be used to extract heat from the tank as well
+    inlet_1_height = 1
+    outlet_1_height = 0
+    
+    # The second inlet/outlet pair is the one from which energy gets extracted from the tank
+    # Therefore, their heights are inverted with respect to the first inlet/outlet pair
+    inlet_2_height = 0
+    outlet_2_height = 1
+    
+    # Define the variable 'io_relative_heights'
+    io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ) ]
+    
+    # Initialize a tank with that configuration
+    tank = StorageTank(
+    
+        stored_fluid = heat_storage_fluid,
+        volume = 5, #m3
+        aspect_ratio = 1.5,
+        n_nodes = 8,
+        io_relative_heights = io_relative_heights )
 
-Where `inlet_1_height`, `outlet_1_height`, `inlet_2_height`, and `outlet_2_height` are values in the range 0 - 1 as already discussed. Internally, the `StorageTank` instance determines the node to which each inlet and outlet corresponds.
-
-As the user may have noticed, the parameter `io_relative_heights` not only specifies where the inlets and outlets are located, but also how many inlet/outlet pairs the tank has. When computing its outputs, the `StorageTank` instance treats the flowrates entering the tank through the inlet ports as imposed operating conditions, and sets the flowrate in each outlet to the same value as the flowrate that is entering the tank thorugh the inlet of the same inlet/outlet pair. 
+In the example just presented, the tank has two inlet/outlet pairs; but it could have as many as the user requires. The number of inlet/outlet pairs gets defined by the number of elements in the list `io_relative_heights`. When computing its outputs, the `StorageTank` instance treats the flowrates entering the tank through the inlet ports as imposed operating conditions, and sets the flowrate in each outlet to the same value as the flowrate that is entering the tank thorugh the inlet of the same inlet/outlet pair. 
 
 Setting the ports' positions after initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +69,28 @@ As discussed above, it is not mandatory to specify the heights of the inlet- and
 
 The inlet/outlet heights can be set after initialization by assigning the attribute with the same name as the initialization parameter, i.e.:
 
-`storage_tank_instance.io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`
+.. code-block:: python
+    
+    # Same lines as in the previous example
+    from sercpy.storage import StorageTank
+    from sercpy.fluids import Fluid
+    heat_storage_fluid = Fluid( "water", p = 600000, T_ref = 60 )
+    inlet_1_height = 1
+    outlet_1_height = 0
+    inlet_2_height = 0
+    outlet_2_height = 1
+    io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ) ]
+    
+    # This time the tank gets initialized without specifying the ports' positions
+    tank = StorageTank(
+    
+        stored_fluid = heat_storage_fluid,
+        volume = 5, #m3
+        aspect_ratio = 1.5,
+        n_nodes = 8 )
+    
+    # Ports' positions are specified after initialization
+    tank.io_relative_heights = io_relative_heights
 
 The assigned attribute must have the same format discussed above. This can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
 
