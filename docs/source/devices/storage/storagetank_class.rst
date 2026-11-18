@@ -92,7 +92,7 @@ The inlet/outlet heights can be set after initialization by assigning the attrib
     # Ports' positions are specified after initialization
     tank.io_relative_heights = io_relative_heights
 
-The assigned attribute must have the same format discussed above. This can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
+This can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
 
 The main purpose of this feature is that the inlet/outlet positions get set internally by **SERCpy** when the tank is included in one of the pre-defined system layouts.
 
