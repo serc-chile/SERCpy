@@ -17,7 +17,6 @@ Methods
    StorageTank.update_state
    StorageTank.set_connections
    StorageTank.change_geometry
-   StorageTank.set_io_relative_heights
 
 .. _inlet_outlet_ports_definition:
 
@@ -32,16 +31,20 @@ The parameter `io_relative_heights` expresses the height of each port as a `floa
 
 `io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`
 
-Where `inlet_1_height`, `outlet_1_height`, `inlet_2_height`, and `outlet_2_height` are values in the range 0 - 1 as already discussed. Internally, the `StorageTank` instance determines to which node each height corresponds.
+Where `inlet_1_height`, `outlet_1_height`, `inlet_2_height`, and `outlet_2_height` are values in the range 0 - 1 as already discussed. Internally, the `StorageTank` instance determines the node to which each inlet and outlet corresponds.
 
 As the user may have noticed, the parameter `io_relative_heights` not only specifies where the inlets and outlets are located, but also how many inlet/outlet pairs the tank has. When computing its outputs, the `StorageTank` instance treats the flowrates entering the tank through the inlet ports as imposed operating conditions, and sets the flowrate in each outlet to the same value as the flowrate that is entering the tank thorugh the inlet of the same inlet/outlet pair. 
 
 Setting the ports' positions after initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As discussed above, it is not mandatory to specify the heights of the inlet- and outlet ports when initializing the tank. The parameter `io_relative_heights` can simply be skipped.
+As discussed above, it is not mandatory to specify the heights of the inlet- and outlet ports when initializing the tank. The parameter `io_relative_heights` can simply be skipped. Nevertheless, it is necessary that this feature of the tank is specified before calling the method :meth:`StorageTank.compute_outputs` for the first time.
 
-Nevertheless, it is necessary that this feature of the tank is specified before calling the method :meth:`StorageTank.compute_outputs` for the first time. To set the inlet/outlet heights after initialization, the method :meth:`StorageTank.set_io_relative_heights` must be called. This method can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
+The inlet/outlet heights can be set after initialization by assigning the attribute with the same name as the initialization parameter, i.e.:
+
+`storage_tank_instance.io_relative_heights = [ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`
+
+The assigned attribute must have the same format discussed above. This can also be used to *change* inlet/outlet positions defined previously. However, the number of inlet/outlet pairs must be conserved.
 
 The main purpose of this feature is that the inlet/outlet positions get set internally by **SERCpy** when the tank is included in one of the pre-defined system layouts.
 
