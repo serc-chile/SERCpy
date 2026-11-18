@@ -27,7 +27,7 @@ Setting the positions of the inlet/outlet ports
 
 The positions of the inlet- and outlet ports in the tank can be specified at initialization with the parameter `io_relative_heights`, but this is not mandatory. In fact, if the `StorageTank` instance is used as part of one of the pre-defined system layouts included in **SERCpy**, the ports' positions are set automatically if they have not been set by the user.
 
-The parameter `io_relative_heights` expresses the height of each port as a `float <https://docs.python.org/3.15/builtins/functions.html#float>`_ number in the range 0 - 1, where `0` corresponds to the bottom of the tank, and `1` corresponds to the top of the tank. The expected format for this parameter is a list of pairs, as follows:
+The parameter `io_relative_heights` expresses the height of each port as a `float <https://docs.python.org/3.15/builtins/functions.html#float>`_ number in the range 0 - 1, where `0` corresponds to the bottom of the tank, and `1` corresponds to the top of the tank. The expected format for this parameter is a list of pairs, as shown in the following example:
 
 .. code-block:: python
     
