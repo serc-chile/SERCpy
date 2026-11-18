@@ -5,7 +5,7 @@ Created on Fri Nov 13 16:14:16 2026
 @author: Adrian Riebel Brummer
 """
 
-from .devices import Outlet
+from .devices import Outlet, Device
 from .controller import ControlSignal
 from .units import get_unit_type, convert_units
 import warnings
@@ -20,9 +20,9 @@ pump_allowed_arguments = [
     
     ]
 
-class Pump:
+class Pump( Device ):
     r"""
-    Model for a pump.
+    Model for a pump with controllable flowrate.
     
     It imposes a flowrate based on a control signal. The flowrate imposed is proportional
     to the control signal received (in the range 0-1). When the control signal is equal to `1`,
@@ -82,21 +82,36 @@ class Pump:
     control_signal : :ref:`ControlSignal <control_signal_class>`
         Instance of the class :ref:`ControlSignal <control_signal_class>`
         representing the control signal of the Controller that controls the pump.
+        It must be set with the method `Pump.set_connections`.
     
-    input_convergence : bool
-        Boolean value stating whether convergence was achieved the last time the method Pump.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the `Pump` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed.
+    convergence : bool
+        Boolean value stating whether convergence was achieved the last time the
+        method Pump.compute_outputs was called. For all devices, convergence depends on
+        whether the inputs of are similar
+        enough in consecutive iterations of a simulation time step,
+        so that no further computation is needed. In the case of the pump, it also
+        depends on whether the flowrate it is imposing coincides with the flowrate
+        it is receiving.
     
     power : float
-        Power used by the pump (W). This attribute gets updated every time the method 'Pump.compute_outputs' is called.
+        Power used by the pump (W).
+        This attribute gets updated every time the
+        method 'Pump.compute_outputs' is called.
         
     rated_flowrate : float
-        Rated flowrate of the pump, in kg/s or m3/s (see `flowrate_units`). It is the same as the value introduced by the user at initialization, expressed in SI units.
+        Rated flowrate of the pump, in kg/s or m3/s (see `flowrate_units`).
+        It is the same as the value introduced by the
+        user at initialization, expressed in SI units.
     
     minimum_flowrate : float
-        Minimum flowrate of the pump. It is the same as the value introduced by the user at initialization, expressed in SI units.
+        Minimum flowrate of the pump. It is the same as the value introduced
+        by the user at initialization, expressed in SI units.
     
     flowrate_units : str
-        Units of `rated_flowrate` and `minimum_flowrate`. It is either 'kg/s' or 'm3/s', depending on whether the flowrates introduced by the user at initalization were mass flowrates or volumetric flowrates. See :doc:`/units/units`.
+        Units of `rated_flowrate` and `minimum_flowrate`. It is either
+        'kg/s' or 'm3/s', depending on whether the flowrates introduced
+        by the user at initalization were mass flowrates
+        or volumetric flowrates. See :doc:`/units/units`.
     
     """
     
@@ -170,11 +185,11 @@ class Pump:
         return self._inlet
     
     @property
-    def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method Pump.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the `Pump` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        if not hasattr( self, "_input_convergence" ):
-            raise AttributeError("Pump: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'Pump.compute_outputs' is called.")
-        return self._input_convergence
+    def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method Pump.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the `Pump` instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        if not hasattr( self, "_convergence" ):
+            raise AttributeError("Pump: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'Pump.compute_outputs' is called.")
+        return self._convergence
     
     @property
     def power(self):
@@ -235,6 +250,9 @@ class Pump:
             
         if not argument_name in pump_allowed_arguments:
             raise ValueError( f"HeatExchanger: '{argument_name}' is not a valid argument." )
+            
+        if value is None:
+            return None
         
         if argument_name == [
                 
@@ -280,12 +298,14 @@ class Pump:
             else:
                 self._flowrate_type = 'm'
         
+        return value
+        
     def set_connections( self, *, inlet = None, control_signal = None ):
         
         if inlet is not None and not isinstance( inlet, Outlet ):
             raise TypeError( "Pump.set_connections: Argument 'inlet' must be an instance of sercpy.devices.Outlet." )
             
-        if control_signal is not None and not isinstance( control_signal, ControlSignal() ):
+        if control_signal is not None and not isinstance( control_signal, ControlSignal ):
             raise TypeError( "Pump.set_connections: Argument 'control_signal' must be an instance of sercpy.devices.ControlSignal." )
         
         if inlet is not None:
@@ -297,14 +317,12 @@ class Pump:
         """
         Method to compute the outputs of the pump.
         
-        The following attributes of the `Pump` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+        The following attributes of the `Pump` instance are updated when this method
+        is called (unless convergence is achieved; in that case only that attribute is updated):
             
-            - input_convergence
+            - convergence
             - outlet (state and flowrate)
             - power
-        
-        **The first two parameters are meant to be used in the context of a simulation.
-        All the other parameters are keyword-only and are meant for users to obtain results outside of simulations.**
         
         Parameters
         ----------
@@ -313,25 +331,6 @@ class Pump:
         
         iteration_number : int
             Number of the iteration.
-        
-        flowrate_source : float
-            Mass flowrate on the source side (or hot side) of the heat exchanger (kg/s).
-        
-        state_in_source : :doc:`FluidState </fluids/fluidstate_class>`
-            Thermodynamic state of the fluid entering the heat exchanger in its source side (or hot side).
-        
-        flowrate_load : float
-            Mass flowrate on the load side (or cold side) of the heat exchanger (kg/s).
-        
-        state_in_load : :doc:`FluidState </fluids/fluidstate_class>`
-            Thermodynamic state of the fluid entering the heat exchanger in its load side (or cold side).
-        
-        Tmains : float, optional
-            Temperature of the water in the distribution network. This parameter
-            is only needed when the fluid in the load side of the heat exchanger
-            is water, and if the parameter `release_vapor` was set to `True` at
-            initialization (or if this parameter was omitted, since `True` is its
-            default value).
         
         Returns
         -------
@@ -346,7 +345,7 @@ class Pump:
             
         if not hasattr( self, "_inlet" ):
             raise AttributeError( "Pump.compute_outputs: 'inlet' has not been defined. Use the method Pump.set_connections." )
-
+        
         if not hasattr( self, "_control_signal" ):
             raise AttributeError( "Pump.compute_outputs: 'control_signal' has not been defined. Use the method Pump.set_connections." )
         
@@ -355,14 +354,14 @@ class Pump:
             state_in = self._inlet.state
             control_signal_value = self._control_signal.signal_value
         except AttributeError:
-            self._input_convergence = False
+            self._convergence = False
             return
         
-        if iteration_number == 0:
+        if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
             self._relative_inputs_last, self._state_inputs_last = [ control_signal_value, flowrate_in ], [ state_in ]
-            self._input_convergence = False
+            self._convergence = False
         else:
-            self._compute_input_convergence( 
+            self._compute_convergence( 
                 relative_inputs = [ control_signal_value, flowrate_in ],
                 state_inputs = [ state_in ], )
         
@@ -382,6 +381,6 @@ class Pump:
         self._outlet.flowrate = flowrate_out
         
         if flowrate_in == 0 or flowrate_out == 0:
-            self._input_convergence = self._input_convergence and flowrate_in == flowrate_out
+            self._convergence = self._convergence and flowrate_in == flowrate_out
         elif flowrate_in != flowrate_out:
-            self._input_convergence = self._input_convergence and abs( flowrate_in - flowrate_out ) / min( [ flowrate_in  , flowrate_out ] ) <= self._relative_tolerance
+            self._convergence = self._convergence and abs( flowrate_in - flowrate_out ) / min( [ flowrate_in  , flowrate_out ] ) <= self._relative_tolerance

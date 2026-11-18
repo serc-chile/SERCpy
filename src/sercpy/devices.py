@@ -85,29 +85,30 @@ class Outlet:
 
 class Device:
     
+    def __init__(self):
+        
+        self._convergence = True
+        self.outlet = Outlet()
+    
     @property
-    def input_convergence(self):
-        if hasattr( self, "_convergence" ):
-            return self._input_convergence
-        return True
+    def convergence(self):
+        if not hasattr( self, "_convergence" ):
+            class_name = self.__class__.__name__
+            raise AttributeError(f"{ class_name }: Attribute 'convergence' has not been defined.")
+        return self._convergence
     
-    @input_convergence.setter
-    def input_convergence(self, value):
-        try:
-            value = bool( value )
-        except:
-            raise TypeError("Device: convergence must be a boolean value.")
-        self._input_convergence = value
-    
-    def update_state(self):
-        return
+    @convergence.setter
+    def convergence(self, value):
+        if type( value ) is not bool:
+            raise TypeError("Device: Attribute 'convergence' must be a boolean value (True or False).")
+        self._convergence = value
     
     def set_convergence_criteria( self, *,
                                   relative_tolerance,
-                                  temp_tolerance,
-                                  h_tolerance,
-                                  temp_normalization_range,
-                                  h_normalization_range ):
+                                  temp_tolerance = None,
+                                  h_tolerance = None,
+                                  temp_normalization_range = None,
+                                  h_normalization_range = None ):
         """
         Establish the convergence criteria of the `Device` instance in the context of a simulation.
         
@@ -241,7 +242,7 @@ class Device:
         if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
             raise ValueError( f"{ class_name }.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
 
-    def _compute_input_convergence( self, *, relative_inputs = None, state_inputs = None ):
+    def _compute_convergence( self, *, relative_inputs = None, state_inputs = None ):
         """
         Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
         
@@ -260,7 +261,7 @@ class Device:
         class_name = self.__class__.__name__
         
         if not hasattr( self, "_relative_tolerance" ):
-            raise AttributeError(f"{ class_name }._compute_input_convergence: Attribute '_relative_tolerance' has not been defined. Use the method { class_name }.set_convergence_criteria.")
+            raise AttributeError(f"{ class_name }._compute_convergence: Attribute '_relative_tolerance' has not been defined. Use the method { class_name }.set_convergence_criteria.")
         
         convergence = True
         
@@ -284,13 +285,51 @@ class Device:
             for i in range( len( state_inputs ) ):
                 convergence = convergence and abs( state_inputs[ i ].h - self._state_inputs_last[ i ].h ) <= self._h_tolerance
         
-        self._input_convergence = convergence
+        self._convergence = convergence
         
-        if self._input_convergence is False:
+        if self._convergence is False:
             self._relative_inputs_last, self._state_inputs_last = relative_inputs, state_inputs
     
     def set_connections( self, **kwargs ):
-        return
+        
+        from .controller import ControlSignal
+        
+        for key in kwargs:
+            
+            if kwargs[ key ] is None:
+                continue
+            
+            connection = kwargs[ key ]
+            
+            if not ( isinstance( connection, Outlet ) or isinstance( connection, ControlSignal) ):
+                class_name = self.__class__.__name__
+                raise TypeError(f"{class_name}.set_connections: ")
+            
+            setattr( self, "_" + key, connection )
     
     def compute_outputs( self, operating_conditions, iteration_number, **kwargs ):
         return
+    
+    def update_state(self):
+        return
+    
+class SystemInlet( Device ):
+    
+    def __init__(self):
+        
+        self._outlet = Outlet()
+        
+    @property
+    def outlet(self):
+        return self._outlet
+    
+    def compute_outputs( self, operating_conditions, iteration_number ):
+        
+        if iteration_number == 0:
+            
+            self._outlet.flowrate = operating_conditions[ "flowrate" ]
+            self._outlet.state = operating_conditions[ "fluid" ].state( T = operating_conditions[ "T_in" ] )
+            self._convergence = False
+            return
+        
+        self._convergence = True

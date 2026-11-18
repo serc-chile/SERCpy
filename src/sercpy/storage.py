@@ -90,6 +90,9 @@ class StorageTank( Device ):
         Internal height of the tank, in m.
         If provided, one and only one of the other parameters `volume`,
         `aspect_ratio`, and `diameter` must also be provided.
+        
+    stored_fluid : :doc:`Fluid </fluids/fluid_class>`
+        Fluid stored inside the tank.
     
     loss_coeff : float, optional
         Thermal loss coefficient of the tank (W/m2 K). If provided,
@@ -118,9 +121,6 @@ class StorageTank( Device ):
         Object specifying the positions of the inlet- and outlet ports of the tank.
         See :ref:`inlet_outlet_ports_definition` for
         more details on the format of this parameter.
-    
-    stored_fluid : :doc:`Fluid </fluids/fluid_class>`
-        Fluid stored inside the tank.
     
     initial_temperature : float or list of float
         Initial temperature or temperatures of the tank (°C). This parameter
@@ -162,6 +162,12 @@ class StorageTank( Device ):
         representing the outlet ports of the storage tank.
         The total number of outlets depends on the number
         of inlet/outlet pairs set by the user.
+        
+    inlet_1, inlet_2, ... : :ref:`Outlet <class_outlet>`
+        Instances of the class :ref:`sercpy.devices.Outlet <class_outlet>`
+        representing outlets other devices from which the
+        `StorageTank` instance takes its inputs. They must be set with the
+        method `StorageTank.set_connections`.
     
     stored_fluid : :doc:`Fluid </fluids/fluid_class>`
         Object that models the fluid stored by the tank.
@@ -196,10 +202,10 @@ class StorageTank( Device ):
         `StorageTank.update_temperatures` is called,
         **NOT** with `StorageTank.compute_outputs`.
     
-    input_convergence : bool
-        Boolean value stating whether input convergence was achieved the last time
-        the method `StorageTank.compute_outputs` was called.
-        The concept of "input convergence" refers to whether the inputs of the
+    convergence : bool
+        Boolean value stating whether convergence was achieved the last time the
+        method `StorageTank.compute_outputs` was called.
+        The concept of "convergence" refers to whether the inputs of the
         StorageTank instance are similar enough in consecutive iterations
         of a simulation time step, so that no further computation is needed.
     
@@ -225,13 +231,7 @@ class StorageTank( Device ):
     
     io_positions_defined : bool
         Boolean value stating whether the positions of the inlet- and
-        outlet ports have already been established, either
-        at initialization or by calling the method `set_io_relative_heights`
-    
-    ready_to_simulate : bool
-        Boolean value stating whether all the attributes that
-        are necessary for the StorageTank to be used
-        in a simulation have already been established.
+        outlet ports have already been established.
     
     """
     def __init__( self, *,
@@ -239,13 +239,13 @@ class StorageTank( Device ):
                   aspect_ratio = None,
                   diameter = None,
                   height = None,
+                  stored_fluid,
                   loss_coeff = None,
                   top_loss_coeff = None,
                   edge_loss_coeff = None,
                   bottom_loss_coeff = None,
                   n_nodes = None,
                   io_relative_heights = None,
-                  stored_fluid,
                   initial_temperature = None,
                   inlet_mode = None,
                   flow_alloc_coeff = None,
@@ -259,6 +259,11 @@ class StorageTank( Device ):
         height = self._validate_argument( "height", height )
         
         self._volume, self._aspect_ratio, self._diameter, self._height =  self._compute_geometry( volume, aspect_ratio, diameter, height )
+        
+        if stored_fluid is None:
+            raise TypeError("StorageTank: Argument 'stored_fluid' cannot be None.")
+        
+        self._stored_fluid = self._validate_argument("stored_fluid", stored_fluid)
         
         # Define loss coefficients
         if top_loss_coeff is not None:
@@ -290,9 +295,7 @@ class StorageTank( Device ):
         
         # Define inlet/outlet positions
         if io_relative_heights is not None:
-            self.set_io_relative_heights( io_relative_heights )
-            
-        self._stored_fluid = self._validate_argument("stored_fluid", stored_fluid)
+            self.io_relative_heights = io_relative_heights
         
         # Set current temperature of the tank
         if initial_temperature is None:
@@ -310,7 +313,7 @@ class StorageTank( Device ):
             if flow_alloc_coeff is None:
                 self._alpha = -0.5
             else:
-                self._alpha = self._validate_argument("flow_alloc_coeff", flow_alloc_coeff)
+                self._alpha = self._validate_argument( "flow_alloc_coeff", flow_alloc_coeff )
         else:
             self._alpha = None
         
@@ -380,11 +383,18 @@ class StorageTank( Device ):
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
-    def input_convergence(self):
-        if not hasattr( self, "_input_convergence" ):
-            raise AttributeError("StorageTank: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'StorageTank.compute_outputs' is called.")
-        "Boolean value stating whether convergence was achieved the last time the method StorageTank.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the StorageTank instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        return self._input_convergence
+    def convergence(self):
+        """
+        Boolean value stating whether the inputs of the `StorageTank` instance
+        achieved convergence the last time
+        the method `StorageTank.compute_outputs` was called.
+        The concept of "convergence" refers to whether the inputs of the
+        StorageTank instance are similar enough in consecutive iterations
+        of a simulation time step, so that no further computation is needed.
+        """
+        if not hasattr( self, "_convergence" ):
+            raise AttributeError("StorageTank: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'StorageTank.compute_outputs' is called.")
+        return self._convergence
     
     @property
     def dE(self):
@@ -419,16 +429,6 @@ class StorageTank( Device ):
         "Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`"
         return hasattr( self, "_n_io_pairs" )
     
-    @property
-    def ready_to_simulate(self):
-        "Boolean value stating whether all the attributes that are necessary for the StorageTank to be used in a simulation have already been established."
-        if not hasattr( self, "_n_io_pairs" ):
-            return False
-        for i in range( len( self._n_io_pairs ) ):
-            if not hasattr( self, "_inlet_" + str( i + 1 ) ):
-                return False
-        return True
-    
     @n_nodes.setter
     def n_nodes(self, value):
         "Change the number of nodes, i.e. the number of volumes into which the tank is descretized."
@@ -446,6 +446,44 @@ class StorageTank( Device ):
         self._update_temp_after_n_node_updating()
         if hasattr( self, "_io_relative_heights" ):
             self._io_nodes_from_relative_heights()
+            
+    @property
+    def io_relative_heights(self):
+        if not hasattr( self, "_io_relative_heights" ):
+            raise AttributeError( "StorageTank: Attribute 'io_relative_heights' has not been assigned." )
+        return self._io_relative_heights
+    
+    @io_relative_heights.setter
+    def io_relative_heights(self, value):
+        
+        if value is None:
+            raise TypeError("StorageTank: io_relative_heights cannot be None.")
+        
+        value = self._validate_argument("io_relative_heights", value)
+        
+        if hasattr( self, "_n_io_pairs" ):
+            if len( value ) != self._n_io_pairs:
+                raise AttributeError("StorageTank: Number of inlet/outlet pairs cannot be modified. Port positions can.")
+        else:
+            self._n_io_pairs = len( value )
+            for i in range( self._n_io_pairs ):
+                new_outlet = Outlet()
+                new_outlet.flowrate = 0
+                new_outlet.state = self._stored_fluid.state( T = 40 )
+                setattr( self , "_outlet_" + str( i + 1 ) , new_outlet )
+        
+        self._io_relative_heights = value
+        self._io_nodes_from_relative_heights()
+        
+    @property
+    def io_nodes(self):
+        if not hasattr( self, "_io_relative_heights" ):
+            raise AttributeError( "StorageTank: Attribute 'io_nodes' has not been defined. This must be done indirectly through the attribute 'io_relative_heights'." )
+        return [ ( self._inlet_nodes[i] + 1 , self._outlet_nodes[i] + 1 ) for i in range(len(self._inlet_nodes)) ]
+    
+    @io_nodes.setter
+    def io_nodes(self, value):
+        raise AttributeError( "StorageTank: Attribute 'io_nodes' cannot be set directly. This must be done through the attribute 'io_relative_heights'." )
         
     
     def _update_temp_after_n_node_updating( self ):
@@ -598,47 +636,11 @@ class StorageTank( Device ):
         self._cross_area = float( np.pi * self._diameter**2 / 4 )
         self._node_height = self._height / self._n_nodes
         self._nodal_edge_area = float( np.pi * self._diameter * self._node_height )
-        
-    def set_io_relative_heights( self, io_relative_heights ):
-        """
-        Set inlet/outlet port positions after initialization.
-        
-        This method allows the user to specify the positions of the inlet- and outlet ports of the tank.
-        This can be done when this feature was not specified at initialization, *and* to re-define it as well. In the latter case, only the positions of the outlets can be changed, but not the number of inlet/outlet pairs.
-
-        Parameters
-        ----------
-        io_relative_heights : list of pairs
-            List of pairs with the format `[ ( inlet_1_height, outlet_1_height ), ( inlet_2_height, outlet_2_height ), ... ]`. The values `inlet_1_height`, `outlet_1_height`, etc. are `float <https://docs.python.org/3/builtins/functions.html#float>`_ numbers in the range 0 - 1. See :ref:`inlet_outlet_ports_definition` for more details.
-        
-        Returns
-        -------
-        None.
-
-        """
-        
-        if io_relative_heights is None:
-            raise TypeError("StorageTank.set_io_relative_heights: io_relative_heights cannot be None.")
-        
-        io_relative_heights = self._validate_argument("io_relative_heights", io_relative_heights)
-        
-        if hasattr( self, "_n_io_pairs" ):
-            if len( io_relative_heights ) != self._n_io_pairs:
-                raise AttributeError("StorageTank.set_io_relative_heights: Number of inlet/outlet pairs cannot be modified. Port positions can.")
-        else:
-            self._n_io_pairs = len( io_relative_heights )
-            for i in range( self._n_io_pairs ):
-                new_outlet = Outlet()
-                setattr( self , "_outlet_" + str( i + 1 ) , new_outlet )
-        
-        self._io_relative_heights = io_relative_heights
-        self._io_nodes_from_relative_heights()
     
     def _io_nodes_from_relative_heights( self ):
         """
         Private method to determine the nodes where the inlet and outlet ports
-        are located based on the object `io_relative_heights`,
-        which is received by the public method `set_io_relative_heights`.
+        are located based on the object `io_relative_heights`.
         
         This method sets the private attributes of the StorageTank
         instance: "_inlet_nodes" and  "_outlet_nodes",
@@ -1204,7 +1206,7 @@ class StorageTank( Device ):
             raise AttributeError("StorageTank: Inlets must be set with the method StorageTank.set_connections.")
                 
         if name.startswith("outlet"):
-            AttributeError("StorageTank: Outlets cannot be set manually.")
+            AttributeError("StorageTank: Outlets cannot be modified after initialization.")
         
         super().__setattr__(name, value)
         
@@ -1248,6 +1250,9 @@ class StorageTank( Device ):
         
         n_inlets = len( self._inlet_nodes )
         
+        if len( kwargs ) > n_inlets:
+            raise ValueError(f"StorageTank.set_connections: The tank has {n_inlets} inlets and {len( kwargs )} connections were specified.")
+        
         for inlet_name in kwargs:
             try:
                 inlet_name_split = inlet_name.split( '_' )
@@ -1267,9 +1272,9 @@ class StorageTank( Device ):
         """
         Method to compute the outputs of the storage tank.
         
-        The following attributes of the `StorageTank` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+        The following attributes of the `StorageTank` instance are updated when this method is called (unless convergence is achieved; in that case only that attribute is updated):
             
-            - input_convergence
+            - convergence
             - outlet_1, outlet_2, outlet_3, etc. (state and flowrate of each outlet)
             - dE
             - Q_loss
@@ -1311,7 +1316,7 @@ class StorageTank( Device ):
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ inlet_flowrates, inlet_states, Tamb, time_step ] ]):
                 raise TypeError("StorageTank.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: inlet_flowrates, inlet_states, Tamb, time_step.")
-            self._input_convergence = False
+            self._convergence = False
             
         elif operating_conditions is None or iteration_number is None:
             raise TypeError("StorageTank.compute_outputs: Both 'operating_conditions' and 'operating_conditions' must be provided in simulation mode. None of them must be provided in manual mode.")
@@ -1333,20 +1338,20 @@ class StorageTank( Device ):
                     inlet_flowrates.append( outlet.flowrate )
                     inlet_state = outlet.state
                 except AttributeError:
-                    self._input_convergence = False
+                    self._convergence = False
                     return
                 if not inlet_state.fluid is self._stored_fluid:
                     raise ValueError(f"StorageTank.compute_outputs: Fluid entering through inlet {i + 1} is not the same fluid that is stored by the tank.")
                 inlet_states.append( inlet_state )
                 
-            if iteration_number == 0:
-                self._relative_inputs_last,  = inlet_flowrates, inlet_states
-                self._input_convergence = False
+            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
+                self._relative_inputs_last, self._state_inputs_last = inlet_flowrates, inlet_states
+                self._convergence = False
             else:
-                self._compute_input_convergence(
+                self._compute_convergence(
                     relative_inputs = inlet_flowrates,
                     state_inputs = inlet_states )
-                if self._input_convergence:
+                if self._convergence:
                     return
             
             Tamb = operating_conditions[ 'Tamb' ]
@@ -1356,7 +1361,7 @@ class StorageTank( Device ):
         
         inlet_flowrates_distribution = self._set_inlet_flows( inlet_flowrates, inlet_temps )
         
-        if iteration_number is None or iteration_number == 0:
+        if iteration_number is None or iteration_number == 0 or not hasattr( self, "_T_avg_list_init" ):
             self._T_avg_list_init = self._node_temperatures
             self._T_final_list_init = self._node_temperatures
         

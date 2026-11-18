@@ -785,10 +785,14 @@ class SolarField( Device ):
     
     collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
         Object that models each indidual collector of the solar field.
+        
+    rated_flowrate : float
+        Nominal flowrate of the solar field. It is computed from the flowrate used
+        to test the collectors, and the total number of collectors.
     
-    input_convergence : bool
-        Boolean value stating whether input convergence was achieved the last time the method
-        `SolarField.compute_outputs` was called. The concept of "input convergence"
+    convergence : bool
+        Boolean value stating whether convergence was achieved the last time the method
+        `SolarField.compute_outputs` was called. The concept of "convergence"
         refers to whether the inputs of the SolarField instance are similar enough
         in consecutive iterations of a time step, so that no further computation is needed.
     
@@ -842,10 +846,6 @@ class SolarField( Device ):
     ground_fraction_covered : float
         Ratio between the row spacing of the solar field and the
         length of the collectors' tilted size. It is used by the self-shading modeling algorithm.
-    
-    ready_to_simulate : bool
-        Boolean value stating whether all attributes needed for
-        the collector to be used in a simulation have been established.
     
     """
     
@@ -990,11 +990,11 @@ class SolarField( Device ):
         return self._collector
     
     @property
-    def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        if not hasattr( self, "_input_convergence" ):
-            raise AttributeError("SolarField: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
-        return self._input_convergence
+    def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+        if not hasattr( self, "_convergence" ):
+            raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
+        return self._convergence
     
     @property
     def useful_power(self):
@@ -1053,6 +1053,10 @@ class SolarField( Device ):
         return self._coll_azimuth
     
     @property
+    def rated_flowrate(self):
+        return self._total_colls*self._collector.area*self._collector.test_flowrate_per_m2
+    
+    @property
     def ground_albedo(self):
         "Irradiance fraction reflected by the ground in front of the solar field."
         if self._ground_albedo is None:
@@ -1079,19 +1083,6 @@ class SolarField( Device ):
     @property
     def row_width_to_coll_length_ratio(self):
         return 100
-    
-    @property
-    def ready_to_simulate(self):
-        "Boolean value stating whether all attributes needed for the SolarField instance to be used in a simulation have been established."
-        return all( [
-            
-            self._coll_tilt is not None,
-            self._coll_azimuth is not None,
-            hasattr( self, "_h_tolerance" ) or hasattr( self, "_temp_tolerance" ),
-            hasattr( self, "_relative_tolerance" ),
-            hasattr( self, "_inlet" ),
-            
-            ] )
     
     @coll_tilt.setter
     def coll_tilt(self, value):
@@ -1130,10 +1121,15 @@ class SolarField( Device ):
         ----------
         coll_tilt : float
             Collector tilt with respect to the ground (degrees, °). Valid range: `0` - `90`
+        
         coll_azimuth : float
             Collector azimuth. Degrees east of north. See the
             :doc:`documentation on azimuthal angles <azimuthal_angle>`
             for more information on how the value is defined.
+        
+        ground_albedo : float
+            Gorund albedo, i.e., the fraction of the irradiance received that is
+            reflected by the ground. Valid range: 0 - 1.
 
         Returns
         -------
@@ -2021,9 +2017,9 @@ class SolarField( Device ):
         """
         Method to compute the outputs of the solar field.
         
-        The following attributes of the `SolarField` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+        The following attributes of the `SolarField` instance are updated when this method is called (unless convergence is achieved; in that case only that attribute is updated):
             
-            - input_convergence
+            - convergence
             - outlet (state and flowrate)
             - useful_power
             - wasted_power
@@ -2083,7 +2079,7 @@ class SolarField( Device ):
             if any([ variable is None for variable in [ state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth, Tamb, Tmains ] ]):
                 raise TypeError("SolarField.compute_outputs: Not all arguments needed for manual mode were provided. Arguments needed: state_in, flowrate, GHI, DNI , DHI, solar_apparent_zenith, solar_azimuth,  Tamb, Tmains.")
             
-            self._input_convergence = False
+            self._convergence = False
                 
             irradiance_first_row, IAM_first_row, irradiance_shadeable_rows, IAM_shadeable_rows = self.compute_poa_irradiance( GHI, DNI, DHI, solar_apparent_zenith, solar_azimuth, doy = doy,  )
             
@@ -2115,17 +2111,17 @@ class SolarField( Device ):
                 flowrate = self._inlet.flowrate
                 state_in = self._inlet.state
             except AttributeError:
-                self._input_convergence = False
+                self._convergence = False
                 return
             
-            if iteration_number == 0:
+            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
                 self._relative_inputs_last, self._state_inputs_last = [ flowrate ], [ state_in ]
-                self._input_convergence = False
+                self._convergence = False
             else:
-                self._compute_input_convergence(
+                self._compute_convergence(
                     relative_inputs = [ flowrate ],
                     state_inputs = [ state_in ] )
-                if self._input_convergence:
+                if self._convergence:
                     return
         
         if flowrate == 0:

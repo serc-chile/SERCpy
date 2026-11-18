@@ -106,7 +106,7 @@ class HeatExchanger( Device ):
         method `HeatExchanger.compute_outputs` was called. Otherwise, it is the
         constant effectiveness of the heat exchanger.
         
-    input_convergence : bool
+    convergence : bool
         Boolean value stating whether convergence was achieved the last time the
         method `HeatExchanger.compute_outputs` was called. The concept of
         "convergence" refers to whether the inputs of the `HeatExchanger`
@@ -139,11 +139,6 @@ class HeatExchanger( Device ):
         Boolean value stating whether convergence for the vapor release
         modeling was achieved the last time the method `HeatExchanger.compute_outputs`
         was called. If no vapor is released, this value will be `True`.
-    
-    ready_to_simulate : bool
-        Boolean value stating whether all attributes needed for the
-        `HeatExchanger` instance to be used in a
-        simulation have been established.
     
     """
     def __init__(self, *,
@@ -238,11 +233,11 @@ class HeatExchanger( Device ):
         return self._effectiveness
         
     @property
-    def input_convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method HeatExchanger.compute_outputs was called. The concept of 'input_convergence' refers to whether the inputs of the HeatExchanger instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
+    def convergence(self):
+        "Boolean value stating whether convergence was achieved the last time the method HeatExchanger.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the HeatExchanger instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
         if not hasattr( self, "_convergence" ):
-            raise AttributeError("HeatExchanger: Attribute 'input_convergence' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
-        return self._input_convergence
+            raise AttributeError("HeatExchanger: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
+        return self._convergence
     
     @property
     def useful_power(self):
@@ -278,18 +273,6 @@ class HeatExchanger( Device ):
         if not hasattr( self, "_vapor_release_convergence" ):
             raise AttributeError("HeatExchanger: Attribute 'vapor_release_convergence' has not been computed yet. This attribute gets computed after calling the method HeatExchanger.compute_outputs.")
         return self._vapor_release_convergence
-    
-    @property
-    def ready_to_simulate(self):
-        "Boolean value stating whether all attributes needed for the HeatExchanger instance to be used in a simulation have been established."
-        return all( [
-            
-            hasattr( self, "_h_tolerance" ) or hasattr( self, "_temp_tolerance" ),
-            hasattr( self, "_relative_tolerance" ),
-            hasattr( self, "_inlet_source" ),
-            hasattr( self, "_inlet_load" ),
-            
-            ] )
     
     @inlet_source.setter
     def inlet_source(self, value):
@@ -443,9 +426,9 @@ class HeatExchanger( Device ):
         r"""
         Method to compute the outputs of the heat exchanger.
         
-        The following attributes of the `HeatExchanger` instance are updated when this method is called (unless input convergence is achieved; in that case only that attribute is updated):
+        The following attributes of the `HeatExchanger` instance are updated when this method is called (unless convergence is achieved; in that case only that attribute is updated):
             
-            - input_convergence
+            - convergence
             - outlet_source (state and flowrate)
             - outlet_load (state and flowrate)
             - effectiveness. This attribute gets updated only if the :math:`\varepsilon`-NTU model is being used
@@ -494,7 +477,7 @@ class HeatExchanger( Device ):
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ flowrate_source, state_in_source, flowrate_load, state_in_load ] ]):
                 raise TypeError("HeatExchanger.compute_outputs: Not all parameters needed for manual mode were provided. Parameters needed: flowrate_source, state_in_source, flowrate_load, state_in_load.")
-            self._input_convergence = False
+            self._convergence = False
             
         elif operating_conditions is None or iteration_number is None:
             raise TypeError("HeatExchanger.compute_outputs: Both 'operating_conditions' and 'operating_conditions' must be provided in simulation mode. None of them must be provided in manual mode.")
@@ -517,17 +500,17 @@ class HeatExchanger( Device ):
                 flowrate_load = self._inlet_load.flowrate
                 state_in_load = self._inlet_load.state
             except AttributeError:
-                self._input_convergence = False
+                self._convergence = False
                 return
                 
-            if iteration_number == 0:
+            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
                 self._relative_inputs_last, self._state_inputs_last = [ flowrate_source, flowrate_load ], [ state_in_source, state_in_load ]
-                self._input_convergence = False
+                self._convergence = False
             else:
-                self._compute_input_convergence(
+                self._compute_convergence(
                     relative_inputs = [ flowrate_source, flowrate_load ],
                     state_inputs = [ state_in_source, state_in_load ]  )
-                if self._input_convergence:
+                if self._convergence:
                     return
             
             Tmains = operating_conditions[ 'Tmains' ]

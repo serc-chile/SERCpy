@@ -53,6 +53,30 @@ class OperatingConditions:
     
     time_steps_per_hour : int
         Number of time steps per hour. E.g. with a 6-minute time step, this value would be `10`.
+        
+    max_flowrate : float
+        Maximum flowrate value during the whole year (kg/s). This value might slightly differ
+        from the actual value obtained when carrying out a simulation, since it is obtained from the
+        original (minutal) data set.
+        
+    min_dT : float
+        Minimum difference between the setpoint temperature and the temperature
+        of the heat transfer fluid entering the heating system, throughout the whole
+        year (°C).
+    
+    max_dT : float
+        Maximum difference between the setpoint temperature and the temperature
+        of the heat transfer fluid entering the heating system, throughout the whole
+        year (°C).
+    
+    fluid : :doc:`Fluid </fluids/fluid_class>`
+        Heat transfer fluid that gets heated by the system.
+    
+    HTF : :doc:`Fluid </fluids/fluid_class>`
+        Alias for `fluid`.
+    
+    heat_transfer_fluid : :doc:`Fluid </fluids/fluid_class>`
+        Alias for `fluid`.
     
     Methods
     -------
@@ -113,6 +137,8 @@ class OperatingConditions:
         if time_step_min is not None or time_step is not None:
             self.set_time_step( time_step_min = time_step_min, time_step = time_step )
             
+        self._fluid = demand_profile.fluid
+            
     @property
     def time_step(self):
         "Get the simulation time step in seconds."
@@ -145,6 +171,40 @@ class OperatingConditions:
         if not self._ready:
             ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
         return self._time_steps_per_hour
+    
+    @property
+    def max_flowrate(self):
+        if not hasattr( self, "_max_flowrate" ):
+            self._max_flowrate = max( self._minutal_profiles[ "flowrate" ] )
+        return self._max_flowrate
+    
+    @property
+    def min_dT(self):
+        if not hasattr( self, "_min_dT" ):
+            T_in = np.asarray( self._minutal_profiles[ "T_in" ] )
+            T_set = np.asarray( self._minutal_profiles[ "T_set" ] )
+            self._min_dT = float( ( T_set - T_in ).min() )
+        return self._min_dT
+    
+    @property
+    def max_dT(self):
+        if not hasattr( self, "_max_dT" ):
+            T_in = np.asarray( self._minutal_profiles[ "T_in" ] )
+            T_set = np.asarray( self._minutal_profiles[ "T_set" ] )
+            self._max_dT = float( ( T_set - T_in ).max() )
+        return self._max_dT
+        
+    @property
+    def fluid(self):
+        return self._fluid
+    
+    @property
+    def HTF(self):
+        return self._fluid
+    
+    @property
+    def heat_transfer_fluid(self):
+        return self._fluid
     
     def to_df(self):
         """
@@ -354,5 +414,6 @@ class OperatingConditions:
                 result[ key ] = float( self._effective_profiles[ key ][ time_step_number ] )
                 
         result[ 'time_step' ] = self._time_step
+        result[ 'fluid' ] = self._fluid
                 
         return result
