@@ -7,7 +7,6 @@ Created on Thu Oct  8 15:24:12 2026
 
 from .meteo_profile import MeteoProfile
 from .demand_profile import DemandProfile
-from typing import Optional
 import pandas as pd
 import numpy as np
 
@@ -29,13 +28,13 @@ class OperatingConditions:
         Object from which the demand data (i.e. demanded flowrate, temperature setpoint and inlet temperature of the heat transfer flow) is extracted.
     
     time_step_min : int, optional
-        Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified later with the method `OperatingConditions.set_time_step`.
+        Simulation time step in minutes. Accepted values are: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60. If not provided, it can be specified or modified later as an attribute with the same name.
     
     time_step : int, optional
-        Simulation time step in seconds. Its value must be equivalent to one of the allowed time step lengths mentioned for `time_step_min`.
+        Simulation time step in seconds. Its value must be equivalent to one of the allowed time step lengths mentioned for `time_step_min`. If not provided, it can be specified or modified later as an attribute with the same name.
     
     include_solar_position : bool, optional
-        Whether to include the solar position data in the yearly profiles (`"zenith"`, `"apparent_zenith"`, and `"azimuth"`). This is not necessary for standard simulations carried out by SERCpy, and it may extend initialization time of the object. Therefore, it defaults to False.
+        Whether to include the solar position data in the yearly profiles (`"zenith"`, `"apparent_zenith"`, and `"azimuth"`). This is not necessary for standard simulations carried out by **SERCpy**, and it may extend initialization time of the object. Therefore, it defaults to False.
     
     Attributes
     ----------
@@ -46,27 +45,36 @@ class OperatingConditions:
         Time step length in minutes.
     
     time_steps_per_year : int
-        Number of time steps per year. E.g. with a 6-minute time step, this value would be `87600`.
+        Number of time steps per year. E.g.
+        with a 6-minute time step, this value would be `87600`.
     
     time_steps_per_day : int
-        Number of time steps per day. E.g. with a 6-minute time step, this value would be `240`.
+        Number of time steps per day. E.g.
+        with a 6-minute time step, this value would be `240`.
     
     time_steps_per_hour : int
-        Number of time steps per hour. E.g. with a 6-minute time step, this value would be `10`.
+        Number of time steps per hour. E.g.
+        with a 6-minute time step, this value would be `10`.
         
     max_flowrate : float
-        Maximum flowrate value during the whole year (kg/s). This value might slightly differ
-        from the actual value obtained when carrying out a simulation, since it is obtained from the
+        Maximum flowrate value during the
+        whole year (kg/s). This value might slightly differ
+        from the actual value obtained when
+        carrying out a simulation, since it is obtained from the
         original (minutal) data set.
         
     min_dT : float
-        Minimum difference between the setpoint temperature and the temperature
-        of the heat transfer fluid entering the heating system, throughout the whole
+        Minimum difference between the
+        setpoint temperature and the temperature
+        of the heat transfer fluid entering
+        the heating system, throughout the whole
         year (°C).
     
     max_dT : float
-        Maximum difference between the setpoint temperature and the temperature
-        of the heat transfer fluid entering the heating system, throughout the whole
+        Maximum difference between the
+        setpoint temperature and the temperature
+        of the heat transfer fluid
+        entering the heating system, throughout the whole
         year (°C).
     
     fluid : :doc:`Fluid </fluids/fluid_class>`
@@ -81,13 +89,17 @@ class OperatingConditions:
     Methods
     -------
     get_conditions( time_step_number )
-        Get a dictionary with the operating conditions of the system at the instant defined by `time_step_number`. This includes both meteorological- and demand conditions. The number introduced represents an "index" within the yearly profile. Returns: dict.
-    
-    set_time_step( *, time_step_min = None, time_step = None )
-        Method to set the simulation time step. It can be used to modify another time step value previously established. The time step can be specified in minutes (keyword argument `time_step_min`), or in seconds (keyword argument `time_step`). Returns: None
+        Get a dictionary with the operating conditions
+        of the system at the instant defined by `time_step_number`.
+        This includes both meteorological- and demand conditions.
+        The number introduced represents an "index"
+        within the yearly profile. Returns: dict.
         
     to_df()
-        Get a `pandas.DataFrame` containing the conditions dataset of the whole simulation year. Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
+        Get a `pandas.DataFrame` containing the
+        conditions dataset of the whole
+        simulation year.
+        Returns: `pandas.DataFrame <https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.html>`_.
         
     
     """
@@ -95,11 +107,11 @@ class OperatingConditions:
             
             self, *,
             
-            meteo_profile: MeteoProfile,
-            demand_profile: DemandProfile,
-            time_step_min: Optional[ int ] = None,
-            time_step : Optional[ int ] = None,
-            include_solar_position: Optional[ bool ] = False ):
+            meteo_profile,
+            demand_profile,
+            time_step_min = None,
+            time_step = None,
+            include_solar_position = False ):
         
         self._ready = False
         self._include_solar_position = include_solar_position
@@ -135,51 +147,89 @@ class OperatingConditions:
             raise TypeError("OperatingConditions: Only one of the arguments 'time_step_min' and 'time_step' must be provided.")
         
         if time_step_min is not None or time_step is not None:
-            self.set_time_step( time_step_min = time_step_min, time_step = time_step )
+            self._set_time_step( time_step_min = time_step_min, time_step = time_step )
             
         self._fluid = demand_profile.fluid
             
     @property
     def time_step(self):
-        "Get the simulation time step in seconds."
+        "Simulation time step in seconds."
         if not self._ready:
-            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+            raise AttributeError("OperatingConditions: Time step length has not been set. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         return self._time_step
     
     @property
     def time_step_min(self):
-        "Get the simulation time step in minutes."
+        "Simulation time step in minutes."
+        if not self._ready:
+            raise AttributeError("OperatingConditions: Time step length has not been set. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         return self._time_step_min
+    
+    @time_step.setter
+    def time_step(self, value):
+        try:
+            assert value.is_integer()
+        except:
+            raise TypeError("OperatingConditions: Attribute 'time_step' must be an integer value.")
+        value = int( value )
+        if not ( value%60 == 0 and value//60 in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ] ):
+            raise ValueError("OperatingConditions: Attribute 'time_step' (in seconds) must be one of the following values: 60, 120, 180, 240, 300, 360, 600, 720, 900, 1200, 1800, 3600.")
+        self._set_time_step( time_step = value )
+        
+    @time_step_min.setter
+    def time_step_min(self, value):
+        try:
+            assert value.is_integer()
+        except:
+            raise TypeError("OperatingConditions: Attribute 'time_step_min' must be an integer value.")
+        value = int( value )
+        if not value in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]:
+            raise ValueError("OperatingConditions: Attribute 'time_step_min' (in minutes) must be one of the following values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.")
+        self._set_time_step( time_step_min = value )
     
     @property
     def time_steps_per_year(self):
-        "Number of time steps per year, according to the current time step. It is equivalent to the total length of the dataset stored by the object."
+        "Number of time steps per year. It is equal to the total length of the dataset stored by the object."
         if not self._ready:
-            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+            raise AttributeError("OperatingConditions: Time step length has not been set. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         return self._time_steps_per_year
         
     @property
     def time_steps_per_day(self):
-        "Number of time steps per day, according to the current time step."
+        "Number of time steps per day."
         if not self._ready:
-            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+            raise AttributeError("OperatingConditions: Time step length has not been set. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         return self._time_steps_per_day
     
     @property
     def time_steps_per_hour(self):
-        "Number of time steps per hour, according to the current time step."
+        "Number of time steps per hour."
         if not self._ready:
-            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+            raise AttributeError("OperatingConditions: Time step length has not been set. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         return self._time_steps_per_hour
     
     @property
     def max_flowrate(self):
+        """
+        Maximum flowrate value during the
+        whole year (kg/s). This value might slightly differ
+        from the actual value obtained when
+        carrying out a simulation, since it is obtained from the
+        original (minutal) data set.
+        """
         if not hasattr( self, "_max_flowrate" ):
             self._max_flowrate = max( self._minutal_profiles[ "flowrate" ] )
         return self._max_flowrate
     
     @property
     def min_dT(self):
+        """
+        Minimum difference between the
+        setpoint temperature and the temperature
+        of the heat transfer fluid entering
+        the heating system, throughout the whole
+        year (°C).
+        """
         if not hasattr( self, "_min_dT" ):
             T_in = np.asarray( self._minutal_profiles[ "T_in" ] )
             T_set = np.asarray( self._minutal_profiles[ "T_set" ] )
@@ -188,6 +238,13 @@ class OperatingConditions:
     
     @property
     def max_dT(self):
+        """
+        Maximum difference between the
+        setpoint temperature and the temperature
+        of the heat transfer fluid
+        entering the heating system, throughout the whole
+        year (°C).
+        """
         if not hasattr( self, "_max_dT" ):
             T_in = np.asarray( self._minutal_profiles[ "T_in" ] )
             T_set = np.asarray( self._minutal_profiles[ "T_set" ] )
@@ -196,14 +253,26 @@ class OperatingConditions:
         
     @property
     def fluid(self):
+        """
+        Instance of sercpy.fluids.Fluid.
+        Heat transfer fluid that gets heated by the system.
+        """
         return self._fluid
     
     @property
     def HTF(self):
+        """
+        Instance of sercpy.fluids.Fluid.
+        Heat transfer fluid that gets heated by the system.
+        """
         return self._fluid
     
     @property
     def heat_transfer_fluid(self):
+        """
+        Instance of sercpy.fluids.Fluid.
+        Heat transfer fluid that gets heated by the system.
+        """
         return self._fluid
     
     def to_df(self):
@@ -217,7 +286,7 @@ class OperatingConditions:
 
         """
         if not self._ready:
-            ("OperatingConditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`")
+            raise AttributeError("OperatingConditions.to_df: Time step length must be set in order to generate the dataset. This can be done with either of the attributes 'time_step' or 'time_step_min'.")
         
         return pd.DataFrame.from_dict( self._effective_profiles )
     
@@ -279,7 +348,7 @@ class OperatingConditions:
             return 360 + avg_value
         return avg_value
         
-    def set_time_step( self, *, time_step_min = None, time_step = None ):
+    def _set_time_step( self, *, time_step_min = None, time_step = None ):
         """
         Set the time step of an `OperatingConditions` instance.
         
@@ -313,9 +382,9 @@ class OperatingConditions:
         """
         
         if time_step_min is not None and time_step is not None:
-            raise TypeError("OperatingConditions.set_time_step: Only one of the arguments 'time_step_min' and 'time_step' must be provided.")
+            raise TypeError("OperatingConditions._set_time_step: Only one of the arguments 'time_step_min' and 'time_step' must be provided.")
         if time_step_min is None and time_step is None:
-            raise TypeError("OperatingConditions.set_time_step: No time step argument was provided.")
+            raise TypeError("OperatingConditions._set_time_step: No time step argument was provided.")
         
         if time_step_min is not None:
             
@@ -328,7 +397,7 @@ class OperatingConditions:
             
             time_step_min = int( time_step_min )
             if not time_step_min in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]:
-                raise ValueError("OperatingConditions.set_time_step: Argument 'time_step_min' must be one of the allowed values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.")
+                raise ValueError("OperatingConditions._set_time_step: Argument 'time_step_min' must be one of the allowed values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, and 60.")
                 
         if time_step is not None:
             
@@ -398,7 +467,7 @@ class OperatingConditions:
             raise ValueError("OperatingConditions: Argument 'time_step_number' must be an integer value.")
             
         if not self._ready:
-            raise OpCondError("OperatingConditions.get_conditions: Time step has not been set. Use the method `OperatingConditions.set_time_step`.")
+            raise OpCondError("OperatingConditions.get_conditions: Time step has not been set. Use the method `OperatingConditions._set_time_step`.")
         
         time_step_number = int( time_step_number )
         

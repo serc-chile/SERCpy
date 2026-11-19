@@ -5,7 +5,6 @@ Created on Thu Sep 24 09:42:44 2026
 @author: Adrian Riebel Brummer
 """
 
-from typing import Optional
 import numpy as np
 from .fluids import Fluid
 from .devices import Device, Outlet
@@ -196,18 +195,16 @@ class SolarCollector:
     
     def __init__(self, *,
                  
-                 model_name: Optional[ str ] = None,
-                 area: Optional[ float ] = None,
-                 length: Optional[ float ] = None,
-                 width: Optional[ float ] = None,
-                 n0: float,
-                 a1: float,
-                 a2: Optional[ float ] = None,
-                 IAM: float | list | dict | None,
-                 test_flowrate_per_m2: Optional[ float ] = None,
-                 test_fluid: Optional[ str ]  = None,
-                 
-                 ):
+                 model_name = None,
+                 area = None,
+                 length = None,
+                 width = None,
+                 n0,
+                 a1,
+                 a2= None,
+                 IAM,
+                 test_flowrate_per_m2 = None,
+                 test_fluid = None, ):
         
         self._model_name = self._validate_argument("model_name", model_name)
         
@@ -851,21 +848,21 @@ class SolarField( Device ):
     
     def __init__( self, *,
             
-            collector: SolarCollector,
-            total_colls: int,
-            coll_tilt: Optional[ float ] = None,
-            coll_azimuth: Optional[ float ] = None,
-            colls_in_series: Optional[ int ] = None,
-            ground_albedo: Optional[ int ] = None,
-            coll_disposition: Optional[ str ] = None,
-            tube_direction: Optional[ str ] = None,
-            non_shadeable_colls: Optional[ int ] = None,
-            ground_fraction_covered: Optional[ float ] = None,
-            row_spacing: Optional[ float ] = None,
-            clear_horizon: Optional[ bool ] = None,
-            release_vapor: Optional[ bool ] = None,
-            vapor_tolerance: Optional[ float ] = None,
-            max_iterations: Optional[ int ] = None, ):
+            collector,
+            total_colls,
+            coll_tilt = None,
+            coll_azimuth = None,
+            colls_in_series = None,
+            ground_albedo = None,
+            coll_disposition = None,
+            tube_direction = None,
+            non_shadeable_colls = None,
+            ground_fraction_covered = None,
+            row_spacing = None,
+            clear_horizon = None,
+            release_vapor = None,
+            vapor_tolerance = None,
+            max_iterations = None, ):
         
         if collector is None:
             raise TypeError("SolarField: Parameter 'collector' cannot be None.")

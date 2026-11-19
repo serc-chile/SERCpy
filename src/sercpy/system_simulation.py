@@ -30,7 +30,9 @@ class SimulationResult:
 
 class Simulation:
     """
-    Class to simulate a thermal system 
+    Class to simulate a thermal system.
+    
+    
     
     """
     

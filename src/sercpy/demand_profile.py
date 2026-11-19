@@ -16,25 +16,19 @@ from .units import (
     
     convert_units,
     get_unit_type,
-    UnitsError,
-    
-    )
+    UnitsError, )
 from .core import (
     
     month_days,
     monthly_cummulated_days,
     month_names,
     mean_squared_error,
-    Energy_Sources_Database,
-    
-    )
+    Energy_Sources_Database, )
 from .config import (
     
     default_year,
     demand_Tin_limits,
-    demand_Tset_limits,
-    
-    )
+    demand_Tset_limits, )
 from scipy.optimize import minimize, Bounds
 
 # Numbers to define the fuctions that convert temperature to demand factors
