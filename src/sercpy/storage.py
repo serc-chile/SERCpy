@@ -9,7 +9,6 @@ from .devices import Device, Outlet
 import numpy as np
 from bisect import bisect
 from .fluids import Fluid
-from typing import Optional
 
 tank_allowed_parameters = [
     
@@ -187,6 +186,23 @@ class StorageTank( Device ):
     
     diameter : float
         Internal diameter of the tank (m).
+        
+    io_relative_heights : list of pairs
+        List of pairs with values in the range 0 - 1 defining the heights, with respect to the tank,
+        where the inlet and outlet ports are located. See :ref:`inlet_outlet_ports_definition`.
+        This attribute can be specified at initialization and also thereafter.
+        
+    io_nodes : list of pair
+        List of pairs with integer values defining the node numbers where the inlet and
+        outlet ports are located. It has a format similar to that of `io_relative_heights`,
+        but the numbers specify the node numbers, where 1 corresponds to the top node of the tank,
+        and `n_nodes` corresponds to the bottom node. This attribute cannot be defined directly.
+        It gets computed internally from `io_relative_heights`, and gets modified when that attribute,
+        or `n_nodes` is modified.
+        
+    io_positions_defined : bool
+        Boolean value stating whether the positions of the inlet- and
+        outlet ports have already been established.
     
     top_temp : float
         Temperature of tank's top node (°C) at the beginning of the time step.
@@ -228,10 +244,6 @@ class StorageTank( Device ):
     iterations : int
         Number of internal iterations performed
         the last time the method `StorageTank.compute_outputs` was called.
-    
-    io_positions_defined : bool
-        Boolean value stating whether the positions of the inlet- and
-        outlet ports have already been established.
     
     """
     def __init__( self, *,

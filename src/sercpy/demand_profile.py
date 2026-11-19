@@ -7,7 +7,6 @@ Created on Mon Aug 17 11:18:03 2026
 
 from .fluids import Fluid
 from .meteo_profile import MeteoProfile
-from typing import Optional, Callable
 import pandas as pd
 import warnings
 import numpy as np
@@ -304,63 +303,61 @@ class DemandProfile:
             self, 
             *,
             
-            fluid: Optional[ str ] = None,
-            fluid_cp: Optional[ float ] = None,
-            fluid_cp_units: Optional[ str ] = None,
-            fluid_density: Optional[ float ] = None,
-            fluid_density_units: Optional[ str ] = None,
+            fluid = None,
+            fluid_cp = None,
+            fluid_cp_units = None,
+            fluid_density = None,
+            fluid_density_units = None,
             
-            T_set: float | list[float],
-            T_in: float | list[float] | str,
-            temp_units: Optional[ str ] = None,
-            T_units: Optional[ str ] = None,
+            T_set,
+            T_in,
+            temp_units = None,
+            T_units = None,
             
-            monthly_heat_demand: Optional[ list[float] ] = None,
-            heat_demand_units: Optional[ str ] = None,
+            monthly_heat_demand = None,
+            heat_demand_units = None,
             
-            monthly_consumption: Optional[ list[float] ] = None,
-            consumption_units: Optional[ str ] = None,
-            heater_efficiency: Optional[ float ] = None,
-            heat_source: Optional[ str ] = None,
-            heat_source_heating_value: Optional[ float ] = None,
-            heat_source_heating_value_units: Optional[ str ] = None,
-            heat_source_density: Optional[ float ] = None,
-            heat_source_density_units: Optional[ str ] = None,
-            condensation_boiler: Optional[ bool ] = None,
+            monthly_consumption = None,
+            consumption_units = None,
+            heater_efficiency = None,
+            heat_source = None,
+            heat_source_heating_value = None,
+            heat_source_heating_value_units = None,
+            heat_source_density = None,
+            heat_source_density_units = None,
+            condensation_boiler = None,
             
-            daily_demand_profile: Optional[ list[float] ] = None,
-            daily_demand_profile_saturday: Optional[ list[float] ] = None,
-            daily_demand_profile_sunday: Optional[ list[float] ] = None,
+            daily_demand_profile = None,
+            daily_demand_profile_saturday = None,
+            daily_demand_profile_sunday = None,
             
-            daily_demand_ratio_saturday: Optional[ float ] = None,
-            daily_demand_ratio_sunday: Optional[ float ] = None,
-            peak_demand_ratio_saturday: Optional[ float ] = None,
-            peak_demand_ratio_sunday: Optional[ float ] = None,
+            daily_demand_ratio_saturday = None,
+            daily_demand_ratio_sunday = None,
+            peak_demand_ratio_saturday = None,
+            peak_demand_ratio_sunday = None,
             
-            weekly_demand_factors: Optional[ list[float] ] = None,
+            weekly_demand_factors = None,
             
-            daily_demand_profiles: Optional[ list[list[float]] ] = None,
-            weekly_demand_profile: Optional[ list[float] ] = None,
+            daily_demand_profiles = None,
+            weekly_demand_profile = None,
             
-            op_start: Optional[ str ] = None,
-            op_end: Optional[ str ] = None,
-            op_start_saturday: Optional[ str ] = None,
-            op_end_saturday: Optional[ str ] = None,
-            op_start_sunday: Optional[ str ] = None,
-            op_end_sunday: Optional[ str ] = None,
+            op_start = None,
+            op_end = None,
+            op_start_saturday = None,
+            op_end_saturday = None,
+            op_start_sunday = None,
+            op_end_sunday = None,
             
-            monthly_production: Optional[ list[float] ] = None,
+            monthly_production = None,
             
-            Tamb_profile: Optional[ list[float] ] = None,
-            Tamb_units: Optional[ str ] = None,
-            meteo_profile: Optional[ MeteoProfile ] = None,
+            Tamb_profile = None,
+            Tamb_units = None,
+            meteo_profile = None,
             
-            Tamb_dependence: Optional[ float ] = None,
+            Tamb_dependence = None,
             
             
-            smooth_Tamb_profile: Optional[ bool ] = None,
-            
-            **kwargs,
+            smooth_Tamb_profile = None,
             
             ):
         
@@ -648,12 +645,10 @@ class DemandProfile:
             goal_units: str = 'J',
             heater_efficiency: float = 1,
             HV_type: str = 'LHV',
-            fuel_density: Optional[ float ] = None,
-            fuel_density_units: Optional[ float ] = None,
-            fuel_HV: Optional[ float ] = None,
-            fuel_HV_units: Optional[ float ] = None
-            
-            ) -> float | list[ float ]:
+            fuel_density = None,
+            fuel_density_units = None,
+            fuel_HV = None,
+            fuel_HV_units = None ):
         """
         Static method that converts the consumption of a certain energy source (electricity or fuel) to heat demand, assuming a constant efficiency for the heater.
         
@@ -1563,12 +1558,12 @@ class DemandProfile:
     
     @classmethod
     def from_dict( cls, kwargs ):
-        return cls(**kwargs)
+        return cls( **kwargs )
     
     @staticmethod
     def define_temp_to_factor_func(
-            dependence_coeff: float,
-            temp_units: str = None ) -> Callable[[float], float]:
+            dependence_coeff,
+            temp_units = None ):
         """
         Define a Temperature-to-Demand-Factor function.
         
@@ -1577,19 +1572,21 @@ class DemandProfile:
         It returns a function than can be used thereafter to obtain relative daily demand values from daily temperatures.
         
         The temperature units with wich the returned function will process the temperature data can be managed with the argument `temp_units`.
-    
+        
         Parameters
         ----------
         dependence_coeff : float
             Value from 0 to 3. Both limits are valid. This value defines the level of dependence of the thermal demand on ambient temperature.
         temp_units : str
             Units in which the daily temperatures will be provided to the returned function. If not provided, it defaults to °C.
-    
+        
         Returns
         -------
         func
             Function that takes a daily temperature value (float) and returns a float value proportional to the demand level of that day.
+        
         """
+        
         try:
             dependence_coeff = float(dependence_coeff)
         except:
@@ -1616,14 +1613,12 @@ class DemandProfile:
             b_w = demand_cluster_coefficients[dependence_coeff]["b_w"]
             
             if convert_temperature:
-                
                 def temp_to_factor(T):
                     T = convert_units( T, temp_units, 'C' )
                     if T >= T_hl:
                         return max( [ m_w*T + b_w, 0 ] )
                     return max( [ m_h*T + b_h, 0 ] )
             else:
-                
                 def temp_to_factor(T):
                     if T >= T_hl:
                         return max( [ m_w*T + b_w, 0 ] )
@@ -1659,13 +1654,10 @@ class DemandProfile:
                 return max( [ m_h_2*T + b_h_2, 0 ] )
             
             if convert_temperature:
-                
                 def temp_to_factor(T):
                     T = convert_units( T, temp_units, 'C' )
                     return x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T)
-                
             else:
-                
                 def temp_to_factor(T):
                     return x_1*temp_to_factor_1(T) + (1 - x_1)*temp_to_factor_2(T)
                 

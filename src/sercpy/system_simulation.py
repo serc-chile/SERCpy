@@ -19,32 +19,31 @@ import warnings
 class SimulationResult:
     
     def __init__(self):
-        
         self._results_dict = {  }
         
     def record_results( self, results_dict ):
-        
         for key in results_dict:
-            
             if key in self._results_dict:
-                
                 self._results_dict[ key ].append( results_dict[ key ] )
-            
             else:
-                
                 self._results_dict[ key ] = [ results_dict[ key ] ]
 
 class Simulation:
+    """
+    Class to simulate a thermal system 
     
-    def __init__( self, operating_conditions, devices_list ):
+    """
+    
+    def __init__( self, operating_conditions, devices_list, record_time_step_func ):
         
         self._operating_conditions = operating_conditions
         self._devices_list = devices_list
+        self._record_time_step_func = record_time_step_func
         
     @property
     def operating_conditions(self):
         if not hasattr( self, "_operating_conditions" ):
-            raise AttributeError("Simulation: Attribute 'operating_conditions' has not been specified.")
+            raise AttributeError( "Simulation: Attribute 'operating_conditions' has not been specified." )
         return self._operating_conditions
     
     @operating_conditions.setter
@@ -64,6 +63,18 @@ class Simulation:
         if not ( type( value ) is list and all( [ isinstance( element, Device ) for element in value  ] ) ):
             raise TypeError("Simulation: Attribute 'devices_list' must be a list of instances of sercpy.devices.Device")
         self._devices_list = value
+        
+    @property
+    def record_time_step_func(self):
+        if not hasattr( self, "_record_time_step_func" ):
+            raise AttributeError("Simulation: Attribute 'record_time_step_func' has not been specified.")
+        return self._record_time_step_func
+    
+    @record_time_step_func.setter
+    def record_time_step_func(self, value):
+        if not callable( value ):
+            raise TypeError("Simulation: Attribute 'record_time_step_func' must be a callable element.")
+        self._record_time_step_func = value
     
     def compute_time_step( self , time_step_number, results_record ):
         
@@ -102,9 +113,7 @@ class Simulation:
         for attribute_name in [
                 
                 "max_iterations",
-                "devices_list",
-                
-                ]:
+                "devices_list", ]:
             
             if not hasattr( self, "_" + attribute_name ):
                 class_name = self.__class__.__name__

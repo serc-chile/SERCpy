@@ -6,9 +6,6 @@ Created on Mon Aug 17 22:08:31 2026
 """
 
 from .core import month_days
-from math import pi
-from numpy import arctan, tan, sin, cos
-from typing import Optional
 from pathlib import Path
 import requests
 import json
@@ -16,16 +13,11 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 from pvlib.solarposition import get_solarposition
-from pvlib.atmosphere import get_relative_airmass
-from pvlib.irradiance import get_extra_radiation, perez
-from scipy.integrate import quad, nquad
-from scipy.interpolate import interp1d
 from .config import get_api_key
 from .units import convert_units
 from timezonefinder import timezone_at
 import warnings
 from zoneinfo import ZoneInfo
-from .solar import SolarField
 
 class TMYError(Exception):
     pass
@@ -41,8 +33,6 @@ class FileFormatError(Exception):
 
 class LocationNeeded(Exception):
     pass
-
-
 
 MeteoProfile_valid_args = [
     
@@ -186,47 +176,44 @@ class MeteoProfile:
     ground_albedo : float
         Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
     
-    solar_field : sercpy.solar.SolarField instance
+    solar_field : :doc:`SolarField </devices/solar/solar_field_class>`
         Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization.
         
     """
     
     def __init__(
             
-            self, 
-            *,
+            self,  *,
             
-            location: Optional[ tuple ] = None,
-            latitude: Optional[ float ] = None,
-            longitude: Optional[ float ] = None,
+            location = None,
+            latitude = None,
+            longitude = None,
             
-            ground_albedo: Optional[ float ] = None,
+            ground_albedo = None,
             
-            api_key: Optional[ str ] = None,
+            api_key = None,
             
-            tmy_file_path: Optional[ str | Path ] = None,
-            ghi_col_name: Optional[ str ] = None,
-            dni_col_name: Optional[ str ] = None,
-            dhi_col_name: Optional[ str ] = None,
-            Tamb_col_name: Optional[ str ] = None,
-            tmy_utc_offset: Optional[ str ] = None,
-            sep: Optional[ str ] = None,
-            delimiter: Optional[ str ] = None,
-            skiprows: Optional[ int ] = None,
+            tmy_file_path = None,
+            ghi_col_name = None,
+            dni_col_name = None,
+            dhi_col_name = None,
+            Tamb_col_name = None,
+            tmy_utc_offset = None,
+            sep = None,
+            delimiter = None,
+            skiprows = None,
             
-            irradiance_units: Optional[ str ] = None,
-            temp_units: Optional[ str ] = None,
-            T_units: Optional[ str ] = None,
+            irradiance_units = None,
+            temp_units = None,
+            T_units = None,
             
-            elevation: Optional[ float ] = None,
-            elevation_units: Optional[ str ] = None,
+            elevation = None,
+            elevation_units = None,
             
-            solar_field: Optional[ SolarField ] = None,
+            solar_field = None,
             
-            tz: Optional[ str ] = 'auto',
-            time_zone: Optional[ str ] = 'auto',
-            
-            **kwargs):
+            tz = 'auto',
+            time_zone = 'auto' ):
         
         self.irradiance_columns = [ 
             
@@ -471,10 +458,10 @@ class MeteoProfile:
         self._df_tmy = df
     
     @staticmethod
-    def data_length_to_datetimes(
+    def _data_length_to_datetimes(
             
-            data_length: int,
-            tz: Optional[ str ] = None ):
+            data_length,
+            tz = None ):
         """
         Static method that takes the length of the data and generates a `pandas.DatetimeIndex <https://pandas.pydata.org/docs/reference/api/pandas.DatetimeIndex.html>`_ that defines the instant of the year to which each data sample corresponds.
         
@@ -547,7 +534,7 @@ class MeteoProfile:
         
         else:
             
-            raise ValueError("MeteoProfile.data_length_to_datetimes: Length of DataFrame must be consistent with one year of data with one of the following time resolutions in minutes: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.")
+            raise ValueError("MeteoProfile._data_length_to_datetimes: Length of DataFrame must be consistent with one year of data with one of the following time resolutions in minutes: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.")
         
         date_times = pd.date_range( dt_start, dt_end, periods = data_length, inclusive = 'both', tz = tz )
         
@@ -703,10 +690,10 @@ class MeteoProfile:
         
         tz = self.utc_offset_num_to_str( utc_offset )
         
-        date_times = self.data_length_to_datetimes( len( df ), tz = tz )
+        date_times = self._data_length_to_datetimes( len( df ), tz = tz )
         
         zenith_list = get_solarposition(date_times, latitude, longitude)[ 'apparent_zenith' ].astype(float).tolist()
-        zenith_list_rad = ( (pi/180)*np.array(zenith_list) ).astype( float ).tolist()
+        zenith_list_rad = ( (np.pi/180)*np.array(zenith_list) ).astype( float ).tolist()
         
         assert len( zenith_list ) == len( df )
         
@@ -720,7 +707,7 @@ class MeteoProfile:
                 if zenith_list[i] > 90:
                     DHI_list.append( GHI_list[i] )
                 else:
-                    DHI_list.append( max( [ GHI_list[i] - DNI_list[i]*cos( zenith_list_rad[i] ) , 0 ] ) )
+                    DHI_list.append( max( [ GHI_list[i] - DNI_list[i]*float( np.cos( zenith_list_rad[i] ) ) , 0 ] ) )
                     
             df[ 'DHI' ] = DHI_list
             
@@ -733,7 +720,7 @@ class MeteoProfile:
                 if zenith_list[i] > 90:
                     GHI_list.append( DHI_list[i] )
                 else:
-                    GHI_list.append( DNI_list[i]*cos( zenith_list_rad[i] ) + DHI_list[i] )
+                    GHI_list.append( DNI_list[i]*float( np.cos( zenith_list_rad[i] ) ) + DHI_list[i] )
                     
             df[ 'GHI' ] = GHI_list
                     
@@ -746,7 +733,7 @@ class MeteoProfile:
                 if zenith_list[i] > 85:
                     DNI_list.append( 0 )
                 else:
-                    DNI_list.append( max( [ GHI_list[i] - DHI_list[i] , 0 ] )/cos( zenith_list_rad[i]) )
+                    DNI_list.append( max( [ GHI_list[i] - DHI_list[i] , 0 ] )/float( np.cos( zenith_list_rad[i]) ) )
                     
             df[ 'DNI' ] = DNI_list
             
@@ -1190,6 +1177,8 @@ class MeteoProfile:
                     
         if argument_name == "solar_field":
             
+            from .solar import SolarField
+            
             if not isinstance( value, SolarField ):
                 raise ValueError( "MeteoProfile: Argument 'solar_field' must be an instance of sercpy.solar.SolarField." )
         
@@ -1280,9 +1269,9 @@ class MeteoProfile:
     
     @staticmethod
     def download_tmy(
-            latitude: float,
-            longitude: float,
-            api_key: Optional[ str ] = None):
+            latitude,
+            longitude,
+            api_key = None):
         """
         Download a TMY profile within the Chilean territory.
         
@@ -1496,9 +1485,9 @@ class MeteoProfile:
     @staticmethod
     def altitude_to_pressure(
             
-            altitude: float,
-            altitude_units: Optional[ str ] = None,
-            pressure_units: Optional[ str ] = None ):
+            altitude,
+            altitude_units = None,
+            pressure_units = None ):
         """
         Compute the atmoshperic pressure from the altitude.
         
@@ -1564,7 +1553,7 @@ class MeteoProfile:
         
         Parameters
         ----------
-        solar_field : sercpy.solar.SolarField instance
+        solar_field : :doc:`SolarField </devices/solar/solar_field_class>`
             Solar field for which the aforementioned results are computed.
         
         Returns
@@ -1572,6 +1561,9 @@ class MeteoProfile:
         None
         
         """
+        
+        if solar_field is None:
+            raise TypeError("MeteoProfile.compute_poa_irradiance: Argument 'solar_field' cannot be None.")
         
         self._solar_field = self._validate_argument("solar_field", solar_field)
         
@@ -1584,7 +1576,6 @@ class MeteoProfile:
         self._solar_field.set_auto_attributes( coll_tilt = coll_tilt_auto, coll_azimuth = coll_azimuth_auto, ground_albedo = self._ground_albedo )
         
         date_times = pd.DatetimeIndex( self._df_tmy[ 'timestamp' ] )
-        dni_extra = get_extra_radiation( date_times )
         
         doy = [ dt.day_of_year for dt in date_times ]
         
@@ -1946,18 +1937,18 @@ class MeteoProfile:
         T_ref = 6.6666667
         K1 = 0.4
         K2 = 0.018
-        K3 = 35*pi/180
+        K3 = float( 35*np.pi/180 )
         K4 = -3.1416e-4
         delta_T_mains = (K1 + K2*(T_amb_ann - T_ref))*delta_T_amb
         phi_lag = K3 + K4*(T_amb_ann - T_ref)
-        phi_amb = (104.8 + 180)*pi/180
+        phi_amb = float( (104.8 + 180)*np.pi/180 )
         # phi_lat: Correct phase if the latitude corresponds to the northern hemisphere
         if self._latitude >= 0:
-            phi_lat = pi
+            phi_lat = float( np.pi )
         else:
             phi_lat = 0
         T_mains_avg = T_amb_ann + delta_T_offset
         
         t_array = np.linspace( 0, 8760 - 1/60, 8760*60 )
         
-        self._df_tmy[ "Tmains" ] = T_mains_avg + delta_T_mains*sin( (2*pi/8760)*t_array - phi_lag - phi_amb + phi_lat )
+        self._df_tmy[ "Tmains" ] = T_mains_avg + delta_T_mains*np.sin( (2*np.pi/8760)*t_array - phi_lag - phi_amb + phi_lat )
