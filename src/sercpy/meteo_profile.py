@@ -153,7 +153,7 @@ class MeteoProfile:
     time_zone : str, optional
         Alias for tz.
     
-    solar_field : sercpy.solar.SolarField instance, optional
+    solar_field : :doc:`SolarField </devices/solar/solar_field_class>`
         Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
         
     Attributes
