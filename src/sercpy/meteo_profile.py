@@ -170,7 +170,7 @@ class MeteoProfile:
     time_zone : str
         Alias for `tz`.
     
-    tmy_utc_offset"` : float
+    tmy_utc_offset : float
         UTC offset of the TMY (typical meteorological year) data, in hours. If not provided by the user (strongly recommended for custom csv files), it is determined based on the location.
     
     ground_albedo : float
