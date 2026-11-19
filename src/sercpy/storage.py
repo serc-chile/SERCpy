@@ -188,16 +188,25 @@ class StorageTank( Device ):
         Internal diameter of the tank (m).
         
     io_relative_heights : list of pairs
-        List of pairs with values in the range 0 - 1 defining the heights, with respect to the tank,
-        where the inlet and outlet ports are located. See :ref:`inlet_outlet_ports_definition`.
-        This attribute can be specified at initialization and also thereafter.
+        List of pairs with values in the range 0 - 1
+        defining the heights, with respect to the tank,
+        where the inlet and outlet ports are located.
+        See :ref:`inlet_outlet_ports_definition`.
+        This attribute can be specified at initialization
+        (parameter with the same name) and also thereafter.
         
     io_nodes : list of pair
-        List of pairs with integer values defining the node numbers where the inlet and
-        outlet ports are located. It has a format similar to that of `io_relative_heights`,
-        but the numbers specify the node numbers, where 1 corresponds to the top node of the tank,
-        and `n_nodes` corresponds to the bottom node. This attribute cannot be defined directly.
-        It gets computed internally from `io_relative_heights`, and gets modified when that attribute,
+        List of pairs with integer values
+        defining the node numbers where the inlet and
+        outlet ports are located. It has a format
+        similar to that of `io_relative_heights`,
+        but the numbers specify the node numbers,
+        where `1` corresponds to the top node of the tank,
+        and `n_nodes` corresponds to the bottom
+        node. This attribute cannot be defined directly.
+        It gets computed internally from
+        `io_relative_heights`, and
+        gets modified when that attribute,
         or `n_nodes` is modified.
         
     io_positions_defined : bool
@@ -461,6 +470,14 @@ class StorageTank( Device ):
             
     @property
     def io_relative_heights(self):
+        """
+        List of pairs with values in the range 0 - 1
+        defining the heights, with respect to the tank,
+        where the inlet and outlet ports are located.
+        See :ref:`inlet_outlet_ports_definition`.
+        This attribute can be specified at initialization
+        (parameter with the same name) and also thereafter.
+        """
         if not hasattr( self, "_io_relative_heights" ):
             raise AttributeError( "StorageTank: Attribute 'io_relative_heights' has not been assigned." )
         return self._io_relative_heights
@@ -489,6 +506,20 @@ class StorageTank( Device ):
         
     @property
     def io_nodes(self):
+        """
+        List of pairs with integer values
+        defining the node numbers where the inlet and
+        outlet ports are located. It has a format
+        similar to that of `io_relative_heights`,
+        but the numbers specify the node numbers,
+        where `1` corresponds to the top node of the tank,
+        and `n_nodes` corresponds to the bottom
+        node. This attribute cannot be defined directly.
+        It gets computed internally from
+        `io_relative_heights`, and
+        gets modified when that attribute,
+        or `n_nodes` is modified.
+        """
         if not hasattr( self, "_io_relative_heights" ):
             raise AttributeError( "StorageTank: Attribute 'io_nodes' has not been defined. This must be done indirectly through the attribute 'io_relative_heights'." )
         return [ ( self._inlet_nodes[i] + 1 , self._outlet_nodes[i] + 1 ) for i in range(len(self._inlet_nodes)) ]
