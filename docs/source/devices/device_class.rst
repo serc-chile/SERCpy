@@ -22,3 +22,11 @@ In order for a class to be used as a device in a **SERCpy** simulation, it has t
 .. _class_device:
 
 .. autoclass:: Device
+
+Device methods
+--------------
+
+.. toctree::
+  :hidden:
+
+  device_methods/set_connections_method
