@@ -14,6 +14,7 @@ The concept of "device", in the context of **SERCpy**, encompasses the classes t
 .. toctree::
   :hidden:
   
+  device_class
   solar/solar
   storage/storagetank_class
   heat_exchanger/heat_exchanger_class
