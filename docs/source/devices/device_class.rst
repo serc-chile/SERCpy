@@ -30,3 +30,4 @@ Device methods
   :hidden:
 
   device_methods/set_connections_method
+  device_methods/set_convergence_criteria_method
