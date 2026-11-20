@@ -17,11 +17,17 @@ class StateError(Exception):
 class FluidError(Exception):
     pass
 
+class FluidNameError(Exception):
+    pass
+
 class FluidState:
     """
-    Class that stores and yields the properties of a fluid at a fixed temperature or specific enthalpy value.
+    Class that stores and yields the properties
+    of a fluid at a fixed temperature or specific enthalpy value.
     
-    Since a :doc:`Fluid </fluids/fluid_class>` instance stores the properties of a fluid at a fixed pressure, a temperature or enthalpy value is enough to define its thermodynamic state.
+    Since a :doc:`Fluid </fluids/fluid_class>` instance stores the
+    properties of a fluid at a fixed pressure, a temperature or
+    enthalpy value is enough to define its thermodynamic state.
     
     Parameters
     ----------
@@ -30,14 +36,18 @@ class FluidState:
         
     **kwargs: float
         Allowed keyword arguments are `T`, `h`, and `H`.
-        `T` must be specified if the state is going to be defined from temperature (in °C).
-        Any of the other two must be specified if the state is going to be defined from enthalpy.
+        `T` must be specified if the state is
+        going to be defined from temperature (in °C).
+        Any of the other two must be specified
+        if the state is going to be defined from enthalpy.
         One and only one of these keyword arguments must be provided.
     
     Attributes
     ----------
     fluid : :doc:`Fluid <fluid_class>`
-        Object from which the fluid properties are computed. It is the same object provided at initialization.
+        Object from which the fluid properties
+        are computed. It
+        is the same object provided at initialization.
         
     p : float
         Fluid pressure in Pa.
@@ -70,7 +80,9 @@ class FluidState:
         Alias for `cp`.
         
     Q : float
-        Liquid-vapor mixture quality. It is a value in the range 0 - 1 representing the vapor fraction. It is 0 for completely liquid substances, and 1 for completely gaseous substances.
+        Liquid-vapor mixture quality. It is a value in the range 0 - 1
+        representing the vapor fraction. It is 0 for
+        completely liquid substances, and 1 for completely gaseous substances.
         
     quality : float
         Alias for `Q`.
@@ -425,7 +437,7 @@ class Fluid:
         try:
             fluid_name_corrected = str( fluid_name ).upper().translate(str.maketrans( '', '', ' -_%' ) )
         except:
-            raise FluidError("Fluid: Argument 'fluid_name' must be convertible to string.")
+            raise TypeError("Fluid: Argument 'fluid_name' must be convertible to string.")
             
         if p is None and P is not None:
             p = P
@@ -477,7 +489,7 @@ class Fluid:
             
         else:
             
-            raise ValueError(f"Fluid name not recognized: {fluid_name}")
+            raise FluidNameError( f"Fluid name not recognized: {fluid_name}" )
     
     def __init__water(
             

@@ -191,32 +191,8 @@ class HeatExchanger( Device ):
         else:
             self._max_iterations = self._validate_argument("max_iterations", max_iterations)
             
-        self._outlet_source = Outlet()
-        self._outlet_load = Outlet()
-            
-    @property
-    def outlet_source(self):
-        "Instance of the class sercpy.devices.Outlet representing the outlet on the source side (or hot side) of the heat exchanger."
-        return self._outlet_source
-    
-    @property
-    def outlet_load(self):
-        "Instance of the class sercpy.devices.Outlet representing the outlet on the load side (or cold side) of the heat exchanger."
-        return self._outlet_load
-    
-    @property
-    def inlet_source(self):
-        "Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing an outlet of another device from which the heat source flow of the heat exchanger comes."
-        if not hasattr( self, "_inlet_source" ):
-            raise AttributeError("HeatExchanger: Attribute 'inlet_source' has not been defined. This is done with the method HeatExchanger.set_connections.")
-        return self._inlet_source
-        
-    @property
-    def inlet_load(self):
-        "Instance of the class :ref:`sercpy.devices.Outlet <class_outlet>` representing an outlet of another device from which the heat load flow of the heat exchanger comes."
-        if not hasattr( self, "_inlet_load" ):
-            raise AttributeError("HeatExchanger: Attribute 'inlet_load' has not been defined. This is done with the method HeatExchanger.set_connections.")
-        return self._inlet_load
+        self.outlet_source = Outlet()
+        self.outlet_load = Outlet()
     
     @property
     def constant_effectiveness(self):
@@ -273,14 +249,6 @@ class HeatExchanger( Device ):
         if not hasattr( self, "_vapor_release_convergence" ):
             raise AttributeError("HeatExchanger: Attribute 'vapor_release_convergence' has not been computed yet. This attribute gets computed after calling the method HeatExchanger.compute_outputs.")
         return self._vapor_release_convergence
-    
-    @inlet_source.setter
-    def inlet_source(self, value):
-        raise AttributeError("HeatExchanger: Attribute 'inlet_source' must be set with the method `HeatExchanger.set_connections.`")
-        
-    @inlet_load.setter
-    def inlet_load(self, value):
-        raise AttributeError("HeatExchanger: Attribute 'inlet_load' must be set with the method `HeatExchanger.set_connections.`")
         
     @staticmethod
     def _validate_argument( argument_name, value ):
@@ -409,15 +377,7 @@ class HeatExchanger( Device ):
         
         """
         
-        if inlet_source is not None and not isinstance( inlet_source, Outlet ):
-            raise TypeError( "HeatExchanger.set_connections: Parameter 'inlet_source' must be an instance of sercpy.fluids.Outlet." )
-        elif inlet_source is not None:
-            self._inlet_source = inlet_source
-        
-        if inlet_load is not None and not isinstance( inlet_load, Outlet ):
-            raise TypeError( "HeatExchanger.set_connections: Parameter 'inlet_load' must be an instance of sercpy.fluids.Outlet." )
-        elif inlet_load is not None:
-            self._inlet_load = inlet_load
+        super().set_connections( inlet_source = inlet_source, inlet_load = inlet_load )
     
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
                          flowrate_source = None, state_in_source = None,
@@ -489,39 +449,36 @@ class HeatExchanger( Device ):
             if not ( type( iteration_number ) is int and iteration_number >= 0 ):
                 raise TypeError("HeatExchanger.compute_outputs: Parameter 'iteration_number' must be an 'int'. Its value msut be >= 0.")
 
-            if not hasattr( self, "_inlet_source" ):
+            if not hasattr( self, "inlet_source" ):
                 raise AttributeError( "HeatExchanger.compute_outputs: inlet_source has not been defined. Use the method HeatExchanger.set_connections." )
-            if not hasattr( self, "_inlet_load" ):
+            if not hasattr( self, "inlet_load" ):
                 raise AttributeError( "HeatExchanger.compute_outputs: inlet_load has not been defined. Use the method HeatExchanger.set_connections." )
             
             try:
-                flowrate_source = self._inlet_source.flowrate
-                state_in_source = self._inlet_source.state
-                flowrate_load = self._inlet_load.flowrate
-                state_in_load = self._inlet_load.state
+                flowrate_source = self.inlet_source.flowrate
+                state_in_source = self.inlet_source.state
+                flowrate_load = self.inlet_load.flowrate
+                state_in_load = self.inlet_load.state
             except AttributeError:
                 self._convergence = False
                 return
                 
-            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-                self._relative_inputs_last, self._state_inputs_last = [ flowrate_source, flowrate_load ], [ state_in_source, state_in_load ]
+            if iteration_number == 0:
                 self._convergence = False
             else:
-                self._compute_convergence(
-                    relative_inputs = [ flowrate_source, flowrate_load ],
-                    state_inputs = [ state_in_source, state_in_load ]  )
+                self.compute_convergence()
                 if self._convergence:
                     return
             
             Tmains = operating_conditions[ 'Tmains' ]
             
-        self._outlet_source.flowrate = flowrate_source
-        self._outlet_load.flowrate = flowrate_load
+        self.outlet_source.flowrate = flowrate_source
+        self.outlet_load.flowrate = flowrate_load
         
         if flowrate_source == 0 or flowrate_load == 0:
             
-            self._outlet_source.state = state_in_source
-            self._outlet_load.state = state_in_load
+            self.outlet_source.state = state_in_source
+            self.outlet_load.state = state_in_load
             self._effectiveness = np.nan
             self._useful_power = 0
             self._wasted_power = 0
@@ -603,8 +560,8 @@ class HeatExchanger( Device ):
                     assert h_out_load > fluid_load.h_sat_liq
                     flowrate_mains = Q_waste / ( fluid_load.h_sat_vap - h_mains )
             
-            self._outlet_source.state = fluid_source.state( h = h_out_source )
-            self._outlet_load.state = fluid_load.state( h = min( [ h_out_load, fluid_load.h_sat_liq ] ) )
+            self.outlet_source.state = fluid_source.state( h = h_out_source )
+            self.outlet_load.state = fluid_load.state( h = min( [ h_out_load, fluid_load.h_sat_liq ] ) )
             self._useful_power = Q_useful
             self._wasted_power = Q_waste
             self._vapor_flowrate = vapor_flowrate
@@ -648,6 +605,6 @@ class HeatExchanger( Device ):
             
             Q_useful = flowrate_load * (  h_out_load - state_in_load.h )
             
-            self._outlet_source.state = fluid_source.state( h = h_out_source )
-            self._outlet_load.state = fluid_load.state( h = h_out_load )
+            self.outlet_source.state = fluid_source.state( h = h_out_source )
+            self.outlet_load.state = fluid_load.state( h = h_out_load )
             self._useful_power = Q_useful

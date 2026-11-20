@@ -5,7 +5,7 @@ Created on Mon Aug 17 11:18:03 2026
 @author: Adrian Riebel Brummer
 """
 
-from .fluids import Fluid
+from .fluids import Fluid, FluidNameError
 from .meteo_profile import MeteoProfile
 import pandas as pd
 import warnings
@@ -298,10 +298,9 @@ class DemandProfile:
             *,
             
             fluid = None,
-            fluid_cp = None,
-            fluid_cp_units = None,
-            fluid_density = None,
-            fluid_density_units = None,
+            pressure_abs = None,
+            pressure_man = None,
+            pressure_rel = None,
             
             T_set,
             T_in,
@@ -383,34 +382,18 @@ class DemandProfile:
             if not all( [ T >= demand_Tin_limits[0] and T <= demand_Tin_limits[1] for T in self._monthly_T_in ] ):
                 raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tin_limits[0]} °C <= T_set <= {demand_Tin_limits[0]} °C.")
             
-        if not ( fluid is not None or ( fluid_cp is not None and fluid_density is not None ) ):
-            raise ValueError("Class DemandProfile: Either the heat transfer fluid's name must be specified (argument 'fluid') or its heat capacity and its density must be provided (arguments 'fluid_cp' and 'fluid_density').")
+        if fluid is None:
+            raise TypeError("Class DemandProfile: Argument 'fluid' cannot be None.")
         
-        self._fluid = self._validate_argument("fluid", fluid)
-        self._fluid_cp = self._fluid.cp_ref
-        self._fluid_density = self._fluid.D_ref
+        fluid = self._validate_argument("fluid", fluid)
         
-        
-        # if self._fluid == "WATER":
-        #     self._fluid_cp = 4184
-        #     self._fluid_density = 1000
-        # elif self._fluid == "AIR":
-        #     self._fluid_cp = 1050
-        #     self._fluid_density = 1.204
-        # elif self._fluid == "THERMINOL_66":
-        #     self._fluid_cp = 2000
-        #     self._fluid_density = 920
-        # if fluid_cp is not None:
-        #     self._fluid_cp = self._validate_argument("fluid_cp", fluid_cp)
-        #     if fluid_cp_units is not None:
-        #         self._fluid_cp = convert_units(self._fluid_cp, fluid_cp_units, 'J/kg K')
-        # if fluid_density is not None:
-        #     self._fluid_density = self._validate_argument("fluid_density", fluid_density)
-        #     if fluid_density_units is not None:
-        #         self._fluid_density = convert_units( self._fluid_density, fluid_density_units, 'kg/m3' )
-            
-        # if self._fluid_cp is None or self._fluid_density is None:
-        #     raise ValueError("Class DemandProfile: 'fluid_cp' and 'fluid_density' must be provided, either directly or indirectly through the heat transfer fluid's name." )
+        if type( fluid ) is str:
+            try:
+                self._fluid = Fluid( fluid, p = 800000, T_ref = float( ( np.mean( self._monthly_T_in ) + np.mean( self._monthly_T_set ) )/2 ) )
+                self._fluid_cp = self._fluid.cp_ref
+                self._fluid_density = self._fluid._D_ref
+            except FluidNameError:
+                raise TypeError(f"Class DemandProfile: Fluid (sercpy.fluids.Fluid) instance could not be constructed because the fluid name entered (= {fluid}) is not valid.")
             
         if monthly_heat_demand is not None:
             self._monthly_heat_demand = self._validate_argument("monthly_heat_demand", monthly_heat_demand)
@@ -1268,25 +1251,6 @@ class DemandProfile:
             
             if not ( type(value) is str or isinstance( value, Fluid ) ):
                 raise TypeError("Class DemandProfile: Argument 'fluid' must be a string or an instance of sercpy.fluids.Fluid.")
-            
-            if type(value) is str:
-                
-                value = Fluid( value, p = 800000, T_ref = 50 )
-            
-            # try:
-            #     assert type(value) is str
-            # except:
-            #     raise ValueError("Class DemandProfile: Argument 'fluid' must be a string.")
-            # try:
-            #     value = value.upper()
-            #     assert value in [ "WATER", "W", "AIR", "THERMINOL 66", "THERMINOL_66", "THERMINOL66" ]
-            # except:
-            #     raise ValueError("Class DemandProfile: Invalid 'fluid' name.")
-                
-            # if value in ["WATER", "W"]:
-            #     value = "WATER"
-            # elif value in [ "THERMINOL 66", "THERMINOL_66", "THERMINOL66" ]:
-            #     value = "THERMINOL_66"
         
         if argument_name == "fluid_cp":
             

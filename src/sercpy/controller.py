@@ -7,50 +7,6 @@ Created on Sat Nov 14 23:18:38 2026
 
 from .devices import Device
 
-class ControlSignal:
-    """
-    Object that stores the control signal of a controller.
-    
-    Like the class :ref:`Outlet <class_outlet>`, it has the purpose of being used
-    to establish the connection between the controller and the devices
-    that receive its signal.
-    
-    The only value stored by this class is the signal value, which can be set
-    and retrieved with the names `signal_value` or simply `signal`.
-    
-    Attributes
-    ----------
-    signal_value : float
-        Value in the range 0 - 1, representing the output signal of the controller.
-        
-    signal : float
-        Alias for `signal_value`.
-    
-    """
-    @property
-    def signal_value(self):
-        if not hasattr( self, "_signal_value" ):
-            raise AttributeError("ControlSignal: signal value has not been assigned.")
-        return self._signal_value
-    
-    @signal_value.setter
-    def signal_value( self, value ):
-        try:
-            value = float( value )
-        except:
-            raise TypeError("ControlSignal: signal value must be a float.")
-        if not ( value >= 0 and value <= 1 ):
-            raise ValueError("ControlSignal: signal value must be in the range 0 <= signal_value <= 1.")
-        self._signal_value = value
-    
-    @property
-    def signal(self):
-        return self.signal_value
-    
-    @signal.setter
-    def signal(self, value):
-        self.signal_value = value
-
 class Controller( Device ):
     """
     Base class to implement a controller.
@@ -85,29 +41,47 @@ class Controller( Device ):
     
     def __init__(self):
         
-        self._control_signal = ControlSignal()
-        self._control_signal.signal_value = 1
-    
+        self.control_signal = 1
+        
     @property
     def control_signal(self):
-        if not hasattr(self, "_control_signal"):
+        if not hasattr( self, "_control_signal" ):
             class_name = self.__class__.__name__
-            raise AttributeError(f"{ class_name }: Attribute 'control_signal' has not been defined.")
+            raise AttributeError(f"{class_name}: Control signal value has not been defined.")
         return self._control_signal
     
     @control_signal.setter
     def control_signal(self, value):
-        if not isinstance( value, ControlSignal ):
-            class_name = self.__class__.__name__
-            raise TypeError(f"{ class_name }: Attribute 'control_signal' must be an instance of sercpy.controller.ControlSignal.")
+        try:
+            value = float( value )
+        except:
+            raise TypeError("ControlSignal: signal value must be a float.")
+        if not ( value >= 0 and value <= 1 ):
+            raise ValueError("ControlSignal: signal value must be in the range 0 <= signal_value <= 1.")
         self._control_signal = value
+    
+    @property
+    def signal_value(self):
+        return self.control_signal
+    
+    @signal_value.setter
+    def signal_value( self, value ):
+        self.control_signal = value
+    
+    @property
+    def signal(self):
+        return self.control_signal
+    
+    @signal.setter
+    def signal(self, value):
+        self.control_signal = value
 
 class SolarController( Controller ):
     
     def __init__(self, min_irradiance):
         
         self._min_irradiance = min_irradiance
-        self._control_signal = ControlSignal()
+        self.control_signal = 1
         
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -123,9 +97,9 @@ class SolarController( Controller ):
             if not 'irradiance_first_row' in operating_conditions:
                 raise KeyError("SolarController.compute_outputs: Irradiance data could not be retrieved from 'operating_conditions'. Maybe you forgot to call the method 'MeteoProfile.compute_poa_irradiance'. After this, redefine the instance of `OperatingConditions` for the change to be applied.")
             if operating_conditions[ 'irradiance_first_row' ] >= self._min_irradiance:
-                self._control_signal.signal_value = 1
+                self.control_signal = 1
             else:
-                self._control_signal.signal_value = 0
+                self.control_signal = 0
         else:
             self._convergence = True
 
@@ -143,10 +117,10 @@ class LoadTempController( Controller ):
                  last_signal_weight,
                  iteration_cycle = None ):
         
+        self.control_signal = 1
         self._controlled_pump = controlled_pump
         self._heat_exchanger = heat_exchanger
         self._tank = tank
-        self._control_signal = ControlSignal()
         
         if iteration_cycle is not None:
             try:
@@ -177,11 +151,11 @@ class LoadTempController( Controller ):
         self._current_state = 'off'
         
         self._min_signal = controlled_pump.minimum_flowrate / controlled_pump.rated_flowrate
-        controlled_pump.set_connections( control_signal = self._control_signal )
+        controlled_pump.set_connections( controller = self )
         
     def _check_condition( self, demanded_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp ):
         
-        current_signal = self._control_signal.signal_value
+        current_signal = self.control_signal
         
         tank_turnOff_temp = HX_load_state_in.T + self._turn_off_dT
         tank_turnOn_temp = HX_load_state_in.T + self._turn_on_dT
@@ -205,35 +179,35 @@ class LoadTempController( Controller ):
     
     def _update_signal_value( self, demanded_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp ):
         
-        current_signal = self._control_signal.signal_value
+        current_signal = self.control_signal
         
         tank_turnOff_temp = HX_load_state_in.T + self._turn_off_dT
         tank_turnOn_temp = HX_load_state_in.T + self._turn_on_dT
         
         if demanded_flowrate == 0 or tank_top_temp < tank_turnOff_temp:
-            self._control_signal.signal_value = 0
+            self.control_signal = 0
             return
         
         if self._current_state == 'off' and tank_top_temp < tank_turnOn_temp:
-            self._control_signal.signal_value = 0
+            self.control_signal = 0
             return
         
         if current_signal == 0:
-            self._control_signal.signal_value = 1
+            self.control_signal = 1
             return
         
         if current_signal == 1 and HX_load_state_out.h <= set_state.h:
-            self._control_signal.signal_value = 1
+            self.control_signal = 1
             return
         
         if HX_load_state_out.h == HX_load_state_in.h:
-            self._control_signal.signal_value = 1
+            self.control_signal = 1
             return
         
         new_signal = current_signal*( set_state.h - HX_load_state_in.h )/( HX_load_state_out.h - HX_load_state_in.h )
         new_signal = new_signal*( 1 - self._last_signal_weight ) + current_signal*self._last_signal_weight
         new_signal = max( [ min( [ new_signal, 1 ] ), self._min_signal ] )
-        self._control_signal.signal_value = new_signal
+        self.control_signal = new_signal
     
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -251,16 +225,11 @@ class LoadTempController( Controller ):
         T_set = operating_conditions[ "T_set" ]
         
         try:
-            HX_source_state_in = self._heat_exchanger.inlet_source.state
-            HX_source_state_out = self._heat_exchanger.outlet_source.state
-            HX_source_flowrate = self._heat_exchanger.outlet_source.flowrate
-            
             HX_load_state_in = self._heat_exchanger.inlet_load.state
             HX_load_state_out = self._heat_exchanger.outlet_load.state
             HX_load_flowrate = self._heat_exchanger.outlet_load.flowrate
         except AttributeError:
             self._convergence = False
-            self._control_signal.signal_value = 1
             return
         
         set_state = HX_load_state_out.fluid.state( T = T_set )
@@ -276,28 +245,26 @@ class LoadTempController( Controller ):
         else:
             self._new_state = self._current_state
         
-        if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-            self._relative_inputs_last, self._state_inputs_last = [ HX_source_flowrate, HX_load_flowrate ], [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ]
-            self._control_signal.signal_value = 1
+        if iteration_number == 0:
             self._convergence = False
         else:
-            self._compute_convergence(
-                relative_inputs = [ HX_source_flowrate, HX_load_flowrate ],
-                state_inputs = [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ] )
+            prior = self._check_condition(
+                
+                HX_load_flowrate,
+                HX_load_state_in,
+                HX_load_state_out,
+                set_state,
+                tank_top_temp )
+            
+            self.compute_convergence(
+                relative_inputs = [ HX_load_flowrate ],
+                state_inputs = [ HX_load_state_in, HX_load_state_out ], prior = prior )
         
-        self._convergence = self._convergence and self._check_condition(
-            
-            HX_load_flowrate,
-            HX_load_state_in,
-            HX_load_state_out,
-            set_state,
-            tank_top_temp )
-        
-        if not self._convergence:
-            
-            self._relative_inputs_last, self._state_inputs_last = [ HX_source_flowrate, HX_load_flowrate ], [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ]
-            
-            if ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) ):
+        if ( not self._convergence ) and (
+                
+                ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) )
+                
+                ):
                 
                 self._update_signal_value( HX_load_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp )
     
@@ -320,12 +287,11 @@ class TankChargeController( Controller ):
                   last_signal_weight,
                   iteration_cycle = None ):
         
+        self.control_signal = 1
         self._controlled_pump = controlled_pump
         self._heat_exchanger = heat_exchanger
         self._tank = tank
         self._heat_source_controller = heat_source_controller
-        
-        self._control_signal = ControlSignal()
         
         if iteration_cycle is not None:
             try:
@@ -345,11 +311,11 @@ class TankChargeController( Controller ):
         self._tank_hysteresis = tank_hysteresis
         
         self._min_signal = controlled_pump.minimum_flowrate / controlled_pump.rated_flowrate
-        controlled_pump.set_connections( control_signal = self._control_signal )
+        controlled_pump.set_connections( controller = self )
         
-    def _check_condition( self, heat_source_control_signal, HX_load_flowrate, HX_load_state_in, HX_load_state_out, tank_top_temp ):
+    def _check_condition( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp ):
         
-        current_signal = self._control_signal.signal_value
+        current_signal = self.control_signal
         
         if current_signal == 0 and any( [
                 
@@ -380,29 +346,29 @@ class TankChargeController( Controller ):
                 tank_top_temp > self._tank_max_temp,
                 tank_top_temp > self._tank_max_temp - self._tank_hysteresis and self._current_state == 'off' ] ):
             
-            self._control_signal.signal_value = 0
+            self.control_signal = 0
             return
         
-        current_signal = self._control_signal.signal_value
+        current_signal = self.control_signal
         
         if current_signal == 0:
-            self._control_signal.signal_value = 1
+            self.control_signal = 1
             return
         
         desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_temp_difference )
         
         if current_signal == 1 and HX_load_state_out.h >= desired_state_out.h:
-            self._control_signal.signal_value = 1
+            self.control_signal = 1
             return
         
         if current_signal == self._min_signal and HX_load_state_out.h <= desired_state_out.h:
-            self._control_signal.signal_value = self._min_signal
+            self.control_signal = self._min_signal
             return
         
         new_signal = current_signal*( HX_load_state_out.h - HX_load_state_in.h )/( desired_state_out.h - HX_load_state_in.h )
         new_signal = new_signal*( 1 - self._last_signal_weight ) + current_signal*self._last_signal_weight
         new_signal = max( [ min( [ new_signal, 1 ] ), self._min_signal ] )
-        self._control_signal.signal_value = new_signal
+        self.control_signal = new_signal
     
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -412,18 +378,12 @@ class TankChargeController( Controller ):
             raise ValueError("LoadTempController.compute_outputs: Argument 'iteration_number' must be >= 0.")
         
         try:
-            HX_source_state_in = self._heat_exchanger.inlet_source.state
-            HX_source_state_out = self._heat_exchanger.outlet_source.state
-            HX_source_flowrate = self._heat_exchanger.outlet_source.flowrate
-            
             HX_load_state_in = self._heat_exchanger.inlet_load.state
             HX_load_state_out = self._heat_exchanger.outlet_load.state
             HX_load_flowrate = self._heat_exchanger.outlet_load.flowrate
-            
-            heat_source_control_signal = self._heat_source_controller.control_signal.signal_value
+            heat_source_control_signal = self._heat_source_controller.control_signal
         except AttributeError:
             self._convergence = False
-            self._control_signal.signal_value = 1
             return
         
         tank_top_temp = self._tank.top_temp
@@ -435,30 +395,27 @@ class TankChargeController( Controller ):
         else:
             self._new_state = self._current_state
         
-        if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-            self._relative_inputs_last, self._state_inputs_last = [ heat_source_control_signal, HX_source_flowrate, HX_load_flowrate ], [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ]
-            self._control_signal.signal_value = 1
+        if iteration_number == 0:
             self._convergence = False
         else:
-            self._compute_convergence(
-                relative_inputs = [ heat_source_control_signal, HX_source_flowrate, HX_load_flowrate ],
-                state_inputs = [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ] )
-        
-        self._convergence = self._convergence and self._check_condition(
-            
-            heat_source_control_signal,
-            HX_load_flowrate,
-            HX_load_state_in,
-            HX_load_state_out,
-            tank_top_temp )
-        
-        if not self._convergence:
-            
-            self._relative_inputs_last, self._state_inputs_last = [ heat_source_control_signal, HX_source_flowrate, HX_load_flowrate ], [ HX_source_state_in, HX_source_state_out, HX_load_state_in, HX_load_state_out ]
-            
-            if ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) ):
+            prior = self._check_condition(
                 
-                self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp)
+                heat_source_control_signal,
+                HX_load_state_in,
+                HX_load_state_out,
+                tank_top_temp )
+            
+            self.compute_convergence(
+                relative_inputs = [ heat_source_control_signal, HX_load_flowrate ],
+                state_inputs = [ HX_load_state_in, HX_load_state_out ], prior = prior )
+        
+        if ( not self._convergence ) and (
+                
+                ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) )
+                
+                ):
+            
+            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp )
     
     def update_state(self):
         

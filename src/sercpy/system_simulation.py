@@ -30,17 +30,43 @@ class SimulationResult:
 
 class Simulation:
     """
-    Class to simulate a thermal system.
+    Class to simulate a thermal system operating during a whole year.
     
+    Parameters
+    ----------
+    operating_conditions : :doc:`OperatingConditions </operating_conditions/operating_conditions>`
+        Object that provides the operating conditions of the system (weather and thermal demand).
     
+    devices_list : list of :ref:`Device <device_class>` or inherited classes
+        List of components of the thermal system. The components should be ready to be used
+        in a simulation; this implies:
+            
+            - The connections between them must already be established.
+            - The convergence criteria of all components must be set.
+    
+    time_step_recording_function : func
+        Function that takes an instance of SimulationResult, carries out the
+        necessary calculations based on the results delivered by the components of the
+        thermal system, and records those results in the SimulationResults instance.
+        
+    Attributes
+    ----------
+    operating_conditions : :doc:`OperatingConditions </operating_conditions/operating_conditions>`
+        Same as the argument provided at initialization.
+    
+    devices_list : list of :ref:`Device <device_class>` or inherited classes
+        Same as the argument provided at initialization.
+    
+    time_step_recording_function : func
+        Same as the argument provided at initialization.
     
     """
     
-    def __init__( self, operating_conditions, devices_list, record_time_step_func ):
+    def __init__( self, operating_conditions, devices_list, time_step_recording_function ):
         
-        self._operating_conditions = operating_conditions
-        self._devices_list = devices_list
-        self._record_time_step_func = record_time_step_func
+        self.operating_conditions = operating_conditions
+        self.devices_list = devices_list
+        self.time_step_recording_function = time_step_recording_function
         
     @property
     def operating_conditions(self):
@@ -67,16 +93,16 @@ class Simulation:
         self._devices_list = value
         
     @property
-    def record_time_step_func(self):
-        if not hasattr( self, "_record_time_step_func" ):
-            raise AttributeError("Simulation: Attribute 'record_time_step_func' has not been specified.")
-        return self._record_time_step_func
+    def time_step_recording_function(self):
+        if not hasattr( self, "_time_step_recording_function" ):
+            raise AttributeError("Simulation: Attribute 'time_step_recording_function' has not been specified.")
+        return self._time_step_recording_function
     
-    @record_time_step_func.setter
-    def record_time_step_func(self, value):
+    @time_step_recording_function.setter
+    def time_step_recording_function(self, value):
         if not callable( value ):
-            raise TypeError("Simulation: Attribute 'record_time_step_func' must be a callable element.")
-        self._record_time_step_func = value
+            raise TypeError("Simulation: Attribute 'time_step_recording_function' must be a callable element.")
+        self._time_step_recording_function = value
     
     def compute_time_step( self , time_step_number, results_record ):
         
@@ -147,7 +173,7 @@ class HeatingSystem1( Simulation ):
         self._storage_tank = storage_tank
         
         if not self._storage_tank.io_positions_defined:
-            self._storage_tank.set_io_relative_heights( [ ( 1, 0 ), ( 0, 1 ) ] )
+            self._storage_tank.io_relative_heights = [ ( 1, 0 ), ( 0, 1 ) ]
         
         self._max_iterations = max_iterations
         
@@ -171,7 +197,7 @@ class HeatingSystem1( Simulation ):
         self._solar_controller = SolarController( min_irradiance = 150 )
         
         self._solar_field.set_connections( inlet = self._solar_field_pump.outlet )
-        self._solar_field_pump.set_connections( inlet = self._HX1.outlet_source, control_signal = self._solar_controller.control_signal )
+        self._solar_field_pump.set_connections( inlet = self._HX1.outlet_source, controller = self._solar_controller )
         self._HX1.set_connections( inlet_source = self._solar_field.outlet, inlet_load = self._tank_to_SF_pump.outlet )
         self._tank_to_SF_pump.set_connections( inlet = self._storage_tank.outlet_1 )
         self._storage_tank.set_connections( inlet_1 = self._HX1.outlet_load, inlet_2 = self._HX2.outlet_source )

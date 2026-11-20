@@ -447,7 +447,7 @@ class StorageTank( Device ):
     
     @property
     def io_positions_defined(self):
-        "Boolean value stating whether the positions of the inlet- and outlet ports have already been established, either at initialization or by calling the method `set_io_relative_heights`"
+        "Boolean value stating whether the positions of the inlet- and outlet ports have already been established."
         return hasattr( self, "_n_io_pairs" )
     
     @n_nodes.setter
@@ -499,7 +499,7 @@ class StorageTank( Device ):
                 new_outlet = Outlet()
                 new_outlet.flowrate = 0
                 new_outlet.state = self._stored_fluid.state( T = 40 )
-                setattr( self , "_outlet_" + str( i + 1 ) , new_outlet )
+                setattr( self , "outlet_" + str( i + 1 ) , new_outlet )
         
         self._io_relative_heights = value
         self._io_nodes_from_relative_heights()
@@ -1252,19 +1252,6 @@ class StorageTank( Device ):
             AttributeError("StorageTank: Outlets cannot be modified after initialization.")
         
         super().__setattr__(name, value)
-        
-    def __getattr__(self, name):
-        """
-        Method to retrieve the inlets and outlets of the tank.
-        """
-        
-        if type(name) is not str:
-            raise TypeError("StorageTank.__getattr__: 'name' must be a string.")
-        
-        if ( name.startswith( "inlet" ) or name.startswith( "outlet" ) ) and hasattr(self, "_" + name ):
-            return getattr( self, "_" + name )
-        
-        raise AttributeError(f"StorageTank: Attribute '{name}' not recognized.")
     
     def set_connections(self, **kwargs):
         """
@@ -1274,8 +1261,9 @@ class StorageTank( Device ):
         
         Inlets can be re-defined as many times as needed by using this method.
         
-        The total number of inlets expected to be specified by this method is equal to the number of inlets defined when providing the
-        argument `io_relative_heights`, either at initialization or with the method :meth:`StorageTank.set_io_relative_heights`.
+        The total number of inlets expected to be specified by this method is
+        equal to the number of inlets, which can be specified at initialization
+        or through the attribute `io_relative_heights`.
         
         The method does not expect all inlets to be defined at the same time. However, all inlets must be defined before
         carrying out a simulation using the `StorageTank` instance.
@@ -1289,25 +1277,26 @@ class StorageTank( Device ):
         """
         
         if not hasattr( self, "_inlet_nodes" ):
-            raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been defined. Use the method StorageTank.set_io_relative_heights.")
+            raise AttributeError("StorageTank.set_connections: Inlet and outlet nodes have not been defined. The attribute 'io_relative_heights' must be set to fix this.")
         
         n_inlets = len( self._inlet_nodes )
         
         if len( kwargs ) > n_inlets:
-            raise ValueError(f"StorageTank.set_connections: The tank has {n_inlets} inlets and {len( kwargs )} connections were specified.")
+            raise TypeError(f"StorageTank.set_connections: The tank has {n_inlets} inlets and {len( kwargs )} connections were specified.")
         
-        for inlet_name in kwargs:
+        for name in kwargs:
+            if name.startswith( "controller" ):
+                raise TypeError("StorageTank.set_connections: StorageTank instances do not expect a controller.")
             try:
-                inlet_name_split = inlet_name.split( '_' )
-                assert len( inlet_name_split ) == 2
-                assert inlet_name_split[0] == 'inlet'
-                inlet_number = int( inlet_name_split[1] )
-                assert inlet_number >= 1 and inlet_number <= n_inlets + 1
+                name_split = name.split( '_' )
+                assert len( name_split ) == 2
+                assert name_split[0] == 'inlet'
+                inlet_number = int( name_split[1] )
+                assert inlet_number >= 1 and inlet_number <= n_inlets
             except:
-                ValueError(f"StorageTank.set_connections: Unexpected parameter name: {inlet_name}")
-            if not isinstance( kwargs[ inlet_name ] , Outlet ):
-                raise TypeError(f"StorageTank.set_connections: {inlet_name} is expected to be an instance of sercpy.devices.Outlet.")
-            setattr( self, '_' + inlet_name , kwargs[ inlet_name ] )
+                raise TypeError(f"StorageTank.set_connections: Unexpected argument '{name}'. Arguments must have the format 'inlet_<i>' where <i> represents an integer value from 1 to the number of inlets of the tank.")
+        
+        super().set_connections( **kwargs )
     
     def compute_outputs(self, operating_conditions, iteration_number, *,
                         inlet_flowrates = None, inlet_states = None,
@@ -1354,7 +1343,7 @@ class StorageTank( Device ):
         """
         
         if not hasattr(self, "_inlet_nodes"):
-            raise AttributeError("StorageTank.compute_outputs: Inlet and outlet nodes have not been defined. Use the method StorageTank.set_io_relative_heights.")
+            raise AttributeError("StorageTank.compute_outputs: Inlet and outlet nodes have not been defined. The attribute 'io_relative_heights' must be set to fix this.")
         
         if operating_conditions is None and iteration_number is None:
             if any([ variable is None for variable in [ inlet_flowrates, inlet_states, Tamb, time_step ] ]):
@@ -1374,12 +1363,12 @@ class StorageTank( Device ):
             inlet_flowrates = []
             inlet_states = []
             for i in range( len( self._inlet_nodes ) ):
-                if not hasattr( self, "_inlet_" + str( i + 1 ) ):
+                if not hasattr( self, "inlet_" + str( i + 1 ) ):
                     raise AttributeError( f"StorageTank.compute_outputs: { 'inlet_' + str( i + 1 ) } has not been defined. Use the method StorageTank.set_connections." )
-                outlet = getattr( self, "_inlet_" + str( i + 1 ) )
+                inlet = getattr( self, "inlet_" + str( i + 1 ) )
                 try:
-                    inlet_flowrates.append( outlet.flowrate )
-                    inlet_state = outlet.state
+                    inlet_flowrates.append( inlet.flowrate )
+                    inlet_state = inlet.state
                 except AttributeError:
                     self._convergence = False
                     return
@@ -1387,13 +1376,10 @@ class StorageTank( Device ):
                     raise ValueError(f"StorageTank.compute_outputs: Fluid entering through inlet {i + 1} is not the same fluid that is stored by the tank.")
                 inlet_states.append( inlet_state )
                 
-            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-                self._relative_inputs_last, self._state_inputs_last = inlet_flowrates, inlet_states
+            if iteration_number == 0:
                 self._convergence = False
             else:
-                self._compute_convergence(
-                    relative_inputs = inlet_flowrates,
-                    state_inputs = inlet_states )
+                self.compute_convergence()
                 if self._convergence:
                     return
             
@@ -1401,6 +1387,8 @@ class StorageTank( Device ):
             time_step = operating_conditions[ 'time_step' ]
         
         inlet_temps = [ state_in.T for state_in in inlet_states ]
+        self._inlet_temps_last = inlet_temps
+        self._time_step_last = time_step
         
         inlet_flowrates_distribution = self._set_inlet_flows( inlet_flowrates, inlet_temps )
         
@@ -1439,7 +1427,7 @@ class StorageTank( Device ):
         # Outputs are defined
         
         for i in range( len( self._outlet_nodes ) ):
-            outlet = getattr( self, "_outlet_" + str( i + 1 ) )
+            outlet = getattr( self, "outlet_" + str( i + 1 ) )
             outlet.flowrate = inlet_flowrates[ i ]
             outlet.state = self._stored_fluid.state( T = T_avg_list_new[ self._outlet_nodes[ i ] ] )
         
@@ -1471,4 +1459,23 @@ class StorageTank( Device ):
         None
         
         """
+        if not hasattr( self, "_new_temperatures" ):
+            raise AttributeError("StorageTank.update_state: New node temperatures have not been computed yet. Most certainly, the method StorageTank.compute_outputs has not been called successfully yet.")
+        
+        # Correct node temperatures
+        
+        dU_1 = self._dU
+        
+        dU_2 = -self._Q_loss * self._time_step_last
+        for i in range( len( self._outlet_nodes ) ):
+            outlet = getattr( self, "outlet_" + str( i + 1 ) )
+            dU_2 = dU_2 + outlet.flowrate * ( self._stored_fluid.state( T = self._inlet_temps_last[ i ] ).h - outlet.state.h ) * self._time_step_last
+        
+        dU_imbalance = dU_2 - dU_1
+        
+        # Compute temp to add to each node
+        extra_temp = dU_imbalance / ( self._n_nodes * self._node_thermal_capacity )
+        
+        self._new_temperatures = [ temp + extra_temp for temp in self._new_temperatures ]
+        
         self._node_temperatures = self._new_temperatures

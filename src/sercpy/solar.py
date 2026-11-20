@@ -967,19 +967,7 @@ class SolarField( Device ):
         else:
             self._max_iterations = 30
         
-        self._outlet = Outlet()
-    
-    @property
-    def outlet(self):
-        "Instance of the class sercpy.devices.Outlet representing the main fluid outlet of the solar field."
-        return self._outlet
-    
-    @property
-    def inlet(self):
-        "Instance of the class sercpy.devices.Outlet representing an outlet of another device from which the `SolarField` instance takes its inputs."
-        if not hasattr( self, "_inlet" ):
-            raise AttributeError("SolarField: Attribute 'inlet' has not been defined. This is done with the method SolarField.set_connections.")
-        return self._inlet
+        self.outlet = Outlet()
     
     @property
     def collector(self):
@@ -1100,10 +1088,6 @@ class SolarField( Device ):
         self._coll_azimuth = self._validate_argument("coll_azimuth", value)
         if self._coll_tilt is not None:
             self._compute_rotation_matrix()
-            
-    @inlet.setter
-    def inlet(self, value):
-        raise AttributeError("SolarField: Attribute 'inlet' must be set with the method `SolarField.set_connections.`")
     
     def set_auto_attributes( self, *, coll_tilt, coll_azimuth, ground_albedo ):
         """
@@ -2000,10 +1984,8 @@ class SolarField( Device ):
         None.
         
         """
-        if not isinstance( inlet, Outlet ):
-            raise ValueError("SolarField.set_inputs: 'outlet' must be an instance of sercpy.devices.Outlet.")
         
-        self._inlet = inlet
+        super().set_connections( inlet = inlet )
 
     def compute_outputs( self, operating_conditions = None, iteration_number = None, *,
                          state_in = None, flowrate = None,
@@ -2101,29 +2083,26 @@ class SolarField( Device ):
             if not ( type( iteration_number ) is int and iteration_number >= 0 ):
                 raise TypeError("SolarField.compute_outputs: Argument 'iteration_number' must be an 'int'. Its value msut be >= 0.")
                 
-            if not hasattr( self, "_inlet" ):
+            if not hasattr( self, "inlet" ):
                 raise AttributeError( "SolarField.compute_outputs: inlet has not been defined. Use the method SolarField.set_connections." )
             
             try:
-                flowrate = self._inlet.flowrate
-                state_in = self._inlet.state
+                flowrate = self.inlet.flowrate
+                state_in = self.inlet.state
             except AttributeError:
                 self._convergence = False
                 return
             
-            if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-                self._relative_inputs_last, self._state_inputs_last = [ flowrate ], [ state_in ]
+            if iteration_number == 0:
                 self._convergence = False
             else:
-                self._compute_convergence(
-                    relative_inputs = [ flowrate ],
-                    state_inputs = [ state_in ] )
+                self.compute_convergence()
                 if self._convergence:
                     return
         
         if flowrate == 0:
-            self._outlet.flowrate = 0
-            self._outlet.state = state_in
+            self.outlet.flowrate = 0
+            self.outlet.state = state_in
             self._useful_power = 0
             self._wasted_power = 0
             self._vapor_flowrate = 0
@@ -2190,8 +2169,8 @@ class SolarField( Device ):
         total_iterations = iterations_NS + iterations_Sh
         vapor_release_convergence = convergence_NS and convergence_Sh
         
-        self._outlet.state = state_out
-        self._outlet.flowrate = flowrate
+        self.outlet.state = state_out
+        self.outlet.flowrate = flowrate
         
         self._useful_power = Q_useful
         self._wasted_power = Q_waste

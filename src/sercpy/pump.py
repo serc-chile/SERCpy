@@ -6,7 +6,6 @@ Created on Fri Nov 13 16:14:16 2026
 """
 
 from .devices import Outlet, Device
-from .controller import ControlSignal
 from .units import get_unit_type, convert_units
 import warnings
 
@@ -170,19 +169,7 @@ class Pump( Device ):
         
         self._rated_power = convert_units( rated_power, power_units, "W" )
         
-        self._outlet = Outlet()
-        
-    @property
-    def outlet(self):
-        "Instance of the class sercpy.devices.Outlet representing the outlet of the pump."
-        return self._outlet
-    
-    @property
-    def inlet(self):
-        "Instance of the class sercpy.devices.Outlet representing an outlet of another device from which the `Pump` instance takes its inputs."
-        if not hasattr( self, "_inlet" ):
-            raise AttributeError("Pump: Attribute 'inlet' has not been defined. This is done with the method Pump.set_connections.")
-        return self._inlet
+        self.outlet = Outlet()
     
     @property
     def convergence(self):
@@ -215,10 +202,6 @@ class Pump( Device ):
             return 'kg/s'
         else:
             return 'm3/s'
-        
-    @inlet.setter
-    def inlet(self, value):
-        raise AttributeError("Pump: Attribute 'inlet' must be set with the method `Pump.set_connections.`")
     
     def _validate_argument( self, argument_name, value ):
         """
@@ -300,18 +283,17 @@ class Pump( Device ):
         
         return value
         
-    def set_connections( self, *, inlet = None, control_signal = None ):
+    def set_connections( self, *, inlet = None, controller = None ):
         
-        if inlet is not None and not isinstance( inlet, Outlet ):
-            raise TypeError( "Pump.set_connections: Argument 'inlet' must be an instance of sercpy.devices.Outlet." )
-            
-        if control_signal is not None and not isinstance( control_signal, ControlSignal ):
-            raise TypeError( "Pump.set_connections: Argument 'control_signal' must be an instance of sercpy.devices.ControlSignal." )
+        super().set_connections( inlet = inlet, controller = controller )
         
-        if inlet is not None:
-            self._inlet = inlet
-        if control_signal is not None:
-            self._control_signal = control_signal
+    def _flow_convergence(self, flowrate_in, flowrate_out):
+        
+        if flowrate_in == 0 or flowrate_out == 0:
+            return flowrate_in == flowrate_out
+        elif flowrate_in != flowrate_out:
+            return abs( flowrate_in - flowrate_out ) / min( [ flowrate_in  , flowrate_out ] ) <= self._relative_tolerance
+        return True
         
     def compute_outputs( self, operating_conditions, iteration_number ):
         """
@@ -343,27 +325,19 @@ class Pump( Device ):
         if not ( type( iteration_number ) is int and iteration_number >= 0 ):
             raise TypeError("Pump.compute_outputs: Parameter 'iteration_number' must be an 'int'. Its value msut be >= 0.")
             
-        if not hasattr( self, "_inlet" ):
+        if not hasattr( self, "inlet" ):
             raise AttributeError( "Pump.compute_outputs: 'inlet' has not been defined. Use the method Pump.set_connections." )
         
-        if not hasattr( self, "_control_signal" ):
-            raise AttributeError( "Pump.compute_outputs: 'control_signal' has not been defined. Use the method Pump.set_connections." )
+        if not hasattr( self, "controller" ):
+            raise AttributeError( "Pump.compute_outputs: 'controller' has not been defined. Use the method Pump.set_connections." )
         
         try:
-            flowrate_in = self._inlet.flowrate
-            state_in = self._inlet.state
-            control_signal_value = self._control_signal.signal_value
+            flowrate_in = self.inlet.flowrate
+            state_in = self.inlet.state
+            control_signal_value = self.controller.control_signal
         except AttributeError:
             self._convergence = False
             return
-        
-        if iteration_number == 0 or ( not hasattr( self, "_relative_inputs_last" ) ):
-            self._relative_inputs_last, self._state_inputs_last = [ control_signal_value, flowrate_in ], [ state_in ]
-            self._convergence = False
-        else:
-            self._compute_convergence( 
-                relative_inputs = [ control_signal_value, flowrate_in ],
-                state_inputs = [ state_in ], )
         
         flowrate_out = control_signal_value * self._rated_flowrate
         
@@ -372,15 +346,17 @@ class Pump( Device ):
         elif flowrate_out < self._minimum_flowrate:
             flowrate_out = 0
         
-        self._power = self._rated_power * ( flowrate_out / self._rated_flowrate )**3
+        if self._rated_power == 0:
+            self._power = 0
+        else:
+            self._power = self._rated_power * ( flowrate_out / self._rated_flowrate )**3
         
         if self._flowrate_type == 'v':
             flowrate_out = convert_units( flowrate_out, 'm3/s', 'kg/s', density = state_in.D )
             
-        self._outlet.state = state_in
-        self._outlet.flowrate = flowrate_out
+        self.outlet.state = state_in
+        self.outlet.flowrate = flowrate_out
         
-        if flowrate_in == 0 or flowrate_out == 0:
-            self._convergence = self._convergence and flowrate_in == flowrate_out
-        elif flowrate_in != flowrate_out:
-            self._convergence = self._convergence and abs( flowrate_in - flowrate_out ) / min( [ flowrate_in  , flowrate_out ] ) <= self._relative_tolerance
+        prior = self._flow_convergence(flowrate_in, flowrate_out)
+        
+        self.compute_convergence( prior = prior )

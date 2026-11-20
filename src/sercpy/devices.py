@@ -30,7 +30,48 @@ class Outlet:
         # Connect an outlet of the heat exchanger to the inlet of the solar field
         solar_field.set_connections( inlet = heat_exchanger.outlet_source )
     
-    After doing this, `solar_field` will compute its outputs using the flow data extracted from `heat_exchanger.outlet_source`, which is one of the two outlets of `heat_exchanger`.
+    After doing this, `solar_field` will compute its outputs using the flow data
+    extracted from `heat_exchanger.outlet_source`,
+    which is one of the two outlets of `heat_exchanger`.
+    The structure of the `SolarField` class would roughly look as follows:
+        
+    .. code-block:: python
+    
+        class SolarField:
+            
+            def __init__(self):
+                
+                # Set attribute 'outlet'
+                self.outlet = Outlet()
+            
+            # Method to define the inlet (i.e. another device's outlet from which the inputs are extracted)
+            
+            def set_connections( self, *, inlet ):
+                
+                # Check the class of the argument 'inlet'
+                if not isinstance(inlet, Outlet):
+                    raise TypeError("SolarField.set_connections: Argument 'inlet' must be an instance of Outlet.")
+                
+                # Set the attribute
+                self.inlet = inlet
+            
+            # compute_outputs : the main method of any device
+            def compute_outputs( self, operating_conditions, iteration_number ):
+                
+                # Extract inputs
+                flowrate = self.inlet.flowrate
+                state_in = self.inlet.state
+                
+                # Compute power
+                power = self._compute_power( operating_conditions, flowrate, state_in )
+                
+                # Compute outlet enthalpy and outlet state
+                h_out = state_in.h + power / flowrate
+                state_out = state_in.fluid.state( h = h_out )
+                
+                # Set outlet conditions
+                self.outlet.flowrate = flowrate
+                self.outlet.state = state_out
     
     """
     
@@ -242,7 +283,7 @@ class Device:
         if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
             raise ValueError( f"{ class_name }.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
 
-    def _compute_convergence( self, *, relative_inputs = None, state_inputs = None ):
+    def compute_convergence( self, *, relative_inputs = None, state_inputs = None, prior = True ):
         """
         Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
         
@@ -259,29 +300,57 @@ class Device:
         
         """
         class_name = self.__class__.__name__
+        from .controller import Controller
         
         if not hasattr( self, "_relative_tolerance" ):
             raise AttributeError(f"{ class_name }._compute_convergence: Attribute '_relative_tolerance' has not been defined. Use the method { class_name }.set_convergence_criteria.")
         
+        if relative_inputs is None:
+            relative_inputs = []
+        
+        if state_inputs is None:
+            state_inputs = []
+        
+        if hasattr( self, "_connections_dict" ):
+            try:
+                for name in self._connections_dict:
+                    if isinstance( self._connections_dict[ name ], Outlet ):
+                        relative_inputs.append( self._connections_dict[ name ].flowrate )
+                        state_inputs.append( self._connections_dict[ name ].state )
+                    if isinstance( self._connections_dict[ name ], Controller ):
+                        relative_inputs.append( self._connections_dict[ name ].control_signal )
+            except:
+                self._convergence = False
+                return
+        
+        if not prior:
+            self._relative_inputs_last, self._state_inputs_last = relative_inputs, state_inputs
+            self._convergence = False
+            return
+        
+        if len( relative_inputs ) == 0 and len( state_inputs ) == 0:
+            self._convergence = True
+            return
+        elif not hasattr( self, "_relative_inputs_last" ):
+            self._relative_inputs_last, self._state_inputs_last = relative_inputs, state_inputs
+            self._convergence = False
+            return
+        
         convergence = True
-        
-        if relative_inputs is not None and hasattr( self, "_relative_inputs_last" ):
-            for i in range( len( relative_inputs ) ):
-                current_input = relative_inputs[ i ]
-                last_input = self._relative_inputs_last[ i ]
-                
-                if current_input == 0 or last_input == 0:
-                    convergence = convergence and current_input == last_input
-                elif current_input != last_input:
-                    convergence = convergence and abs( current_input - last_input ) / min( [ current_input  , last_input ] ) <= self._relative_tolerance
-        
-        if self._temp_tolerance is not None and state_inputs is not None:
+        for i in range( len( relative_inputs ) ):
+            current_input = relative_inputs[ i ]
+            last_input = self._relative_inputs_last[ i ]
             
+            if current_input == 0 or last_input == 0:
+                convergence = convergence and current_input == last_input
+            elif current_input != last_input:
+                convergence = convergence and abs( current_input - last_input ) / min( [ current_input  , last_input ] ) <= self._relative_tolerance
+        
+        if self._temp_tolerance is not None:
             for i in range( len( state_inputs ) ):
                 convergence = convergence and abs( state_inputs[ i ].T - self._state_inputs_last[ i ].T ) <= self._temp_tolerance
         
-        if self._h_tolerance is not None and state_inputs is not None:
-            
+        if self._h_tolerance is not None:
             for i in range( len( state_inputs ) ):
                 convergence = convergence and abs( state_inputs[ i ].h - self._state_inputs_last[ i ].h ) <= self._h_tolerance
         
@@ -289,23 +358,68 @@ class Device:
         
         if self._convergence is False:
             self._relative_inputs_last, self._state_inputs_last = relative_inputs, state_inputs
+            
+    def __setattr__(self, name, value):
+        
+        class_name = self.__class__.__name__
+        
+        if name.startswith( "inlet" ):
+            raise TypeError(f"{class_name}: Attributes whose names start with 'inlet' must be specified with the method '{class_name}.set_connections'.")
+        elif name == 'controller':
+            raise TypeError(f"{class_name}: 'controller' is a reserved attribute name. This attribute must be specified with the method '{class_name}.set_connections'.")
+        
+        if name.startswith( "outlet" ):
+            if hasattr( self, "_" + name ):
+                raise TypeError(f"{class_name}: Attributes whose names start with 'outlet' are special attributes that can not be re-defined.")
+            elif not isinstance( value, Outlet ):
+                raise TypeError(f"{class_name}: Attributes whose names start with 'outlet' must be instances of sercpy.devices.Outlet.")
+            name = "_" + name
+        
+        super().__setattr__(name, value)
+        
+    def __getattr__(self, name):
+        
+        class_name = self.__class__.__name__
+        
+        if name.startswith( "inlet" ) or name == 'controller':
+            if not hasattr( self, "_" + name ):
+                raise AttributeError(f"{class_name}: Attribute {name} has not been defined. This attribute should be specified with {class_name}.set_connections.")
+            return getattr( self, "_" + name )
+        
+        if name.startswith( "outlet" ):
+            if not hasattr( self, "_" + name ):
+                raise AttributeError(f"'{class_name}' instance does not have an outlet called '{name}'")
+            return getattr( self, "_" + name )
+        
+        raise AttributeError(f"'{class_name}' object has no attribute '{name}'")
     
     def set_connections( self, **kwargs ):
         
-        from .controller import ControlSignal
+        from .controller import Controller
+        class_name = self.__class__.__name__
         
-        for key in kwargs:
+        for name in kwargs:
             
-            if kwargs[ key ] is None:
+            if name.startswith( "inlet" ):
+                if not ( kwargs[ name ] is None or isinstance( kwargs[ name ], Outlet ) ):
+                    raise TypeError(f"{class_name}.set_connections: Keyword arguments starting with 'inlet' are expected to be instances of sercpy.devices.Outlet.")
+            elif name == "controller":
+                if not ( kwargs[ name ] is None or isinstance( kwargs[ name ], Controller ) ):
+                    raise TypeError(f"{class_name}.set_connections: Keyword argument 'controller' is expected to be an instance of sercpy.devices.Controller.")
+            else:
+                raise TypeError(f"{class_name}.set_connections: Keyword arguments are expected to be 'controller' or to begin with 'inlet'.")
+                
+            if kwargs[ name ] is None:
                 continue
+                
+            if hasattr( self, "_connections_dict" ):
+                self._connections_dict[ name ] = kwargs[ name ]
+            else:
+                self._connections_dict = { name: kwargs[ name ] }
             
-            connection = kwargs[ key ]
-            
-            if not ( isinstance( connection, Outlet ) or isinstance( connection, ControlSignal) ):
-                class_name = self.__class__.__name__
-                raise TypeError(f"{class_name}.set_connections: ")
-            
-            setattr( self, "_" + key, connection )
+            attr_name = "_" + name
+        
+            super().__setattr__(attr_name, kwargs[ name ])
     
     def compute_outputs( self, operating_conditions, iteration_number, **kwargs ):
         return
@@ -317,18 +431,14 @@ class SystemInlet( Device ):
     
     def __init__(self):
         
-        self._outlet = Outlet()
-        
-    @property
-    def outlet(self):
-        return self._outlet
+        self.outlet = Outlet()
     
     def compute_outputs( self, operating_conditions, iteration_number ):
         
         if iteration_number == 0:
             
-            self._outlet.flowrate = operating_conditions[ "flowrate" ]
-            self._outlet.state = operating_conditions[ "fluid" ].state( T = operating_conditions[ "T_in" ] )
+            self.outlet.flowrate = operating_conditions[ "flowrate" ]
+            self.outlet.state = operating_conditions[ "fluid" ].state( T = operating_conditions[ "T_in" ] )
             self._convergence = False
             return
         
