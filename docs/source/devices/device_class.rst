@@ -1,6 +1,8 @@
 Device (base class)
 ===================
 
+.. currentmodule:: sercpy.devices
+
 As stated below in the :ref:`documentation of the class Device <class_device>`, this is not a class meant to be used directly, but as a base to develop inherited classes.
 
 Main features of a device-type class
