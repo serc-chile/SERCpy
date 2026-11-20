@@ -207,13 +207,6 @@ class HeatExchanger( Device ):
         if not hasattr( self, "_effectiveness" ):
             raise AttributeError("HeatExchanger: Attribute 'effectiveness' has not been computed yet. This attribute gets computed after calling the method HeatExchanger.compute_outputs.")
         return self._effectiveness
-        
-    @property
-    def convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method HeatExchanger.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the HeatExchanger instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        if not hasattr( self, "_convergence" ):
-            raise AttributeError("HeatExchanger: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'HeatExchanger.compute_outputs' is called.")
-        return self._convergence
     
     @property
     def useful_power(self):
@@ -466,7 +459,7 @@ class HeatExchanger( Device ):
             if iteration_number == 0:
                 self._convergence = False
             else:
-                self.compute_convergence()
+                self.compute_input_convergence()
                 if self._convergence:
                     return
             

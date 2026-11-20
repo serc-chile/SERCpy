@@ -494,7 +494,7 @@ class SolarCollector:
         Returns
         -------
         float
-            Correction factor for the efficiency of the collector.
+            Correction factor for the efficiency of the collector (dimensionless).
         
         """
         
@@ -518,16 +518,16 @@ class SolarCollector:
         Parameters
         ----------
         aoi : float, optional
-            aoi: Angle of indicence with respect to a vector that is normal to the collector's plane. Only needed for collectors with monoaxial IAM functions. If not provided, it can be derived from `longi` and `trans`. The default is None.
+            Angle of indicence with respect to a vector that is normal to the collector's plane. Only needed for collectors with monoaxial IAM functions. If not provided, it can be derived from `longi` and `trans`. The default is `None`.
         longi : float, optional
-            Projection of aoi on a plane that is perpendicular to the collector's plane and parallel to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
+            Projection of `aoi` on a plane that is perpendicular to the collector's plane and parallel to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is `None`.
         trans : float, optional
-            Projection of aoi on a plane that is normal to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is None.
+            Projection of `aoi` on a plane that is normal to the tubes' direction (assuming the collector is tubular). Only needed for collectors with biaxial IAM functions. The default is `None`.
 
         Returns
         -------
         float
-            IAM correction factor.
+            IAM correction factor (dimensionless).
 
         """
         
@@ -973,13 +973,6 @@ class SolarField( Device ):
     def collector(self):
         "Instance of the class sercpy.solar.Collector. It models the individual collectors used to build the solar field."
         return self._collector
-    
-    @property
-    def convergence(self):
-        "Boolean value stating whether convergence was achieved the last time the method SolarField.compute_outputs was called. The concept of 'convergence' refers to whether the inputs of the SolarField instance are similar enough in consecutive iterations of a simulation time step, so that no further computation is needed."
-        if not hasattr( self, "_convergence" ):
-            raise AttributeError("SolarField: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'SolarField.compute_outputs' is called.")
-        return self._convergence
     
     @property
     def useful_power(self):
@@ -2096,7 +2089,7 @@ class SolarField( Device ):
             if iteration_number == 0:
                 self._convergence = False
             else:
-                self.compute_convergence()
+                self.compute_input_convergence()
                 if self._convergence:
                     return
         

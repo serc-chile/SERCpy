@@ -126,9 +126,54 @@ class Outlet:
 
 class Device:
     """
-    Base class for the objects that model the individual components of a thermal system.
+    Base class for the objects that model
+    the individual components of a thermal system.
     
+    This class is not meant to be used as-is,
+    but to define inherited device-type classes.
     
+    The default initializing function takes no parameters,
+    sets the attribute `convergence` to `True`,
+    and assigns an :ref:`Outlet <class_outlet>`
+    instance which is accessible with
+    the attribute name `outlet`.
+    
+    The method `compute_outputs`, which
+    is the most relevant for devices in **SERCpy**,
+    is empty in this base class, and
+    should be overriden in inherited classes.
+    
+    Attributes
+    ----------
+    convergence : bool
+        This boolean value should become
+        `True` when the device-type object
+        is in the right conditions to stop
+        the iterations for the current time step.
+        For most devices, this implies that the input
+        values used to compute the outputs were
+        similar enough in consecutive iterations.
+        Some devices, however, such as :doc:`pumps <pump/pump>`
+        and :doc:`controllers <controller/controller>`,
+        require additional conditions to be satisfied.
+        
+    outlet : :ref:`class_outlet`
+        The base `Device` class has an outlet by default, which can be used to
+        store the device's outputs and pass them to other devices. More outlets
+        can be assigned in inherited classes,
+        and all of them must have names that begin with 'outlet'.
+        
+    inlet_1, inlet_2, ... : :ref:`class_outlet`
+        Outlets of other devices from which the `Device` instance
+        extracts its inputs. These attributes must be assigned through the
+        method `Device.set_connections`.
+        
+    controller : :doc:`Controller <controller/controller>`
+        :doc:`Controller <controller/controller>` instance
+        that controls the device's operation.
+        Not all devices must have a controller.
+        This attribute must be assigned through the
+        method `Device.set_connections`.
     
     """
     
@@ -146,9 +191,10 @@ class Device:
     
     @convergence.setter
     def convergence(self, value):
-        if type( value ) is not bool:
-            raise TypeError("Device: Attribute 'convergence' must be a boolean value (True or False).")
-        self._convergence = value
+        if not ( type( value ) is bool or value in [ 0, 1 ] ):
+            class_name = self.__class__.__name__
+            raise TypeError(f"{class_name}: Attribute 'convergence' must be a boolean value (True or False).")
+        self._convergence = bool( value )
     
     def set_convergence_criteria( self, *,
                                   relative_tolerance,
@@ -157,11 +203,13 @@ class Device:
                                   temp_normalization_range = None,
                                   h_normalization_range = None ):
         """
-        Establish the convergence criteria of the `Device` instance in the context of a simulation.
+        Establish the convergence criteria of the `Device` instance inside a simulation.
         
-        When used in the context of a simulation, a `Device` instance determines that "input convergence"
+        When used in the context of a simulation, a `Device`
+        instance determines that "input convergence"
         has been achieved when the inputs received by it in
-        consecutive iterations of the same time step differ in less that a certain margin.
+        consecutive iterations of the same time
+        step differ in less that a certain margin.
         The aforementioned "margin" or "tolerance" is set by this method.
         When covergence is achieved for all components of a simulation,
         the results are recorded for the current time step
@@ -187,23 +235,26 @@ class Device:
               (which may be the difference between the maximum and
               minimum temperatures at which the system operates),
               then the absolute tolerance for temperature would be 0.03 °C.
-              A normalization range may also be specified as a pair (i.e. a tuple or list of two numbers);
-              in that case the two numbers are interpreted as the minimum and maximum value of the range,
+              A normalization range may also be specified as a
+              pair (i.e. a tuple or list of two numbers);
+              in that case the two numbers are interpreted
+              as the minimum and maximum value of the range,
               and therefore the difference between them is used.
         
-        **Only the first parameter is always needed. At least one of the four latter parameters is needed. See the method's descritpion above for more details.**
+        **Only the first parameter is always needed. At least one of the four
+        latter parameters is needed. See the method's descritpion above for more details.**
         
         Parameters
         ----------
         relative_tolerance : float
             Maximum relative difference allowed for all input types except
-            temperature and specific enthalpy. Valid range: `1e-8` to `1e-2`.
+            temperature and specific enthalpy. Valid range: `1e-8` to `5e-2`.
         
         temp_tolerance : float, optional
-            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `1`.
+            Absolute temperature difference allowed (°C). Valid range: `1e-5` to `2`.
         
         h_tolerance : float, optional
-            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `5000`.
+            Absolute enthalpy difference allowed (J/kg). Valid range: `1e-2` to `10000`.
         
         temp_normalization_range : float or pair, optional
             Normalization range for temperature. See the description above for more details.
@@ -224,7 +275,7 @@ class Device:
         except:
             raise TypeError( f"{ class_name }.set_convergence_criteria: 'relative_tolerance' must be convertible to type 'float'." )
             
-        if not ( relative_tolerance >= 1e-8 and relative_tolerance <= 1e-2 ):
+        if not ( relative_tolerance >= 1e-8 and relative_tolerance <= 5e-2 ):
             raise ValueError( f"{ class_name }.set_convergence_criteria: Argument 'relative_tolerance' must be in the range 1e-8 <= relative_tolerance <= 1e-1." )
         
         self._relative_tolerance = relative_tolerance
@@ -283,15 +334,16 @@ class Device:
         else:
             self._h_tolerance = None
         
-        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 1 ):
+        if self._temp_tolerance is not None and not ( self._temp_tolerance >= 1e-5 and self._temp_tolerance <= 2 ):
             raise ValueError( f"{ class_name }.set_convergence_criteria: 'temp_tolerance' value ( equal to {self._temp_tolerance} ) is out of the allowed range: 1e-5 to 1.")
         
-        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 5000 ):
+        if self._h_tolerance is not None and not ( self._h_tolerance >= 1e-2 and self._h_tolerance <= 10000 ):
             raise ValueError( f"{ class_name }.set_convergence_criteria: 'h_tolerance' value ( equal to {self._h_tolerance} ) is out of the allowed range: 1e-2 to 5000.")
 
-    def compute_convergence( self, *, relative_inputs = None, state_inputs = None, prior = True ):
+    def compute_input_convergence( self, *, relative_inputs = None, state_inputs = None, prior = True ):
         """
-        Method that compares the current inputs with the last inputs received, and determines whether the convergence criteria are met.
+        Method that compares the current inputs with the last inputs received,
+        and determines whether the convergence criteria are met.
         
         Parameters
         ----------
@@ -309,7 +361,7 @@ class Device:
         from .controller import Controller
         
         if not hasattr( self, "_relative_tolerance" ):
-            raise AttributeError(f"{ class_name }._compute_convergence: Attribute '_relative_tolerance' has not been defined. Use the method { class_name }.set_convergence_criteria.")
+            raise AttributeError(f"{ class_name }.compute_input_convergence: Attribute '_relative_tolerance' has not been defined. Use the method { class_name }.set_convergence_criteria.")
         
         if relative_inputs is None:
             relative_inputs = []
@@ -366,6 +418,23 @@ class Device:
             self._relative_inputs_last, self._state_inputs_last = relative_inputs, state_inputs
             
     def __setattr__(self, name, value):
+        """
+        Custom method to set the attributes of the `Device` instance.
+        
+        It handles the following special cases:
+            
+            - If the attribute's name starts with 'inlet' or es equal to 'controller',
+              it throws an error since inlets and the controller must be set through the method
+              'Device.set_connections'.
+            
+            - If the attribute's name starts with 'outlet', it puts an underscore before
+              the name of the attribute that is actually assigned.
+        
+        Returns
+        -------
+        None.
+        
+        """
         
         class_name = self.__class__.__name__
         
@@ -373,6 +442,9 @@ class Device:
             raise TypeError(f"{class_name}: Attributes whose names start with 'inlet' must be specified with the method '{class_name}.set_connections'.")
         elif name == 'controller':
             raise TypeError(f"{class_name}: 'controller' is a reserved attribute name. This attribute must be specified with the method '{class_name}.set_connections'.")
+        
+        if isinstance( value, Outlet ) and not name.startswith( "outlet" ):
+            raise TypeError(f"{class_name}: Outlet instance assigned as attributes must have names starting with 'outlet'.")
         
         if name.startswith( "outlet" ):
             if hasattr( self, "_" + name ):
@@ -384,22 +456,55 @@ class Device:
         super().__setattr__(name, value)
         
     def __getattr__(self, name):
+        """
+        Custom method that returns the following attributes:
+            
+            - Inlets, which are set through the method 'Device.set_connections'
+            - Controller, which is set through the method 'Device.set_connections'
+            - Outlets
+
+        """
         
         class_name = self.__class__.__name__
         
         if name.startswith( "inlet" ) or name == 'controller':
-            if not hasattr( self, "_" + name ):
-                raise AttributeError(f"{class_name}: Attribute {name} has not been defined. This attribute should be specified with {class_name}.set_connections.")
-            return getattr( self, "_" + name )
+            if hasattr( self, "_" + name ):
+                return getattr( self, "_" + name )
+            raise AttributeError(f"{class_name}: Attribute {name} has not been defined. This attribute should be specified with {class_name}.set_connections.")
         
         if name.startswith( "outlet" ):
-            if not hasattr( self, "_" + name ):
-                raise AttributeError(f"'{class_name}' instance does not have an outlet called '{name}'")
-            return getattr( self, "_" + name )
+            if hasattr( self, "_" + name ):
+                return getattr( self, "_" + name )
+            raise AttributeError(f"'{class_name}' instance does not have an outlet called '{name}'")
         
         raise AttributeError(f"'{class_name}' object has no attribute '{name}'")
     
     def set_connections( self, **kwargs ):
+        """
+        Set the connections with other devices of the thermal system.
+        
+        This method allows the user to specify other device-type objects from
+        which the `Device` instance receives its inputs during a simulation.
+        
+        The arguments passed to this function should be either
+        :ref:`Outlet <class_outlet>` or :doc:`Controller </controller/controller>`
+        instances.
+        
+        Parameters
+        ----------
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Raises
+        ------
+        TypeError
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         
         from .controller import Controller
         class_name = self.__class__.__name__

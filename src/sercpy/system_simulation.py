@@ -5,6 +5,7 @@ Created on Tue Oct 27 15:44:20 2026
 @author: Adrian Riebel Brummer
 """
 
+import pandas as pd
 from .operating_conditions import OperatingConditions
 from .meteo_profile import MeteoProfile
 from .devices import SystemInlet, Device
@@ -20,6 +21,10 @@ class SimulationResult:
     
     def __init__(self):
         self._results_dict = {  }
+        
+    @property
+    def df(self):
+        return pd.DataFrame.from_dict( self._results_dict )
         
     def record_results( self, results_dict ):
         for key in results_dict:
@@ -133,9 +138,6 @@ class Simulation:
                 
     def run( self, pre_heating_days = 0 ):
         
-        if not hasattr( self, "record_time_step" ):
-            warnings.warn("Simulation.run: ")
-        
         results_record = SimulationResult()
         
         for attribute_name in [
@@ -194,10 +196,8 @@ class HeatingSystem1( Simulation ):
         
         self._system_inlet = SystemInlet()
         
-        self._solar_controller = SolarController( min_irradiance = 150 )
-        
         self._solar_field.set_connections( inlet = self._solar_field_pump.outlet )
-        self._solar_field_pump.set_connections( inlet = self._HX1.outlet_source, controller = self._solar_controller )
+        self._solar_field_pump.set_connections( inlet = self._HX1.outlet_source )
         self._HX1.set_connections( inlet_source = self._solar_field.outlet, inlet_load = self._tank_to_SF_pump.outlet )
         self._tank_to_SF_pump.set_connections( inlet = self._storage_tank.outlet_1 )
         self._storage_tank.set_connections( inlet_1 = self._HX1.outlet_load, inlet_2 = self._HX2.outlet_source )
@@ -207,12 +207,14 @@ class HeatingSystem1( Simulation ):
         solar_field_fluid = Fluid("Ethylene Glycol 30%", T_ref = 60)
         self._solar_field.outlet.flowrate = 0
         self._solar_field.outlet.state = solar_field_fluid.state( T = 40 )
+
+        self._solar_controller = SolarController( min_irradiance = 150, controlled_pump = self._solar_field_pump )
         
         self._tank_to_SF_controller = TankChargeController(
             
             controlled_pump = self._tank_to_SF_pump,
             heat_exchanger = self._HX1,
-            min_temp_difference = 5,
+            min_dT = 5,
             temp_tolerance = 0.5,
             heat_source_controller = self._solar_controller,
             tank = self._storage_tank,

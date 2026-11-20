@@ -357,6 +357,6 @@ class Pump( Device ):
         self.outlet.state = state_in
         self.outlet.flowrate = flowrate_out
         
-        prior = self._flow_convergence(flowrate_in, flowrate_out)
+        prior = self._flow_convergence( flowrate_in, flowrate_out )
         
-        self.compute_convergence( prior = prior )
+        self.compute_input_convergence( prior = prior )

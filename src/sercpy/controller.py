@@ -41,7 +41,8 @@ class Controller( Device ):
     
     def __init__(self):
         
-        self.control_signal = 1
+        self._control_signal = 1
+        self._convergence = True
         
     @property
     def control_signal(self):
@@ -78,10 +79,24 @@ class Controller( Device ):
 
 class SolarController( Controller ):
     
-    def __init__(self, min_irradiance):
+    def __init__(self, min_irradiance, controlled_pump):
+        
+        from .pump import Pump
+        
+        if not isinstance(controlled_pump, Pump):
+            raise TypeError("SolarController: Argument 'controlled_pump' must be an instance of sercpy.pump.Pump.")
+            
+        controlled_pump.set_connections( controller = self )
+        
+        try:
+            min_irradiance = float( min_irradiance )
+        except:
+            raise TypeError("LoadTempController: 'min_irradiance' must be convertible to type 'float'.")
+        if not min_irradiance > 0:
+            raise ValueError("LoadTempController: Argument 'min_irradiance' must be larger than zero.")
         
         self._min_irradiance = min_irradiance
-        self.control_signal = 1
+        self._control_signal = 1
         
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -97,9 +112,9 @@ class SolarController( Controller ):
             if not 'irradiance_first_row' in operating_conditions:
                 raise KeyError("SolarController.compute_outputs: Irradiance data could not be retrieved from 'operating_conditions'. Maybe you forgot to call the method 'MeteoProfile.compute_poa_irradiance'. After this, redefine the instance of `OperatingConditions` for the change to be applied.")
             if operating_conditions[ 'irradiance_first_row' ] >= self._min_irradiance:
-                self.control_signal = 1
+                self._control_signal = 1
             else:
-                self.control_signal = 0
+                self._control_signal = 0
         else:
             self._convergence = True
 
@@ -114,48 +129,84 @@ class LoadTempController( Controller ):
                  turn_on_dT,
                  turn_off_dT,
                  temp_tolerance,
-                 last_signal_weight,
+                 last_signal_weight = None,
                  iteration_cycle = None ):
         
-        self.control_signal = 1
-        self._controlled_pump = controlled_pump
-        self._heat_exchanger = heat_exchanger
-        self._tank = tank
+        ## Validate arguments
         
-        if iteration_cycle is not None:
-            try:
-                iteration_cycle = [ bool( value ) for value in iteration_cycle ]
-            except:
-                raise TypeError("LoadTempController: Argument 'iteration_cycle' must be a list of boolean values.")
+        from .pump import Pump
+        from .heat_exchanger import HeatExchanger
+        from .storage import StorageTank
         
-        self._iteration_cycle = iteration_cycle
-        
+        if not isinstance(controlled_pump, Pump):
+            raise TypeError("LoadTempController: Argument 'controlled_pump' must be an instance of sercpy.pump.Pump.")
+        if not isinstance(heat_exchanger, HeatExchanger):
+            raise TypeError("LoadTempController: Argument 'heat_exchanger' must be an instance of sercpy.pump.HeatExchanger.")
+        if not isinstance(tank, StorageTank):
+            raise TypeError("LoadTempController: Argument 'tank' must be an instance of sercpy.pump.StorageTank.")
+            
         try:
             turn_on_dT = float( turn_on_dT )
         except:
-            raise TypeError("LoadTempController: Argument 'turn_on_dT' must be a float.")
+            raise TypeError("LoadTempController: 'turn_on_dT' must be convertible to type 'float'.")
+        if not turn_on_dT > 0:
+            raise ValueError("LoadTempController: Argument 'turn_on_dT' must be larger than zero.")
             
         try:
             turn_off_dT = float( turn_off_dT )
         except:
-            raise TypeError("LoadTempController: Argument 'turn_off_dT' must be a float.")
+            raise TypeError("LoadTempController: 'turn_off_dT' must be convertible to type 'float'.")
+        if not turn_off_dT > 0:
+            raise ValueError("LoadTempController: Argument 'turn_off_dT' must be larger than zero.")
             
-        if not turn_off_dT < turn_on_dT:
-            raise ValueError("LoadTempController: Argument 'turn_off_dT' must be smaller than 'turn_on_dT'.")
+        if not ( turn_on_dT > turn_off_dT ):
+            raise ValueError("LoadTempController: Argument 'turn_on_dT' must be larger than 'turn_off_dT'.")
+        
+        try:
+            temp_tolerance = float( temp_tolerance )
+        except:
+            raise TypeError("LoadTempController: 'temp_tolerance' must be convertible to type 'float'.")
+        if not temp_tolerance > 0:
+            raise ValueError("LoadTempController: Argument 'temp_tolerance' must be larger than zero.")
+            
+        if last_signal_weight is not None:
+            try:
+                last_signal_weight = float( last_signal_weight )
+            except:
+                raise TypeError("LoadTempController: 'last_signal_weight' must be convertible to type 'float'.")
+            if not ( last_signal_weight >= 0 and last_signal_weight <= 0.999 ):
+                raise ValueError("LoadTempController: Argument 'last_signal_weight' must be in the range 0 <= last_signal_weight <= 0.999.")
+        else:
+            last_signal_weight = 0
+        
+        if iteration_cycle is not None:
+            try:
+                iteration_cycle = [ value for value in iteration_cycle ]
+                assert all([ type( value ) is bool or value in [ 0, 1 ] for value in iteration_cycle ])
+            except:
+                raise TypeError("LoadTempController: Argument 'iteration_cycle' must be a list of boolean values.")
+                
+        # Assign attributes
+        
+        self._control_signal = 1
+        self._current_state = 'on'
+        self._controlled_pump = controlled_pump
+        self._heat_exchanger = heat_exchanger
+        self._tank = tank
+        
+        self._iteration_cycle = iteration_cycle
         
         self._turn_on_dT = turn_on_dT
         self._turn_off_dT = turn_off_dT
         self._temp_tolerance = temp_tolerance
         self._last_signal_weight = last_signal_weight
         
-        self._current_state = 'off'
-        
         self._min_signal = controlled_pump.minimum_flowrate / controlled_pump.rated_flowrate
         controlled_pump.set_connections( controller = self )
         
     def _check_condition( self, demanded_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp ):
         
-        current_signal = self.control_signal
+        current_signal = self._control_signal
         
         tank_turnOff_temp = HX_load_state_in.T + self._turn_off_dT
         tank_turnOn_temp = HX_load_state_in.T + self._turn_on_dT
@@ -179,35 +230,35 @@ class LoadTempController( Controller ):
     
     def _update_signal_value( self, demanded_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp ):
         
-        current_signal = self.control_signal
+        current_signal = self._control_signal
         
         tank_turnOff_temp = HX_load_state_in.T + self._turn_off_dT
         tank_turnOn_temp = HX_load_state_in.T + self._turn_on_dT
         
         if demanded_flowrate == 0 or tank_top_temp < tank_turnOff_temp:
-            self.control_signal = 0
+            self._control_signal = 0
             return
         
         if self._current_state == 'off' and tank_top_temp < tank_turnOn_temp:
-            self.control_signal = 0
+            self._control_signal = 0
             return
         
         if current_signal == 0:
-            self.control_signal = 1
+            self._control_signal = 1
             return
         
         if current_signal == 1 and HX_load_state_out.h <= set_state.h:
-            self.control_signal = 1
+            self._control_signal = 1
             return
         
         if HX_load_state_out.h == HX_load_state_in.h:
-            self.control_signal = 1
+            self._control_signal = 1
             return
         
         new_signal = current_signal*( set_state.h - HX_load_state_in.h )/( HX_load_state_out.h - HX_load_state_in.h )
         new_signal = new_signal*( 1 - self._last_signal_weight ) + current_signal*self._last_signal_weight
         new_signal = max( [ min( [ new_signal, 1 ] ), self._min_signal ] )
-        self.control_signal = new_signal
+        self._control_signal = new_signal
     
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -247,6 +298,8 @@ class LoadTempController( Controller ):
         
         if iteration_number == 0:
             self._convergence = False
+            self._update_signal_value( HX_load_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp )
+            return
         else:
             prior = self._check_condition(
                 
@@ -256,17 +309,15 @@ class LoadTempController( Controller ):
                 set_state,
                 tank_top_temp )
             
-            self.compute_convergence(
+            self.compute_input_convergence(
                 relative_inputs = [ HX_load_flowrate ],
                 state_inputs = [ HX_load_state_in, HX_load_state_out ], prior = prior )
         
         if ( not self._convergence ) and (
                 
-                ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) )
-                
-                ):
-                
-                self._update_signal_value( HX_load_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp )
+                self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ] ):
+            
+            self._update_signal_value( HX_load_flowrate, HX_load_state_in, HX_load_state_out, set_state, tank_top_temp )
     
     def update_state(self):
         
@@ -278,34 +329,89 @@ class TankChargeController( Controller ):
                  
                   controlled_pump,
                   heat_exchanger,
-                  min_temp_difference,
+                  min_dT,
                   temp_tolerance,
                   heat_source_controller,
                   tank,
                   tank_max_temp,
                   tank_hysteresis,
-                  last_signal_weight,
+                  last_signal_weight = None,
                   iteration_cycle = None ):
         
-        self.control_signal = 1
+        ## Validate arguments
+        
+        from .pump import Pump
+        from .heat_exchanger import HeatExchanger
+        from .storage import StorageTank
+        
+        if not isinstance(controlled_pump, Pump):
+            raise TypeError("TankChargeController: Argument 'controlled_pump' must be an instance of sercpy.pump.Pump.")
+        if not isinstance(heat_exchanger, HeatExchanger):
+            raise TypeError("TankChargeController: Argument 'heat_exchanger' must be an instance of sercpy.pump.HeatExchanger.")
+        if not isinstance(tank, StorageTank):
+            raise TypeError("TankChargeController: Argument 'tank' must be an instance of sercpy.pump.StorageTank.")
+        if not isinstance(heat_source_controller, Controller):
+            raise TypeError("TankChargeController: Argument 'heat_source_controller' must be an instance of sercpy.pump.Controller.")
+            
+        try:
+            min_dT = float( min_dT )
+        except:
+            raise TypeError("TankChargeController: 'min_dT' must be convertible to type 'float'.")
+        if not min_dT > 0:
+            raise ValueError("TankChargeController: Argument 'min_dT' must be larger than zero.")
+        
+        try:
+            temp_tolerance = float( temp_tolerance )
+        except:
+            raise TypeError("TankChargeController: 'temp_tolerance' must be convertible to type 'float'.")
+        if not temp_tolerance > 0:
+            raise ValueError("TankChargeController: Argument 'temp_tolerance' must be larger than zero.")
+            
+        try:
+            tank_max_temp = float( tank_max_temp )
+        except:
+            raise TypeError("TankChargeController: 'tank_max_temp' must be convertible to type 'float'.")
+        if not tank_max_temp > 0:
+            raise ValueError("TankChargeController: Argument 'tank_max_temp' must be larger than zero.")
+        
+        try:
+            tank_hysteresis = float( tank_hysteresis )
+        except:
+            raise TypeError("TankChargeController: 'tank_hysteresis' must be convertible to type 'float'.")
+        if not tank_hysteresis > 0:
+            raise ValueError("TankChargeController: Argument 'tank_hysteresis' must be larger than zero.")
+            
+        if last_signal_weight is not None:
+            try:
+                last_signal_weight = float( last_signal_weight )
+            except:
+                raise TypeError("TankChargeController: 'last_signal_weight' must be convertible to type 'float'.")
+            if not ( last_signal_weight >= 0 and last_signal_weight <= 0.999 ):
+                raise ValueError("TankChargeController: Argument 'last_signal_weight' must be in the range 0 <= last_signal_weight <= 0.999.")
+        else:
+            last_signal_weight = 0
+        
+        if iteration_cycle is not None:
+            try:
+                iteration_cycle = [ value for value in iteration_cycle ]
+                assert all([ type( value ) is bool or value in [ 0, 1 ] for value in iteration_cycle ])
+            except:
+                raise TypeError("LoadTempController: Argument 'iteration_cycle' must be a list of boolean values.")
+        
+        ## Assign attributes
+        
+        self._control_signal = 1
+        self._current_state = 'on'
         self._controlled_pump = controlled_pump
         self._heat_exchanger = heat_exchanger
         self._tank = tank
         self._heat_source_controller = heat_source_controller
         
-        if iteration_cycle is not None:
-            try:
-                iteration_cycle = [ bool( value ) for value in iteration_cycle ]
-            except:
-                raise TypeError("LoadTempController: Argument 'iteration_cycle' must be a list of boolean values.")
-        
         self._iteration_cycle = iteration_cycle
         
         self._last_signal_weight = last_signal_weight
         
-        self._current_state = 'off'
-        
-        self._min_temp_difference = min_temp_difference
+        self._min_dT = min_dT
         self._temp_tolerance = temp_tolerance
         self._tank_max_temp = tank_max_temp
         self._tank_hysteresis = tank_hysteresis
@@ -315,7 +421,7 @@ class TankChargeController( Controller ):
         
     def _check_condition( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp ):
         
-        current_signal = self.control_signal
+        current_signal = self._control_signal
         
         if current_signal == 0 and any( [
                 
@@ -325,7 +431,7 @@ class TankChargeController( Controller ):
             
             return True
         
-        desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_temp_difference )
+        desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_dT )
         
         if current_signal == 1 and HX_load_state_out.h >= desired_state_out.h:
             return True
@@ -346,29 +452,29 @@ class TankChargeController( Controller ):
                 tank_top_temp > self._tank_max_temp,
                 tank_top_temp > self._tank_max_temp - self._tank_hysteresis and self._current_state == 'off' ] ):
             
-            self.control_signal = 0
+            self._control_signal = 0
             return
         
-        current_signal = self.control_signal
+        current_signal = self._control_signal
         
         if current_signal == 0:
-            self.control_signal = 1
+            self._control_signal = 1
             return
         
-        desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_temp_difference )
+        desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_dT )
         
         if current_signal == 1 and HX_load_state_out.h >= desired_state_out.h:
-            self.control_signal = 1
+            self._control_signal = 1
             return
         
         if current_signal == self._min_signal and HX_load_state_out.h <= desired_state_out.h:
-            self.control_signal = self._min_signal
+            self._control_signal = self._min_signal
             return
         
         new_signal = current_signal*( HX_load_state_out.h - HX_load_state_in.h )/( desired_state_out.h - HX_load_state_in.h )
         new_signal = new_signal*( 1 - self._last_signal_weight ) + current_signal*self._last_signal_weight
         new_signal = max( [ min( [ new_signal, 1 ] ), self._min_signal ] )
-        self.control_signal = new_signal
+        self._control_signal = new_signal
     
     def compute_outputs( self, operating_conditions, iteration_number ):
         
@@ -397,6 +503,8 @@ class TankChargeController( Controller ):
         
         if iteration_number == 0:
             self._convergence = False
+            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp )
+            return
         else:
             prior = self._check_condition(
                 
@@ -405,13 +513,13 @@ class TankChargeController( Controller ):
                 HX_load_state_out,
                 tank_top_temp )
             
-            self.compute_convergence(
+            self.compute_input_convergence(
                 relative_inputs = [ heat_source_control_signal, HX_load_flowrate ],
                 state_inputs = [ HX_load_state_in, HX_load_state_out ], prior = prior )
         
         if ( not self._convergence ) and (
                 
-                ( iteration_number == 0 or ( self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]  ) )
+                self._iteration_cycle is None or self._iteration_cycle[  iteration_number % len( self._iteration_cycle )  ]
                 
                 ):
             

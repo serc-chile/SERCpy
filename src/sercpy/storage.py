@@ -404,20 +404,6 @@ class StorageTank( Device ):
         return self._node_temperatures[ self._n_nodes - 1 ]
     
     @property
-    def convergence(self):
-        """
-        Boolean value stating whether the inputs of the `StorageTank` instance
-        achieved convergence the last time
-        the method `StorageTank.compute_outputs` was called.
-        The concept of "convergence" refers to whether the inputs of the
-        StorageTank instance are similar enough in consecutive iterations
-        of a simulation time step, so that no further computation is needed.
-        """
-        if not hasattr( self, "_convergence" ):
-            raise AttributeError("StorageTank: Attribute 'convergence' has not been computed yet. This attribute gets updated when the method 'StorageTank.compute_outputs' is called.")
-        return self._convergence
-    
-    @property
     def dE(self):
         "Energy change of the fluid stored inside the tank during the last time step computed (J). This attribute gets updated every time the method 'StorageTank.compute_outputs' is called."
         if not hasattr( self, "_dE" ):
@@ -1379,7 +1365,7 @@ class StorageTank( Device ):
             if iteration_number == 0:
                 self._convergence = False
             else:
-                self.compute_convergence()
+                self.compute_input_convergence()
                 if self._convergence:
                     return
             
