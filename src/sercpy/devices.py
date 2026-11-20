@@ -532,7 +532,35 @@ class Device:
         
             super().__setattr__(attr_name, kwargs[ name ])
     
-    def compute_outputs( self, operating_conditions, iteration_number, **kwargs ):
+    def compute_outputs( self, operating_conditions = None, iteration_number = None, **kwargs ):
+        """
+        This empty method should be overriden in any functional inherited class.
+        
+        It is the method that is called during a
+        simulation to compute the outputs that are passed
+        to other devices in order to
+        simulate the device operating as part of a
+        thermal system.
+        
+        **The first two parameters are meant to be used to call the method
+        when the device is used as part of a system simulation.**
+
+        Parameters
+        ----------
+        operating_conditions : dict
+            Dictionary returned by a .
+        iteration_number : TYPE
+            DESCRIPTION.
+        **kwargs : any
+            Extra parameters that will **NOT** be considered when the device is
+            used in a system simulation. These parameters can be used, for instance,
+            to obtain results from the device outside of simulations.
+
+        Returns
+        -------
+        None.
+
+        """
         return
     
     def update_state(self):
