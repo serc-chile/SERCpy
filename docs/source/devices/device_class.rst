@@ -31,3 +31,4 @@ Device methods
 
   device_methods/set_connections_method
   device_methods/set_convergence_criteria_method
+  device_methods/compute_input_convergence_method
