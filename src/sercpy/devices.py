@@ -125,6 +125,12 @@ class Outlet:
 
 
 class Device:
+    """
+    Base class for the objects that model the individual components of a thermal system.
+    
+    
+    
+    """
     
     def __init__(self):
         
