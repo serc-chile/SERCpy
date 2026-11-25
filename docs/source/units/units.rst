@@ -10,7 +10,6 @@ Internally, classes and simulations work with SI units, except for temperature w
   
   available_units
   converting_units
-  identifying_type_of_unit
 
 .. _available_units
 
@@ -196,12 +195,3 @@ Converting units
 The main tool that allows to work with different units is the function `convert_units`, which is documented below. This function is used internally by the functions and classes to convert the units specified by the user to the default unit system; therefore, it is not crucial for the user to learn to use this function.
 
 .. autofunction:: sercpy.units.convert_units
-
-.. _identifying_type_of_unit
-
-Identifying the type of unit
-----------------------------
-
-Another feature that may be helpful to some users is the ability to determine the type of variable that corresponds to some unit; e.g., getting the result `"power"` from the input `"BTU/hr"`. This can be done with the function `get_unit_type`, which is documented below.
-
-.. autofunction:: sercpy.units.get_unit_type
