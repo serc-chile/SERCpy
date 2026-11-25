@@ -15,15 +15,15 @@ from types import SimpleNamespace
 from .units import (
     
     convert_units,
-    get_unit_type,
+    get_unit_types,
     UnitsError, )
 from .core import (
     
     month_days,
     monthly_cummulated_days,
     month_names,
-    mean_squared_error,
-    Energy_Sources_Database, )
+    _mean_squared_error, )
+
 from .config import (
     
     default_year,
@@ -75,9 +75,6 @@ DemandProfile_accepted_args = [
     "monthly_heat_demand",
     "heat_demand_units",
     
-    "monthly_hot_fluid_demand",
-    "hot_fluid_demand_units",
-    
     "monthly_consumption",
     "heat_source",
     "consumption_units",
@@ -116,137 +113,230 @@ class DemandProfile:
 
     Parameters
     ----------
-    fluid : str, optional
-        Heat transfer fluid name. Accepted values: `"water"`, `"air"` and `"therminol 66"`.
-    
-    fluid_cp : float, optional
-        Specific heat capacity of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
-        
-    fluid_cp_units : str, optional
-        Units in which `fluid_cp` is being specified. If not provided, it defaults to `"J/kg K"`. See :doc:`/units/units`.
-    
-    fluid_density : float, optional
-        Density of the heat transfer fluid. Needed if the parameter `fluid` is not specified, optional otherwise.
-        
-    fluid_density_units : str, optional
-        Units in which `fluid_density` is being specified. If not provided, it defaults to `"kg/m3"`. See :doc:`/units/units`.
+    fluid : str or :doc:`Fluid </fluids/fluid_class>`
+        Instance of the class :doc:`sercpy.fluids.Fluid </fluids/fluid_class>`
+        or a valid name to initialize one. See :doc:`Fluids </fluids/fluids>`.
     
     T_set : float or list of float
-        Setpoint temperature of the heating system. It can be a floating point value or a list of 12 values (one per month). Range: 25 <= `T_set` <= 150.
+        Setpoint temperature of the heating system. It
+        can be a floating point value or a list of
+        12 values (one per month). Range: 25 <= `T_set` <= 150.
     
     T_in : float, list of float, or str
-        Temperature of the water entering the heating system. In the case of closed loops, it represents the temperature of the water coming back from the thermal load. It can be a floating point value or a list of 12 values (one per month). Range: 2 °C <= `T_in` <= 130 °C. Another valid value for this argument is the string `"mains"`, which implies that the water enters the heating system from the water distribution network. In this case, it is mandatory to provide the argument `meteo_profile` described below.
+        Temperature of the water entering the heating
+        system. In the case of closed loops, it represents
+        the temperature of the water coming back from
+        the thermal load. It can be a floating point
+        value or a list of 12 values (one per month).
+        Range: 2 °C <= `T_in` <= 130 °C. Another valid value for
+        this argument is the string `"mains"`, which implies
+        that the water enters the heating system from the water
+        distribution network. In this case, it is mandatory
+        to provide the argument `meteo_profile` described below.
     
     temp_units : str, optional
-        Units in which `T_in` and `T_set` are being specified. If not provided, it defaults to `"°C"`. See :doc:`/units/units`.
+        Units in which `T_in` and `T_set` are
+        being specified. If not provided, it
+        defaults to `"°C"`. See :doc:`/units/units`.
         
     T_units : str, optional
         Alias for `temp_units`.
     
     monthly_heat_demand : list of float, optional
-        List of values >= 0, representing the heat demand of the thermal load in each month of the year. Either this parameter or `monthly_consumption` must be provided.
+        List of values >= 0, representing the heat demand (in terms of energy)
+        of the thermal load in each month of the year. 12 values are expected,
+        each one representing one month from January to December.
+        The units in which energy is being provided
+        must be specified with the parameter `heat_demand_units`.
+        Either this parameter or `monthly_consumption` must be provided.
     
     heat_demand_units : str, optional
-        Energy units used for the list `monthly_heat_demand`. Only needed if that parameter is specified. See :doc:`/units/units`
+        Energy units used for the list `monthly_heat_demand`.
+        Only needed if that parameter is specified.
+        See :doc:`/units/units`
         
     monthly_consumption : list of float, optional
-        Similar to `monthly_heat_demand`. This parameter can be used to automatically compute the monthly heat demand from consumption of heat sources such as fuels or electricity.
-    
-    heat_source : str, optional
-        Name of the heat source. Needed if the argument `monthly_consumption` is used. Not needed if the user manually specifies the parameters `heat_source_heating_value` and `heat_source_density`. Accepted values (upper cases as well): `"electricity"`, `"liquefied petroleum gas"`, `"natural gas"`, `"methane"`, `"propane"`, `"butane"`, `"diesel"`, `"coal"`, `"biomass"`.
-    
-    consumption_units : str, optional
-        Units in which `monthly_consumption` is being specified. Only needed if that parameter is provided. For electricity, energy units are required. For fuels, mass or volume units are required. See :doc:`/units/units`.
-    
-    heater_efficiency : float, optional
-        Heater efficiency as a decimal floating point number (e.g. 80% efficiency must be specified as 0.8). Needed only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
-    
-    heat_source_heating_value : float, optional
-        Heating value of the heat source (fuel). Only useful when `monthly_consumption` is specified to compute the heat demand.  Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
-    
-    heat_source_heating_value_units : str, optional
-        Units in which `heat_source_heating_value` is being provided. Only specific energy units in terms of mass (not volume) are allowed. If not provided, it defaults to `J/kg`. See :doc:`/units/units`.
-    
-    heat_source_density : float, optional
-        Density of the heat source (fuel). Not needed if a valid `heat_source` is provided. Considered only if `monthly_consumption` is specified instead of `monthly_heat_demand`.
+        List of 12 values representing the consumption of thermal energy sources
+        (such as fuel or electricity) during each month of the year.
+        This parameter is an alternative to `monthly_heat_demand` for specifying
+        the monthly thermal demand.
+        Fuel consumption can be specified in terms of 
+        mass or volume. Electricity consumption must be specified in terms of energy.
         
-    heat_source_density_units : str, optional
-        Units in which `heat_source_density` is being provided. If not provided, it defaults to `kg/m3`. See :doc:`/units/units`.
+    consumption_units : str, optional
+        Units in which `monthly_consumption` is being specified.
+        Only needed if that parameter is provided. For heaters (parameter `heater`)
+        that use electricity, energy units are required.
+        For any other fuel, mass or volume units
+        are required. See :doc:`/units/units`.
     
-    condensation_boiler : bool, optional
-        Whether the heater corresponds to a condensation boiler. If set to True, the higher heating value of the selected fuel is used to compute the heat demand from consumption values.
+    heater : :doc:`AutomaticBoiler </devices/boiler/automatic_boiler_class>`
+        Heater currently used to provide heat to the system. It is used to convert
+        the consumption introduced through `monthly_consumption` to thermal energy
+        demand. This parameter is only needed if `monthly_consumption` is specified.
         
     daily_demand_profile : list of float, optional
-        List of floating point values with length 48, 24, or a divisor of 24. It represents how thermal demand gets distributed throughout a 24-hour period (from 00:00 to 24:00), with time resolution depending on the length of the list. The values within the list have no meaningful units; the total energy demand gets distributed throughout the day proportionally to the values of the list.
+        List of floating point values with length
+        48, 24, or a divisor of 24. It represents
+        how thermal demand gets distributed
+        throughout a 24-hour period (from 00:00 to 24:00),
+        with time resolution depending on the length
+        of the list. The values within the list
+        have no meaningful units; the total energy
+        demand gets distributed throughout the
+        day proportionally to the values of the list.
     
     daily_demand_profile_saturday : list of float, optional
-        Special daily demand profile for saturday. This parameter is only considered if `daily_demand_profile` is specified. The format required is the same as for `daily_demand_profile`. If not specified, saturday is assumed to have the same profile as week days (given by the parameter `daily_demand_profile`).
+        Special daily demand profile for saturday.
+        This parameter is only considered if
+        `daily_demand_profile` is specified.
+        The format required is the same as for
+        `daily_demand_profile`. If not specified,
+        saturday is assumed to have the same
+        profile as week days
+        (given by theparameter `daily_demand_profile`).
     
     daily_demand_profile_sunday : list of float, optional
-        Special daily demand profile for sunday. This parameter is only considered if `daily_demand_profile` is specified. The format required is the same as for `daily_demand_profile`. If not specified, the behavior depends on whether `daily_demand_profile_saturday` was specified. If it was specified, sunday is assumed to have no demand at all. If it was not specified, all days are assumed to have the same profile, defined by the parameter `daily_demand_profile`.
+        Special daily demand profile for sunday.
+        This parameter is only considered if
+        `daily_demand_profile` is specified.
+        The format required is the same as
+        for `daily_demand_profile`. If not specified,
+        the behavior depends on whether
+        `daily_demand_profile_saturday`
+        was specified. If it was specified,
+        sunday is assumed to have no demand at
+        all. If it was not specified, all days
+        are assumed to have the same profile,
+        defined by the parameter `daily_demand_profile`.
     
     daily_demand_ratio_saturday : float, optional
-        Ratio between the total daily demand on saturdays and the total daily demand on a week day.
+        Ratio between the total daily
+        demand on saturdays and the
+        total daily demand on a week day.
     
     daily_demand_ratio_sunday : float, optional
-        Ratio between the total daily demand on sundays and the total daily demand on a week day.
+        Ratio between the total daily demand
+        on sundays and the total daily demand on a week day.
     
     peak_demand_ratio_saturday : float, optional
-        Ratio between the peak demand on saturdays and the peak on a week day. If specified, this parameter overrides `daily_demand_ratio_saturday`.
+        Ratio between the peak demand on saturdays
+        and the peak on a week day. If specified,
+        this parameter overrides
+        `daily_demand_ratio_saturday`.
     
     peak_demand_ratio_sunday : float, optional
-        Ratio between the peak demand on sundays and the peak on a week day. If specified, this parameter overrides `daily_demand_ratio_sunday`.
+        Ratio between the peak demand on sundays and
+        the peak on a week day. If specified,
+        this parameter overrides `daily_demand_ratio_sunday`.
     
     weekly_demand_factors : list of float, optional
-        List of seven values defining the relative total daily demand of each day of the week, starting on monday. If specified, this parameter overrides the four "ratio" parameters just described.
+        List of seven values defining the relative total
+        daily demand of each day of the week, starting
+        on monday. If specified, this parameter
+        overrides the four "ratio" parameters just described.
     
     daily_demand_profiles : list of list of float, optional
-        List of seven daily demand profiles; one for each day of the week, starting on monday see `daily_demand_profile`. It must be specified along with `weekly_demand_factors`.
+        List of seven daily demand profiles; one for
+        each day of the week, starting on monday see
+        `daily_demand_profile`. It must be specified
+        along with `weekly_demand_factors`.
     
     weekly_demand_profile : list of float, optional
-        Demand profile encompassing an entire week. It is equivalent to concatenating seven daily demand profiles of the same length, where the values of all profiles have a comparable scale.
+        Demand profile encompassing an entire week. It is equivalent
+        to concatenating seven daily demand profiles of the
+        same length, where the values of all profiles
+        have a comparable scale.
     
     op_start : str, optional
-        Operation start time. It must be a string with the format `"hh:mm"`, going from `"00:00"` to `"23:30"`. The "minutes" part of the time (i.e. the string `"mm"`) must be either `"00" or `"30". This parameter must be provided along with `op_end`. Its use is and alternative to specifying demand profiles. It will be ignored if any of the parameters `daily_demand_profile`, `daily_demand_profiles`, or `weekly_demand_profile` is specified.
+        Operation start time. It must be a string with the format
+        `"hh:mm"`, going from `"00:00"` to `"23:30"`. The "minutes"
+        part of the time (i.e. the string `"mm"`) must be either
+        `"00" or `"30". This parameter must be provided along with
+        `op_end`. Its use is and alternative to specifying demand
+        profiles. It will be ignored if any of the parameters
+        `daily_demand_profile`, `daily_demand_profiles`, or
+        `weekly_demand_profile` is specified.
     
     op_end : str, optional
-        Operation end time. This parameter is only taken into account when provided along with `op_start`. The format expected from this parameter is the same as for `op_start`, with the difference that `op_end` is expected to be in the range `"00:30"` to `"24:00"`.
+        Operation end time. This parameter is only taken into account
+        when provided along with `op_start`. The format expected
+        from this parameter is the same as for `op_start`, with
+        the difference that `op_end` is expected to be
+        in the range `"00:30"` to `"24:00"`.
     
     op_start_saturday : str, optional
-        Special operation start time for saturday. The expected type and format is the same as `op_start`. Only has effect if provided along with `op_start`.
+        Special operation start time for saturday. The expected type
+        and format is the same as `op_start`. Only has effect
+        if provided along with `op_start`.
     
     op_end_saturday : str, optional
-        Special operation end time for saturday. The expected type and format is the same as `op_end`. Must be provided along with `op_start_saturday`.
+        Special operation end time for saturday. The expected type
+        and format is the same as `op_end`. Must be provided
+        along with `op_start_saturday`.
     
     op_start_sunday : str, optional
-        Special operation start time for sunday. The expected type and format is the same as `op_start`. Only has effect if provided along with `op_start`.
+        Special operation start time for sunday. The expected
+        type and format is the same as `op_start`. Only has
+        effect if provided along with `op_start`.
     
     op_end_sunday : str, optional
-        Special operation end time for sunday. The expected type and format is the same as `op_end`. Must be provided along with `op_start_sunday`.
+        Special operation end time for sunday. The expected
+        type and format is the same as `op_end`. Must be provided
+        along with `op_start_sunday`.
     
     Tamb_profile : list of float, optional
-        Ambient temperature profile. List of values encompassing a whole year of temperature data for the location of the heating system. The list must have at least a daily resolution with average daily temperatures; thus, its length must be at least 365. It can also have a length which is a multiple of that number, in which case it will be interpreted as having a higher time resolution.
+        Ambient temperature profile. List of values encompassing
+        a whole year of temperature data for the location of
+        the heating system. The list must have at least a daily
+        resolution with average daily temperatures; thus, its
+        length must be at least 365. It can also have a length
+        which is a multiple of that number, in which case
+        it will be interpreted as having a higher time resolution.
     
     Tamb_units : str, optional
-        Units in which the `Tamb_profile` is being specified. If not provided, it defaults to `temp_units`/`T_units`. See :doc:`/units/units`.
+        Units in which the `Tamb_profile` is being specified.
+        If not provided, it defaults to
+        `temp_units`/`T_units`. See :doc:`/units/units`.
         
     meteo_profile : sercpy.meteo_profile.MeteoProfile instance
-        A `MeteoProfile` instance can be used to replace the argument `Tamb_profile`. If that argument is not provided and `meteo_profile` is provided instead, the ambient temperature profile will be extracted from that object. Specifying the argument `meteo_profile` is mandatory if the value of the argument `T_in` is the string `"mains"`.
+        A `MeteoProfile` instance can be used to replace the
+        argument `Tamb_profile`. If that argument is not provided
+        and `meteo_profile` is provided instead, the ambient
+        temperature profile will be extracted from that object.
+        Specifying the argument `meteo_profile` is mandatory
+        if the value of the argument `T_in` is the string `"mains"`.
     
     monthly_production : list of float, optional
-        List of 12 values representing the monthly production from January to December. If provided, it is interpreted as a cause for variability of the monthly thermal demand, along with the ambient temperature.
+        List of 12 values representing the monthly production from
+        January to December. If provided, it is interpreted as
+        a cause for variability of the monthly thermal demand,
+        along with the ambient temperature.
     
     Tamb_dependence : float or callable, optional
-        Parameter to define the level of dependence of the thermal load on the ambient temperature. Using this parameter is generally discouraged since the class is meant to automatically determine it.
-        If the parameter type is float, it is interpreted as the level of dependence of thermal demand on ambient temperature as discussed in :doc:`/demand_profile/Tamb_dependence`. If it is a callable object, it is interpreted as a custom function that translates daily demand values to demand factors.
+        Parameter to define the level of dependence of the thermal
+        load on the ambient temperature. Using this parameter is
+        generally discouraged since the class
+        is meant to automatically determine it.
+        If the parameter type is float, it is interpreted as the
+        level of dependence of thermal demand on ambient temperature
+        as discussed in :doc:`/demand_profile/Tamb_dependence`.
+        If it is a callable object, it is interpreted as a custom
+        function that translates daily demand values to demand factors.
     
     smooth_Tamb_profile : bool, optional
-        Boolean value defining whether to correct the daily ambient temperature using the temperatures of the three preceding days, as discussed in :doc:`/demand_profile/Tamb_dependence`. If not provided, it defaults to `True`.}
+        Boolean value defining whether to correct the daily ambient
+        temperature using the temperatures of the three preceding
+        days, as discussed in :doc:`/demand_profile/Tamb_dependence`.
+        If not provided, it defaults to `True`.
     
     Attributes
     ----------
     weekly_demand_profile : list of float
-        List of 336 values that characterizes how thermal demand gets distributed throughout a week, with 30-minute resolution. The demand values are ordered from Monday to Sunday, and do not have any power or energy units.
+        List of 336 values that characterizes how thermal demand
+        gets distributed throughout a week, with 30-minute
+        resolution. The demand values are ordered from Monday
+        to Sunday, and do not have any power or energy units.
     
     fluid : :doc:`Fluid </fluids/fluid_class>`
         Heat transfer fluid that gets heated by the system.
@@ -258,25 +348,38 @@ class DemandProfile:
         Alias for `fluid`.
     
     Tamb_dependence : float
-        Number between 0 and 3 defining the level of dependence of thermal demand on the daily ambiente temperature.
+        Number between 0 and 3 defining the level of
+        dependence of thermal demand on the daily ambiente temperature.
     
     monthly_T_set : list of float
-        List of 12 values containing the setpoint temperature of the heating system for each month of the year, from January to December.
+        List of 12 values containing the setpoint
+        temperature of the heating system for
+        each month of the year, from January to December.
     
     monthly_T_in : list of float
-        List of 12 values containing the temperature with which the heat transfer fluid enters the heating system during each month of the year, from January to December.
+        List of 12 values containing the temperature
+        with which the heat transfer fluid enters the
+        heating system during each month of the year, from January to December.
     
     monthly_heat_demand : list of float
-        List of 12 values containing the total energy demanded by the thermal load during each month of the year. Unit: Joule.
+        List of 12 values containing the total energy
+        demanded by the thermal load during each
+        month of the year. Unit: Joule.
     
     monthly_consumption : list of float
-        List of 12 values containing the heat source consumption (electricity or fuel) during each month of the year. Unit: Joule for electricity; kg for fuels.
+        List of 12 values containing the heat source
+        consumption (electricity or fuel) during each
+        month of the year. Unit: Joule for electricity; kg for fuels.
     
     op_start : str
-        Operation start time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days.
+        Operation start time. If special operation times
+        have been defined for weekend days, it only
+        applies to week days. Otherwise, it applies to all days.
     
     op_end : str
-        Operation end time. If special operation times have been defined for weekend days, it only applies to week days. Otherwise, it applies to all days.
+        Operation end time. If special operation times have
+        been defined for weekend days, it only
+        applies to week days. Otherwise, it applies to all days.
     
     op_start_saturday : str
         Operation start time for saturdays.
@@ -352,6 +455,8 @@ class DemandProfile:
             
             smooth_Tamb_profile = None,
             
+            **kwargs,
+            
             ):
         
         if T_set is None or T_in is None:
@@ -380,7 +485,7 @@ class DemandProfile:
             elif T_units is not None:
                 self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
             if not all( [ T >= demand_Tin_limits[0] and T <= demand_Tin_limits[1] for T in self._monthly_T_in ] ):
-                raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tin_limits[0]} °C <= T_set <= {demand_Tin_limits[0]} °C.")
+                raise ValueError(f"Class DemandProfile: T_in value(s) must be within the range: {demand_Tin_limits[0]} °C <= T_set <= {demand_Tin_limits[0]} °C.")
             
         if fluid is None:
             raise TypeError("Class DemandProfile: Argument 'fluid' cannot be None.")
@@ -390,10 +495,21 @@ class DemandProfile:
         if type( fluid ) is str:
             try:
                 self._fluid = Fluid( fluid, p = 800000, T_ref = float( ( np.mean( self._monthly_T_in ) + np.mean( self._monthly_T_set ) )/2 ) )
-                self._fluid_cp = self._fluid.cp_ref
-                self._fluid_density = self._fluid._D_ref
             except FluidNameError:
                 raise TypeError(f"Class DemandProfile: Fluid (sercpy.fluids.Fluid) instance could not be constructed because the fluid name entered (= {fluid}) is not valid.")
+                
+        if all( [ keyword in kwargs for keyword in [
+                
+                "flowrate_profile",
+                "demanded_power_profile",
+                "T_in_profile",
+                "T_set_profile", ] ] ):
+            
+            self._flowrate_profile = kwargs[ "flowrate_profile" ]
+            self._demanded_power_profile = kwargs[ "demanded_power_profile" ]
+            self._T_in_profile = kwargs[ "T_in_profile" ]
+            self._T_set_profile = kwargs[ "T_set_profile" ]
+            return
             
         if monthly_heat_demand is not None:
             self._monthly_heat_demand = self._validate_argument("monthly_heat_demand", monthly_heat_demand)
@@ -454,7 +570,7 @@ class DemandProfile:
             if heat_source_heating_value is None:
                 raise ValueError( "Class DemandProfile: Unidentified heat source. Heating value could not be determined. This value can be specified manually through the argument 'heat_source_heating_value'." )
             
-            if heat_source_density is None and get_unit_type( consumption_units ) != 'mass':
+            if heat_source_density is None and get_unit_types( consumption_units )[0] != { 'mass' }:
                 raise ValueError( "Class DemandProfile: Unidentified heat source. Heat source density could not be determined. Possible fixes: (1) Specify consumption in terms of mass, (2) Specify a valid heat source name, (3) Specify the heat source density manually through the argument 'heat_source_density'." )
             
             self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
@@ -776,7 +892,173 @@ class DemandProfile:
             return convert_units(energy_demand_J, 'J', goal_units)
         
         raise Exception("DemandProfile.consumption_to_thermal_demand: Unknown error.")
-    
+        
+    ## Alternative initialization using the library "loadcast"
+    @classmethod
+    def from_loadcast( cls, T_set, T_in, fluid, meteo_profile = None, **loadcast_params ):
+        """
+        Alternative initialization of the `DemandProfile` instance that uses
+        the result returned by the function `generate`
+        from the library `loadcast <https://loadcast.readthedocs.io/en/latest/>`_
+        to establish the yearly heat demand profile.
+        
+        In addition to the parameters that will be passed to the function just mentioned,
+        he user also has to specify the setpoint temperature of the heating system,
+        the inlet temperature with wich the heat transfer fluid enters the heating system,
+        and the fluid used as heat transfer fluid.
+        
+        The user has to keep in mind that loadcast is not automatically installed
+        along with **SERCpy**. In order to use this function, the user has to install
+        loadcast independently.
+
+        Parameters
+        ----------
+        T_set : list or float
+            Setpoint temperature of the heating system (°C). If a list is provided,
+            it is expected to have 12 values, where each value represents the
+            sepoint temperature during on month of the year, from January to Dember.
+        T_in : list, str or float
+            Temperature with which the heat transfer fluid
+            enters the heating system (°C). If a list is provided,
+            it is expected to have 12 values, where each value represents the
+            inlet temperature during on month of the year, from January to Dember.
+            This parameter can also be the string `"mains"`. In that case, the
+            parameter `meteo_profile` is required.
+        fluid : str or :doc:`Fluid </fluids/fluid_class>`
+            Instance of :doc:`sercpy.fluids.Fluid </fluids/fluid_class>`,
+            or a valid name to initialize it (str).
+        meteo_profile : :doc:`MeteoProfile </meteo_profile/meteo_profile_class>`
+            Only needed when the parameter `T_in` is the string `"mains"`
+            (see the argument with the same name in
+            :doc:`the main documentation of the class </meteo_profile/meteo_profile_class>`).
+        **loadcast_params : any
+            Arguments that will be passed to the function `generate` by `loadcast <https://loadcast.readthedocs.io/en/latest/>`_.
+
+        Raises
+        ------
+        ImportError
+            If loadcast fails to be imported.
+        
+        Returns
+        -------
+        None.
+
+        """
+        
+        try:
+            import loadcast
+        except ImportError:
+            raise ImportError("DemandProfile.from_loadcast: 'loadcast' could not be imported. Check whether it is installed.")
+        
+        try:
+            loadcast_profile = loadcast.generate( **loadcast_params )
+        except:
+            raise Exception("DemandProfile.from_loadcast: loadcast.generate failed to generate the profile. Check the keyword arguments.")
+        
+        try:
+            heat_demand_profile = loadcast_profile[ "heat_kw" ].values
+        except KeyError:
+            raise KeyError("DemandProfile.from_loadcast: Heat demand column was not found in the DataFrame returned by loadcast with the expected name 'heat_kw'.")
+            
+        if len( heat_demand_profile ) == 0:
+            raise ValueError("DemandProfile.from_loadcast: Resulting demand profile has length zero (i.e. it is empty).")
+        
+        if len( heat_demand_profile ) % 8760 != 0:
+            raise ValueError("DemandProfile.from_loadcast: Demand profile length is expected to be divisible by 8760.")
+            
+
+        if T_set is None or T_in is None:
+            raise ValueError("Class DemandProfile: Arguments T_set and T_in must be provided.")
+        
+        monthly_T_set = cls._validate_argument("T_set", T_set)
+            
+        if not all( [ T >= demand_Tset_limits[0] and T <= demand_Tset_limits[1] for T in monthly_T_set ] ):
+            raise ValueError(f"Class DemandProfile: T_set value(s) must be within the range: {demand_Tset_limits[0]} °C <= T_set <= {demand_Tset_limits[1]} °C.")        
+        
+        T_in = cls._validate_argument("T_in", T_in)
+        
+        if T_in == 'mains':
+            if meteo_profile is None:
+                raise ValueError("Class DemandProfile: The argument 'meteo_profile' must be provided if the value of 'T_in' is the string 'mains'.")
+            meteo_profile = cls._validate_argument("meteo_profile", meteo_profile)
+            monthly_T_in = cls._Tin_from_meteo_profile( meteo_profile )
+        else:
+            monthly_T_in = T_in
+            if not all( [ T >= demand_Tin_limits[0] and T <= demand_Tin_limits[1] for T in monthly_T_in ] ):
+                raise ValueError(f"Class DemandProfile: T_in value(s) must be within the range: {demand_Tin_limits[0]} °C <= T_set <= {demand_Tin_limits[0]} °C.")
+            
+        if fluid is None:
+            raise TypeError("Class DemandProfile: Argument 'fluid' cannot be None.")
+        
+        fluid = cls._validate_argument("fluid", fluid)
+        
+        if type( fluid ) is str:
+            try:
+                fluid = Fluid( fluid, p = 800000, T_ref = float( ( np.mean( monthly_T_in ) + np.mean( monthly_T_set ) )/2 ) )
+            except FluidNameError:
+                raise TypeError(f"Class DemandProfile: Fluid (sercpy.fluids.Fluid) instance could not be constructed because the fluid name entered (= {fluid}) is not valid.")
+
+        
+        # Convert to W
+        len_before = len( heat_demand_profile )
+        heat_demand_profile = 1000*heat_demand_profile
+        assert len( heat_demand_profile ) == len_before
+        
+        values_per_hour = len( heat_demand_profile ) // 8760
+        
+        demanded_power_profile = []
+        flowrate_profile = []
+        T_in_profile = []
+        T_set_profile = []
+        
+        for month in range(12):
+            
+            delta_h_this_month = fluid.state( T = monthly_T_set[ month ] ).h -  fluid.state( T = monthly_T_in[ month ] ).h
+            
+            index_month_start = monthly_cummulated_days[ month ] * values_per_hour * 24
+            index_month_end = monthly_cummulated_days[ month + 1 ] * values_per_hour * 24
+            
+            for index in range( index_month_start, index_month_end ):
+                
+                demanded_power = heat_demand_profile[ index ]
+                demanded_flowrate = demanded_power / delta_h_this_month
+                
+                demanded_power_profile.append( demanded_power )
+                flowrate_profile.append( demanded_flowrate )
+                T_in_profile.append( monthly_T_in[ month ] )
+                T_set_profile.append( monthly_T_set[ month ] )
+                    
+        if not 60 % values_per_hour == 0:
+            raise ValueError(f"Number of values per hour obtained from the length of the dataset ({values_per_hour}) does not correspond to an entire number of minutes.")
+        
+        minutes_per_value = 60 // values_per_hour
+        
+        flowrate_profile = np.concatenate( [ [value] * minutes_per_value for value in flowrate_profile ] ).astype(float).tolist() 
+        demanded_power_profile = np.concatenate( [ [value] * minutes_per_value for value in demanded_power_profile ] ).astype(float).tolist() 
+        T_in_profile = np.concatenate( [ [value] * minutes_per_value for value in T_in_profile ] ).astype(float).tolist() 
+        T_set_profile = np.concatenate( [ [value] * minutes_per_value for value in T_set_profile ] ).astype(float).tolist() 
+                
+        assert len(flowrate_profile) == 525600
+        assert len(demanded_power_profile) == 525600
+        assert len( T_in_profile ) == 525600
+        assert len( T_set_profile ) == 525600
+        
+        minutes_per_day = 60*24
+        flowrate_profile = [ flowrate_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( flowrate_profile ), minutes_per_day ) ]
+        demanded_power_profile = [ demanded_power_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( demanded_power_profile ), minutes_per_day ) ]
+        T_in_profile = [ T_in_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( T_in_profile ), minutes_per_day ) ]
+        T_set_profile = [ T_set_profile[ init_minute : init_minute + minutes_per_day ] for init_minute in range( 0, len( T_set_profile ), minutes_per_day ) ]
+        
+        return cls(
+            
+            fluid = fluid,
+            T_in = monthly_T_in,
+            T_set = monthly_T_set,
+            flowrate_profile = flowrate_profile,
+            demanded_power_profile = demanded_power_profile,
+            T_in_profile = T_in_profile,
+            T_set_profile = T_set_profile, )
+        
     def _week_constructor_1( self, ):
         """
         Private method that defines the attribute "weekly_demand_profile" from the attributes "daily_demand_profiles" and "weekly_demand_factors".
@@ -1289,7 +1571,6 @@ class DemandProfile:
         
         if argument_name in [
                 "monthly_heat_demand",
-                "monthly_hot_fluid_demand",
                 "monthly_consumption",
                 "monthly_production",
                 ]:
@@ -1299,7 +1580,7 @@ class DemandProfile:
                 value = [ float(v) for v in value ]
                 assert all([ v >= 0 for v in value ]) and sum(value) > 0
             except:
-                raise ValueError(f"Class DemandProfile: {argument_name} must be a list of values convertible to type 'float', all of which must be >= 0. At least one of them must be > 0.")
+                raise ValueError(f"Class DemandProfile: Argument '{argument_name}' must be a list of values convertible to type 'float', all of which must be >= 0. At least one of them must be > 0.")
                 
         if argument_name  == "T_set":
             temp_limits = [ 25, 150 ]
@@ -1371,9 +1652,13 @@ class DemandProfile:
         
         if argument_name == "heat_demand_units":
             try:
-                assert type(value) is str and value in [ "J", "kWh", "MWh", "BTU", "kBTU", "MBTU", "kJ", "MJ", "TJ" ]
+                value = str(value)
             except:
-                raise ValueError("Class DemandProfile: heat_demand_units must be a string within the accepted values: 'J', 'kWh', 'MWh', 'BTU', 'kBTU', 'MBTU', 'kJ', 'MJ', 'TJ'.")
+                raise ValueError("Class DemandProfile: Argument 'heat_demand_units' must be convertible to string.")
+            try:
+                assert get_unit_types( value ) == 'energy'
+            except:
+                raise ValueError("Class DemandProfile: Argument 'heat_demand_units' must correspond to a unit of energy.")
         
         if argument_name == "smooth_Tamb_profile":
             
@@ -1401,16 +1686,12 @@ class DemandProfile:
                 value = str(value)
             except:
                 raise ValueError("Class DemandProfile: Argument 'consumption_units' must be convertible to string.")
-                
-            if not value in [ "J", "kWh", "MWh", "BTU", "kBTU", "MBTU", "kJ", "MJ", "TJ",
-                              "kg", "ton", "lb", "m3", "L", "gal", "ft3" ]:
-                raise ValueError("Class DemandProfile: Argument 'consumption_units' not valid. For electricity, valid units are:  'J', 'kWh', 'MWh', 'BTU', 'kBTU', 'MBTU', 'kJ', 'MJ', 'TJ'. For other fuels: 'kg', 'ton', 'lb', 'm3', 'L', 'gal', 'ft3'.")
         
         if argument_name == "heater_efficiency":
             try:
                 value = float(value)
             except:
-                raise ValueError("Class DemandProfile: Argument 'heater_efficiency' must be convertible to type 'float'.")
+                raise TypeError("Class DemandProfile: Argument 'heater_efficiency' must be convertible to type 'float'.")
             if value <= 0:
                 raise ValueError("Class DemandProfile: Argument 'heater_efficiency' must be > 0.")
         
@@ -1418,7 +1699,7 @@ class DemandProfile:
             try:
                 value = float(value)
             except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value' must be convertible to type 'float'.")
+                raise TypeError("Class DemandProfile: Argument 'heat_source_heating_value' must be convertible to type 'float'.")
             if value <= 0:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value' must be > 0.")
                 
@@ -1426,19 +1707,29 @@ class DemandProfile:
             try:
                 value = float(value)
             except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be convertible to type 'float'.")
+                raise TypeError("Class DemandProfile: Argument 'heat_source_density' must be convertible to type 'float'.")
             if value <= 0:
                 raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be > 0.")
         
-        if argument_name in [
-                
-                "heat_source_heating_value_units",
-                "heat_source_density_units" ]:
-            
+        if argument_name == "heat_source_heating_value_units":
             try:
                 value = str(value)
             except:
-                raise ValueError(f"Class DemandProfile: Argument '{argument_name}' must be a string.")
+                raise TypeError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string.")
+            try:
+                assert get_unit_types( value ) in [ 'energy / mass', 'energy / volume' ]
+            except:
+                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string representing units with the form 'energy / mass' or 'energy / volume'.")
+                
+        if argument_name == "heat_source_density_units":
+            try:
+                value = str(value)
+            except:
+                raise ValueError("Class DemandProfile: Argument 'heat_source_density_units' must be a string.")
+            try:
+                assert get_unit_types( value ) == 'mass / volume'
+            except:
+                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string representing units with the form 'mass / volume'.")
                 
         if argument_name == "condensation_boiler":
             if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
@@ -1549,12 +1840,15 @@ class DemandProfile:
             dependence_coeff = float(dependence_coeff)
         except:
             raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be convertible to type 'float'.")
+            
+        if temp_units is not None:
+            try:
+                T = convert_units(30, temp_units, 'C')
+            except:
+                raise TypeError(f"DemandProfile.define_temp_to_factor_func: Argument 'temp_units' ({temp_units}) is not valid.")
         
         if not ( dependence_coeff >= 0 and dependence_coeff <= 3 ):
             raise ValueError("Function: define_temp_to_factor_func: Parameter 'dependence_coeff' must be larger than or equal to 0, and smaller than or equal to 3.")
-        
-        if not ( temp_units is None or get_unit_type( temp_units ) == 'temperature' ):
-            raise ValueError("DemandProfile.define_temp_to_factor_func: Argument 'temp_units' not valid.")
             
         if temp_units is None or temp_units in [ 'C', '°C' ]:
             convert_temperature = False
@@ -1571,7 +1865,7 @@ class DemandProfile:
             b_w = demand_cluster_coefficients[dependence_coeff]["b_w"]
             
             if convert_temperature:
-                def temp_to_factor(T):
+                def temp_to_factor( T ):
                     T = convert_units( T, temp_units, 'C' )
                     if T >= T_hl:
                         return max( [ m_w*T + b_w, 0 ] )
@@ -1632,7 +1926,7 @@ class DemandProfile:
             epsilon_fraction = None ):
         
         """
-        Function that determines the level of dependence of the heat demand on the ambient temperature.
+        Static method to determine the level of dependence of the heat demand on the ambient temperature.
         
         The function takes monthly heat demand data and a yearly ambient temperature profile.
         
@@ -1681,7 +1975,7 @@ class DemandProfile:
             monthly_heat_demand = [ float( value ) for value in monthly_heat_demand ]
             assert len( monthly_heat_demand ) == 12
         except:
-            raise ValueError("Class DemandProfile: Argument 'monthly_heat_demand' must be a list (or similar) with length 12.")
+            raise ValueError("DemandProfile.compute_Tamb_dependence: Argument 'monthly_heat_demand' must be a list (or similar) with length 12.")
         
         try:
             Tamb_profile = [ float(value) for value in Tamb_profile ]
@@ -1713,9 +2007,12 @@ class DemandProfile:
         if monthly_production is None:
             monthly_production = month_days
             epsilon_fraction = 0
-        
-        if not ( temp_units is None or ( type( temp_units ) is str and get_unit_type( temp_units ) == 'temperature' ) ):
-                raise ValueError( "DemandProfile.compute_Tamb_dependence: Argument 'temp_units' is not valid." )
+            
+        if temp_units is not None:
+            try:
+                T = convert_units( 30 , temp_units, 'C' )
+            except:
+                raise TypeError(f"DemandProfile.compute_Tamb_dependence: Argument 'temp_units' ({temp_units}) is not valid.")
             
         if not ( temp_units is None or temp_units in [ 'C', '°C' ] ):
             Tamb_profile = convert_units(Tamb_profile, temp_units, 'C')
@@ -1735,7 +2032,7 @@ class DemandProfile:
             sum_daily_factors = sum(daily_factors)
             assert sum_daily_factors > 0
             predicted_normalized_demand = [ total_normalized_demand*sum( daily_factors[ monthly_cummulated_days[month] : monthly_cummulated_days[month + 1] ] )/sum_daily_factors for month in range(12) ]
-            return mean_squared_error(monthly_normalized_demand, predicted_normalized_demand)
+            return _mean_squared_error(monthly_normalized_demand, predicted_normalized_demand)
         
         boundaries = Bounds(lb = [0], ub = [3])
         
@@ -1795,7 +2092,6 @@ class DemandProfile:
             "monthly_heat_demand",
             "weekly_demand_profile",
             "Tamb_dependence_mode",
-            "fluid_cp",
             "smooth_Tamb_profile",
             "year",
         ]
@@ -1812,7 +2108,6 @@ class DemandProfile:
         Tamb_dependence = self._Tamb_dependence
         Tamb_dependence_mode = self._Tamb_dependence_mode
         Tamb_profile = self._Tamb_profile
-        fluid_cp = self._fluid_cp
         smooth_Tamb_profile = self._smooth_Tamb_profile
         starting_week_day = datetime(self._year, 1, 1).weekday()
         
@@ -1865,7 +2160,7 @@ class DemandProfile:
         
         for month in range(12):
             demand_this_month = monthly_heat_demand[month]
-            delta_h_this_month = fluid_cp*( monthly_Tset[month] - monthly_Tin[month] )
+            delta_h_this_month = self._fluid.state( T = monthly_Tset[month] ).h -  self._fluid.state( T = monthly_Tin[month] ).h
             
             factors = []
             for day in range(monthly_cummulated_days[month], monthly_cummulated_days[month + 1]):
@@ -2118,7 +2413,8 @@ class DemandProfile:
             flowrate, demanded_power, T_in, T_set = self._return_single_instant(month, day, hour, minute)
             
             if "flowrate_units" in kwargs:
-                flowrate = convert_units(flowrate, "kg/s", kwargs[ "flowrate_units" ], density = self._fluid_density)
+                fluid_density = self._fluid.state( T = T_set ).D
+                flowrate = convert_units(flowrate, "kg/s", kwargs[ "flowrate_units" ], density = fluid_density)
             if "power_units" in kwargs:
                 demanded_power = convert_units(demanded_power, 'W', kwargs[ "power_units" ])
             if "temp_units" in kwargs:
@@ -2171,15 +2467,31 @@ class DemandProfile:
             flowrate_list, demanded_power_list, T_in_list, T_set_list = self._return_lists_from_date_range( date_range )
             
             if "flowrate_units" in kwargs:
-                flowrate_list = convert_units(flowrate_list, "kg/s", kwargs[ "flowrate_units" ], density = self._fluid_density )
+                # Density must be computed for each value of T_set which could be variable
+                # Time is spared by indentifying portions with constant setpoint temperature
+                
+                a = np.asarray(T_set_list)
+                T_set_breaks = a[1:] != a[:-1]
+                T_set_change_indexes = np.flatnonzero( T_set_breaks ) + 1
+                T_set_change_indexes = [ 0 ] + T_set_change_indexes.astype(float).tolist() + [ len( T_set_list ) ]
+                
+                flowrates_converted = []
+                for i in range( len( T_set_change_indexes ) - 1 ):
+                    index_start = T_set_change_indexes[ i ]
+                    index_end = T_set_change_indexes[ i + 1 ]
+                    fluid_density = self._fluid_density.state( T = T_set_list[ index_start ] ).D
+                    flowrates_converted = np.concatenate( ( flowrates_converted, convert_units( flowrate_list[ index_start : index_end ], "kg/s", kwargs[ "flowrate_units" ], density = fluid_density ) ), )
+                
+                flowrate_list = flowrates_converted
+                assert len( flowrate_list ) == len( T_set_list )
             if "power_units" in kwargs:
-                demanded_power_list = convert_units(demanded_power_list, 'W', kwargs[ "power_units" ])
+                demanded_power_list = convert_units( demanded_power_list, 'W', kwargs[ "power_units" ] )
             if "temp_units" in kwargs:
-                T_in_list = convert_units(T_in_list, 'C', kwargs[ "temp_units" ])
-                T_set_list = convert_units(T_set_list, 'C', kwargs[ "temp_units" ])
+                T_in_list = convert_units( T_in_list, 'C', kwargs[ "temp_units" ] )
+                T_set_list = convert_units( T_set_list, 'C', kwargs[ "temp_units" ] )
             elif "T_units" in kwargs:
-                T_in_list = convert_units(T_in_list, 'C', kwargs[ "T_units" ])
-                T_set_list = convert_units(T_set_list, 'C', kwargs[ "T_units" ])
+                T_in_list = convert_units( T_in_list, 'C', kwargs[ "T_units" ] )
+                T_set_list = convert_units( T_set_list, 'C', kwargs[ "T_units" ] )
             
             df = pd.DataFrame.from_dict( {
                 

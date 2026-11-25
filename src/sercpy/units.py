@@ -7,8 +7,12 @@ Created on Mon Aug 17 11:18:03 2026
 
 from math import pi
 import numpy as np
+from bisect import bisect
 
 class UnitsError(Exception):
+    pass
+
+class MissingDensity( UnitsError ):
     pass
 
 # Unit names with conversion factors
@@ -271,99 +275,198 @@ def _isolate_units( unit_string ):
     unit_list = unit_string.split( ' ' )
     while '' in unit_list:
         unit_list.remove( '' )
-    return set( unit_list )
+    return unit_list
 
-def get_unit_type( units: str ) -> str:
+def get_unit_types( units, return_lists = False ):
     """
-    Function that takes the units of a physical quantity and identifies the type of quantity involved.
+    Function that identifies the basic units that make up a composite unit,
+    e.g.
     
-    When the type of the units provided cannot be identified, the function returns None.
+    "W kg / m s"
     
-    The possible unit types that can be identified are:
+    The function returns two sets. One of them summarizes the units of the numerator of the fracion;
+    the other one does the same with the denominator.
+    
+    In the example just shown, this function would return a pair of sets as follows:
         
-        - time
-        - energy
-        - pressure
-        - distance
-        - area
-        - volume
-        - mass
-        - angle
-        - temperature
-        - power
-        - density
-        - volumetric_flowrate
-        - mass_flowrate
-        - power
-        - specific_energy_mass
-        - specific_energy_volume
-        - specific_heat_capacity
-        - irradiance
-        - thermal_conductivity
-
+    { "power", "mass" }, { "distance", "time" }
+    
     Parameters
     ----------
     units : str
-        Unit to identify.
-
+        Composite unit for which the basic units need to be identified.
+        
     Returns
     -------
-    str or NoneType
-        If the unit type can be identified, it is returned as a string. Else, None is returned.
-
+    unit_types_numerator : set of str
+        Basic unit types in the numerator.
+    
+    unit_types_denominator : set of str
+        Basic unit types in the denominator.
+    
     """
     
     if not '/' in units:
         try:
-            basic_unit_set = _isolate_units( units )
-            assert len( basic_unit_set ) == 1
-            basic_unit = basic_unit_set.pop()
-            assert basic_unit in unit_type_dict
-        except:
-            return None
-        return unit_type_dict[ basic_unit ]
+            unit_list = _isolate_units( units )
+            unit_types_numerator = sorted( [ unit_type_dict[ unit ] for unit in unit_list ] )
+        except KeyError:
+            raise UnitsError(f"get_unit_types: Basic units were not recognized. Units received: {units}.")
+        unit_types_denominator = [  ]
+        if return_lists:
+            return unit_types_numerator, unit_types_denominator
+        return ' '.join( unit_types_numerator )
     
     if units.count( '/' ) > 1:
         raise UnitsError( "Units provided must have at most one division operator (/)." )
     
     units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
     
+    if len( units_numerator ) == 0:
+        raise UnitsError(f"Empty numerator. Units received: {units}.")
+    if len( units_denominator ) == 0:
+        raise UnitsError(f"Empty denominator. Units received: {units}.")
+    
+    if units_numerator == [ '1' ]:
+        unit_types_numerator = [  ]
+    else:
+        try:
+            unit_types_numerator = sorted( [ unit_type_dict[ unit ] for unit in units_numerator ] )
+        except KeyError:
+            raise UnitsError(f"get_unit_types: Basic units were not recognized. Units received: {units}.")
+    
     try:
-        unit_types_numerator = { unit_type_dict[ unit ] for unit in units_numerator }
-        unit_types_denominator = { unit_type_dict[ unit ] for unit in units_denominator }
+        unit_types_denominator = sorted( [ unit_type_dict[ unit ] for unit in units_denominator ] )
     except KeyError:
-        return None
+        raise UnitsError(f"get_unit_types: Basic units were not recognized. Units received: {units}.")
     
-    if unit_types_numerator == {'mass'} and unit_types_denominator == {'volume'}:
-        return 'density'
+    if 'energy' in unit_types_numerator and 'time' in unit_types_denominator:
+        unit_types_numerator.remove( 'energy' )
+        unit_types_denominator.remove( 'time' )
+        unit_types_numerator.insert( bisect(unit_types_numerator, 'power'), 'power' )
+        
+    elif 'time' in unit_types_numerator and 'energy' in unit_types_denominator:
+        unit_types_numerator.remove( 'time' )
+        unit_types_denominator.remove( 'energy' )
+        unit_types_denominator.insert( bisect(unit_types_denominator, 'power'), 'power' )
     
-    if unit_types_numerator == {'volume'} and  unit_types_denominator == {'time'}:
-        return 'volumetric_flowrate'
-    
-    if unit_types_numerator == {'mass'} and  unit_types_denominator == {'time'}:
-        return 'mass_flowrate'
-    
-    if unit_types_numerator == {'energy'} and unit_types_denominator == {'time'}:
-        return 'power'
-    
-    if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass'}:
-        return 'specific_energy_mass'
+    if return_lists:
+        return unit_types_numerator, unit_types_denominator
+    return ( '1'*( len( unit_types_numerator ) == 0 ) + 
+             ' '.join( unit_types_numerator ) +
+             ' / '*( len( unit_types_denominator ) > 0 ) + 
+             ' '.join( unit_types_denominator ) 
+             )
 
-    if unit_types_numerator == {'energy'} and unit_types_denominator == {'volume'}:
-        return 'specific_energy_volume'
+# def get_unit_type( units: str ) -> str:
+#     """
+#     Function that takes the units of a physical quantity and identifies the type of quantity involved.
     
-    if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
-        return 'specific_heat_capacity'
+#     When the type of the units provided cannot be identified, the function returns None.
     
-    if ( ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'area'} ) or 
-         ( unit_types_numerator == {'power'} and unit_types_denominator == {'area'} ) ):
-        return 'irradiance'
+#     The possible unit types that can be identified are:
+        
+#         - time
+#         - energy
+#         - pressure
+#         - distance
+#         - area
+#         - volume
+#         - mass
+#         - angle
+#         - temperature
+#         - power
+#         - density
+#         - volumetric_flowrate
+#         - mass_flowrate
+#         - power
+#         - specific_energy_mass
+#         - specific_energy_volume
+#         - specific_heat_capacity
+#         - irradiance
+#         - thermal_conductivity
+#         - mass/energy
+#         - mass_ratio
+#         - volume_ratio
+
+#     Parameters
+#     ----------
+#     units : str
+#         Unit to identify.
+
+#     Returns
+#     -------
+#     str or NoneType
+#         If the unit type can be identified, it is returned as a string. Else, None is returned.
+
+#     """
     
-    if ( ( unit_types_numerator == {'power'} and unit_types_denominator == {'distance', 'temperature'} ) or 
-         ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'distance', 'temperature'} ) ):
-        return 'thermal_conductivity'
+#     if not '/' in units:
+#         try:
+#             basic_unit_set = _isolate_units( units )
+#             assert len( basic_unit_set ) == 1
+#             basic_unit = basic_unit_set.pop()
+#             assert basic_unit in unit_type_dict
+#         except:
+#             return None
+#         return unit_type_dict[ basic_unit ]
     
-    return None
+#     if units.count( '/' ) > 1:
+#         raise UnitsError( "Units provided must have at most one division operator (/)." )
+    
+#     units_numerator, units_denominator = _isolate_units( units.split('/')[0] ), _isolate_units( units.split('/')[1] )
+    
+#     try:
+#         unit_types_numerator = { unit_type_dict[ unit ] for unit in units_numerator }
+#         unit_types_denominator = { unit_type_dict[ unit ] for unit in units_denominator }
+#     except KeyError:
+#         return None
+    
+#     if unit_types_numerator == {'mass'} and unit_types_denominator == {'volume'}:
+#         return 'density'
+    
+#     if unit_types_numerator == {'volume'} and  unit_types_denominator == {'time'}:
+#         return 'volumetric_flowrate'
+    
+#     if unit_types_numerator == {'mass'} and  unit_types_denominator == {'time'}:
+#         return 'mass_flowrate'
+    
+#     if unit_types_numerator == {'energy'} and unit_types_denominator == {'time'}:
+#         return 'power'
+    
+#     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass'}:
+#         return 'specific_energy_mass'
+
+#     if unit_types_numerator == {'energy'} and unit_types_denominator == {'volume'}:
+#         return 'specific_energy_volume'
+    
+#     if unit_types_numerator == {'energy'} and unit_types_denominator == {'mass', 'temperature'}:
+#         return 'specific_heat_capacity'
+    
+#     if ( ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'area'} ) or 
+#          ( unit_types_numerator == {'power'} and unit_types_denominator == {'area'} ) ):
+#         return 'irradiance'
+    
+#     if ( ( unit_types_numerator == {'power'} and unit_types_denominator == {'distance', 'temperature'} ) or 
+#          ( unit_types_numerator == {'energy'} and unit_types_denominator == {'time', 'distance', 'temperature'} ) ):
+#         return 'thermal_conductivity'
+    
+#     if unit_types_numerator == { 'mass' } and unit_types_denominator == { 'energy' }:
+#         return 'mass/energy'
+    
+#     if unit_types_numerator == { 'mass' } and unit_types_denominator == { 'mass' }:
+#         return 'mass_ratio'
+    
+#     if unit_types_numerator == { 'volume' } and unit_types_denominator == { 'volume' }:
+#         return 'volume_ratio'
+    
+#     if unit_types_numerator == { 'mass' } and unit_types_denominator == { 'volume' }:
+#         return 'mass/volume'
+    
+#     if unit_types_numerator == { 'volume' } and unit_types_denominator == { 'mass' }:
+#         return 'volume/mass'
+    
+#     return None
 
 
 # Function to determine the conversion factor between the units introduced by the user and the "standard" units (i.e. units with a value of "1" in the dictionary "unit_database")
@@ -413,13 +516,222 @@ def _pre_process_units( units ):
     units = units.replace( ')', '' )
     return units
 
-def convert_units( input_value, original_units, goal_units, density = None, density_units = 'kg/m3' ):
+# def convert_units( input_value, original_units, goal_units, density = None, density_units = 'kg/m3' ):
+#     """
+#     Function to obtain the numeric value of a quantity as expressed in another unit system.
+    
+#     It also allows the conversion of mass to volume (and viceversa) and of mass flowrate to volumetric flowrate (and viceversa).
+    
+#     If several values need to be converted from the same original units to the same goal units, it is recommendable to provide all the values in a list, so that the conversion factor is computed only once. This is much faster than applying this function separately to every value of a list.
+
+#     Parameters
+#     ----------
+#     input_value : float or array-like
+#         Value or list of values to be converted.
+#     original_units : str
+#         Original units in which the quantities are expressed.
+#     goal_units : str
+#         Units in which the quantities need to be expressed.
+#     density : float, optional
+#         Only needed if a conversion between mass and volumes (or flowrates involving volumes and masses) is being carried out. The default is None.
+#     density_units : str, optional
+#         Units in which the density of the fluid is being expressed. The default is `"kg/m3"`.
+    
+#     Raises
+#     ------
+#     UnitsError
+#         If the conversion is not possible.
+    
+#     Returns
+#     -------
+#     float or np.array
+#         Quantity specified as `input_value`, in the new unit system. If the input is an array of values, so is the output.
+
+#     """
+    
+#     try:
+#         input_value = float( input_value )
+#     except TypeError:
+#         try:
+#             input_value = np.array( input_value )
+#             assert input_value.ndim == 1
+#         except:
+#             raise UnitsError("Unit conversion error: input_value must be either a numeric value or a 1-dimensional array-like object.")
+#     try:
+#         original_units = str( original_units )
+#     except:
+#         raise UnitsError("convert_units: Argument 'original_units' must be convertible to type str.")
+#     try:
+#         goal_units = str( goal_units )
+#     except:
+#         raise UnitsError("convert_units: Argument 'goal_units' must be convertible to type str.")
+        
+#     if original_units == goal_units:
+#         return input_value
+    
+#     if density is not None:
+#         try:
+#             density = float( density )
+#         except:
+#             raise UnitsError("convert_units: Argument 'density' must be None or convertible to type float.")
+#     try:
+#         density_units = str( density_units )
+#     except:
+#         raise UnitsError("convert_units: Argument 'density_units' must be convertible to type str.")
+    
+#     original_units = _pre_process_units( original_units )
+#     goal_units = _pre_process_units( goal_units )
+    
+#     if original_units in unit_type_dict and unit_type_dict[ original_units ] == 'temperature':
+#         if not ( goal_units in unit_type_dict and unit_type_dict[ goal_units ] == 'temperature' ):
+#             raise UnitsError("convert_units: original_units are temperature units and goal_units are not.")
+#         conversion_function = lambda value: _convert_temperature( value, original_units, goal_units )
+        
+#     else:
+        
+#         if original_units in unit_type_dict and goal_units in unit_type_dict and unit_type_dict[ original_units ] == unit_type_dict[ goal_units ]:
+            
+#             original_to_basic_factor = unit_database[ unit_type_dict[ original_units ] ][ original_units ]
+#             goal_to_basic_factor = unit_database[ unit_type_dict[ goal_units ] ][ goal_units ]
+#             conversion_factor = original_to_basic_factor/goal_to_basic_factor
+        
+#         elif ( original_units in unit_type_dict and goal_units in unit_type_dict and
+#                ( ( unit_type_dict[ original_units ] == 'mass' and unit_type_dict[ goal_units ] == 'volume' ) or
+#                  ( unit_type_dict[ original_units ] == 'volume' and unit_type_dict[ goal_units ] == 'mass' ) ) ):
+            
+#             if density is None:
+#                 raise MissingDensity("convert_units: Cannot convert mass to volume (and viceversa) without a known density.")
+                
+#             if density_units == 'kg/m3':
+#                 density_kg_m3 = density
+#             else:
+#                 density_kg_m3 = convert_units(density, density_units, 'kg/m3')
+            
+#             if unit_type_dict[ original_units ] == 'mass' and unit_type_dict[ goal_units ] == 'volume':
+#                 conversion_factor_to_kg = convert_units( 1, original_units, 'kg' )
+#                 conversion_factor_kg_to_m3 = 1/density_kg_m3
+#                 conversion_factor_m3_to_goal_units = convert_units( 1, 'm3', goal_units )
+#                 conversion_factor = conversion_factor_to_kg*conversion_factor_kg_to_m3*conversion_factor_m3_to_goal_units
+                
+#             elif unit_type_dict[ original_units ] == 'volume' and unit_type_dict[ goal_units ] == 'mass':
+#                 conversion_factor_to_m3 = convert_units( 1, original_units, 'm3' )
+#                 conversion_factor_m3_to_kg = density_kg_m3
+#                 conversion_factor_kg_to_goal_units = convert_units(1, 'kg', goal_units)
+#                 conversion_factor = conversion_factor_to_m3*conversion_factor_m3_to_kg*conversion_factor_kg_to_goal_units
+                
+#         elif '/' in original_units and ( not '/' in goal_units ):
+            
+#             if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
+#                 raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
+            
+#             original_units_to_W_factor = _conversion_factor_to_basic_units( original_units )
+#             goal_units_to_W_factor = unit_database[ unit_type_dict[ goal_units ] ][ goal_units ]
+            
+#             conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
+        
+#         elif ( not '/' in original_units ) and '/' in goal_units:
+            
+#             if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
+#                 raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
+                
+#             original_units_to_W_factor = unit_database[ unit_type_dict[ original_units ] ][ original_units ]
+#             goal_units_to_W_factor = _conversion_factor_to_basic_units( goal_units )
+            
+#             conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
+            
+#         elif '/' in original_units and '/' in goal_units:
+            
+#             var_type_1 = get_unit_type( original_units )
+#             var_type_2 = get_unit_type( goal_units )
+            
+#             if var_type_1 is None:
+#                 raise UnitsError(f"convert_units: Unit type of original_units '{original_units}' could not be identified.")
+#             if var_type_2 is None:
+#                 raise UnitsError(f"convert_units: Unit type of goal_units '{goal_units}' could not be identified.")
+            
+#             if not any( [
+                    
+#                     var_type_1 == var_type_2,
+#                     var_type_1.endswith( 'flowrate' ) and var_type_2.endswith( 'flowrate' ),
+#                     var_type_1.startswith( 'specific_energy' ) and var_type_2.startswith( 'specific_energy' ), ] ):
+                
+#                 raise UnitsError("Unit conversion error: original units and goal units do not belong to the same variable type.")
+            
+#             if var_type_1 == var_type_2:
+                
+#                 original_units_to_W_factor = _conversion_factor_to_basic_units( original_units )
+#                 goal_units_to_W_factor = _conversion_factor_to_basic_units( goal_units )
+                
+#                 conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
+                
+#             else:
+                
+#                 if density is None:
+#                     raise MissingDensity("convert_units: Cannot convert mass to volume (and viceversa) without a known density.")
+                    
+#                 if density_units == 'kg/m3':
+#                     density_kg_m3 = density
+#                 else:
+#                     density_kg_m3 = convert_units(density, density_units, 'kg/m3')
+                    
+#                 if var_type_1 == 'mass_flowrate' and var_type_2 == 'volumetric_flowrate':
+                    
+#                     original_units_to_kg_per_s_factor = _conversion_factor_to_basic_units( original_units )
+#                     kg_per_s_to_m3_per_s_factor = 1 / density_kg_m3
+#                     goal_units_to_m3_per_s_factor =  _conversion_factor_to_basic_units( goal_units )
+                    
+#                     conversion_factor = original_units_to_kg_per_s_factor * kg_per_s_to_m3_per_s_factor / goal_units_to_m3_per_s_factor
+                
+#                 elif var_type_1 == 'volumetric_flowrate' and var_type_2 == 'mass_flowrate':
+                    
+#                     original_units_to_m3_per_s_factor = _conversion_factor_to_basic_units( original_units )
+#                     m3_per_s_to_kg_per_s_factor = density_kg_m3
+#                     goal_units_to_kg_per_s_factor =  _conversion_factor_to_basic_units( goal_units )
+                    
+#                     conversion_factor = original_units_to_m3_per_s_factor * m3_per_s_to_kg_per_s_factor / goal_units_to_kg_per_s_factor
+    
+#                 elif var_type_1 == 'specific_energy_mass' and var_type_2 == 'specific_energy_volume':
+                    
+#                     original_units_to_J_per_kg_factor = _conversion_factor_to_basic_units( original_units )
+#                     J_per_kg_to_J_per_m3_factor = density_kg_m3
+#                     goal_units_to_J_per_m3_factor = _conversion_factor_to_basic_units( goal_units )
+                    
+#                     conversion_factor = original_units_to_J_per_kg_factor * J_per_kg_to_J_per_m3_factor / goal_units_to_J_per_m3_factor
+                    
+#                 elif var_type_1 == 'specific_energy_volume' and var_type_2 == 'specific_energy_mass':
+                    
+#                     original_units_to_J_per_m3_factor = _conversion_factor_to_basic_units( original_units )
+#                     J_per_m3_to_J_per_kg_factor = 1 / density_kg_m3
+#                     goal_units_to_J_per_kg_factor = _conversion_factor_to_basic_units( goal_units )
+                    
+#                     conversion_factor = original_units_to_J_per_m3_factor * J_per_m3_to_J_per_kg_factor / goal_units_to_J_per_kg_factor
+                
+#                 else:
+#                     raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
+            
+#         else:
+#             raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
+            
+#         conversion_function = lambda value: conversion_factor*value
+    
+#     return conversion_function( input_value )
+
+def convert_units( input_value, original_units, goal_units, density = None, density_units = None ):
     """
-    Function to obtain the numeric value of a quantity as expressed in another unit system.
+    Function to obtain the numeric
+    value of a quantity as expressed
+    in another unit system.
     
-    It also allows the conversion of mass to volume (and viceversa) and of mass flowrate to volumetric flowrate (and viceversa).
+    It also allows the conversion of quantities expressed in terms of volume
+    (specific energy, flowrate, specific heat capacity, etc.) to the same quantity
+    expressed in terms of mass, and viceversa. In order for this mode to work,
+    the density of the fluid involved must be provided.
     
-    If several values need to be converted from the same original units to the same goal units, it is recommendable to provide all the values in a list, so that the conversion factor is computed only once. This is much faster than applying this function separately to every value of a list.
+    If several values need to be converted from the same
+    original units to the same goal units, it is recommendable
+    to provide all the values in a list, so that the conversion
+    factor is computed only once. This is much faster than
+    applying this function separately to every value of a list.
 
     Parameters
     ----------
@@ -432,12 +744,14 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
     density : float, optional
         Only needed if a conversion between mass and volumes (or flowrates involving volumes and masses) is being carried out. The default is None.
     density_units : str, optional
-        Units in which the density of the fluid is being expressed. The default is `"kg/m3"`.
+        Units in which the density of the fluid is being expressed. If not provided, it defaults to `"kg/m3"`.
     
     Raises
     ------
     UnitsError
         If the conversion is not possible.
+    MissingDensity
+        If the unit conversion requires the fluid's density to be specified.
     
     Returns
     -------
@@ -453,15 +767,15 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
             input_value = np.array( input_value )
             assert input_value.ndim == 1
         except:
-            raise UnitsError("Unit conversion error: input_value must be either a numeric value or a 1-dimensional array-like object.")
+            raise TypeError("Unit conversion error: input_value must be either a numeric value or a 1-dimensional array-like object.")
     try:
         original_units = str( original_units )
     except:
-        raise UnitsError("convert_units: Argument 'original_units' must be convertible to type str.")
+        raise TypeError("convert_units: Argument 'original_units' must be convertible to type str.")
     try:
         goal_units = str( goal_units )
     except:
-        raise UnitsError("convert_units: Argument 'goal_units' must be convertible to type str.")
+        raise TypeError("convert_units: Argument 'goal_units' must be convertible to type str.")
         
     if original_units == goal_units:
         return input_value
@@ -470,11 +784,15 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         try:
             density = float( density )
         except:
-            raise UnitsError("convert_units: Argument 'density' must be None or convertible to type float.")
-    try:
-        density_units = str( density_units )
-    except:
-        raise UnitsError("convert_units: Argument 'density_units' must be convertible to type str.")
+            raise TypeError("convert_units: Argument 'density' must be None or convertible to type float.")
+        if not density > 0:
+            raise ValueError("convert_units: Argument 'density' must be larger than zero.")
+    
+    if density_units is not None:
+        try:
+            density_units = str( density_units )
+        except:
+            raise TypeError("convert_units: Argument 'density_units' must be convertible to type str.")
     
     original_units = _pre_process_units( original_units )
     goal_units = _pre_process_units( goal_units )
@@ -483,120 +801,88 @@ def convert_units( input_value, original_units, goal_units, density = None, dens
         if not ( goal_units in unit_type_dict and unit_type_dict[ goal_units ] == 'temperature' ):
             raise UnitsError("convert_units: original_units are temperature units and goal_units are not.")
         conversion_function = lambda value: _convert_temperature( value, original_units, goal_units )
+        return conversion_function( input_value )
         
-    else:
-        
-        if original_units in unit_type_dict and goal_units in unit_type_dict and unit_type_dict[ original_units ] == unit_type_dict[ goal_units ]:
-            
-            original_to_basic_factor = unit_database[ unit_type_dict[ original_units ] ][ original_units ]
-            goal_to_basic_factor = unit_database[ unit_type_dict[ goal_units ] ][ goal_units ]
-            conversion_factor = original_to_basic_factor/goal_to_basic_factor
-        
-        elif ( original_units in unit_type_dict and goal_units in unit_type_dict and
-               ( ( unit_type_dict[ original_units ] == 'mass' and unit_type_dict[ goal_units ] == 'volume' ) or
-                 ( unit_type_dict[ original_units ] == 'volume' and unit_type_dict[ goal_units ] == 'mass' ) ) ):
-            
-            if density is None:
-                raise UnitsError("convert_units: Cannot convert mass to volume (and viceversa) without a known density.")
-                
-            if density_units == 'kg/m3':
-                density_kg_m3 = density
-            else:
-                density_kg_m3 = convert_units(density, density_units, 'kg/m3')
-            
-            if unit_type_dict[ original_units ] == 'mass' and unit_type_dict[ goal_units ] == 'volume':
-                conversion_factor_to_kg = convert_units( 1, original_units, 'kg' )
-                conversion_factor_kg_to_m3 = 1/density_kg_m3
-                conversion_factor_m3_to_goal_units = convert_units( 1, 'm3', goal_units )
-                conversion_factor = conversion_factor_to_kg*conversion_factor_kg_to_m3*conversion_factor_m3_to_goal_units
-                
-            elif unit_type_dict[ original_units ] == 'volume' and unit_type_dict[ goal_units ] == 'mass':
-                conversion_factor_to_m3 = convert_units( 1, original_units, 'm3' )
-                conversion_factor_m3_to_kg = density_kg_m3
-                conversion_factor_kg_to_goal_units = convert_units(1, 'kg', goal_units)
-                conversion_factor = conversion_factor_to_m3*conversion_factor_m3_to_kg*conversion_factor_kg_to_goal_units
-                
-        elif '/' in original_units and not '/' in goal_units:
-            
-            if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
-                raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
-            
-            original_units_to_W_factor = _conversion_factor_to_basic_units( original_units )
-            goal_units_to_W_factor = unit_database[ unit_type_dict[ goal_units ] ][ goal_units ]
-            
-            conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
-        
-        elif not '/' in original_units and '/' in goal_units:
-            
-            if not ( get_unit_type( original_units ) == 'power' and get_unit_type( goal_units ) == 'power' ):
-                raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
-                
-            original_units_to_W_factor = unit_database[ unit_type_dict[ original_units ] ][ original_units ]
-            goal_units_to_W_factor = _conversion_factor_to_basic_units( goal_units )
-            
-            conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
-            
-        elif '/' in original_units and '/' in goal_units:
-            
-            var_type_1 = get_unit_type( original_units )
-            var_type_2 = get_unit_type( goal_units )
-            
-            if var_type_1 is None:
-                raise UnitsError(f"convert_units: Unit type of original_units '{original_units}' could not be identified.")
-            if var_type_2 is None:
-                raise UnitsError(f"convert_units: Unit type of goal_units '{goal_units}' could not be identified.")
-            
-            if not ( var_type_1 == var_type_2 or ( var_type_1.endswith( 'flowrate' ) and var_type_2.endswith( 'flowrate' ) ) ):
-                raise UnitsError("Unit conversion error: original units and goal units do not belong to the same variable type.")
-            
-            if var_type_1 == var_type_2:
-                
-                original_units_to_W_factor = _conversion_factor_to_basic_units( original_units )
-                goal_units_to_W_factor = _conversion_factor_to_basic_units( goal_units )
-                
-                conversion_factor = original_units_to_W_factor/goal_units_to_W_factor
-                
-            elif var_type_1 == 'volumetric_flowrate' and var_type_2 == 'mass_flowrate':
-                
-                if density is None:
-                    raise UnitsError("convert_units: Cannot convert mass to volume (and viceversa) without a known density.")
-                    
-                if density_units == 'kg/m3':
-                    density_kg_m3 = density
-                else:
-                    density_kg_m3 = convert_units(density, density_units, 'kg/m3')
-                
-                original_units_to_m3_per_s_factor = _conversion_factor_to_basic_units( original_units )
-                m3_per_s_to_kg_per_s_factor = density_kg_m3
-                goal_units_to_kg_per_s_factor =  _conversion_factor_to_basic_units( goal_units )
-                
-                conversion_factor = original_units_to_m3_per_s_factor*m3_per_s_to_kg_per_s_factor/goal_units_to_kg_per_s_factor
-                
-            elif var_type_1 == 'mass_flowrate' and var_type_2 == 'volumetric_flowrate':
-                
-                if density is None:
-                    raise UnitsError("convert_units: Cannot convert mass to volume (and viceversa) without a known density.")
-                    
-                if density_units == 'kg/m3':
-                    density_kg_m3 = density
-                else:
-                    density_kg_m3 = convert_units(density, density_units, 'kg/m3')
-                
-                original_units_to_kg_per_s_factor = _conversion_factor_to_basic_units( original_units )
-                kg_per_s_to_m3_per_s_factor = 1/density_kg_m3
-                goal_units_to_m3_per_s_factor =  _conversion_factor_to_basic_units( goal_units )
-                
-                conversion_factor = original_units_to_kg_per_s_factor*kg_per_s_to_m3_per_s_factor/goal_units_to_m3_per_s_factor
-            
-            else:
-                raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
-            
-        else:
-            raise UnitsError(f"Unit conversion error: no conversion feasible from original units {original_units} to goal units {goal_units}.")
-            
-        conversion_function = lambda value: conversion_factor*value
+    unit_types_numerator_original_units, unit_types_denominator_original_units = get_unit_types( original_units, return_lists = True )
+    unit_types_numerator_goal_units, unit_types_denominator_goal_units = get_unit_types( goal_units, return_lists = True )
     
+    conversion_straightforward = ( unit_types_numerator_original_units == unit_types_numerator_goal_units and
+                                   unit_types_denominator_original_units == unit_types_denominator_goal_units )
+    
+    if conversion_straightforward:
+        
+        original_basic_units_factor = _conversion_factor_to_basic_units( original_units )
+        goal_to_basic_units_factor = _conversion_factor_to_basic_units( goal_units )
+        conversion_factor = original_basic_units_factor/goal_to_basic_units_factor
+        
+        conversion_function = lambda value: conversion_factor*value
+        return conversion_function( input_value )
+    
+    conversion_possible_with_density = False
+    
+    if 'mass' in unit_types_numerator_original_units and 'volume' in unit_types_numerator_goal_units:
+        unit_types_numerator_original_units_aux = unit_types_numerator_original_units.copy()
+        unit_types_numerator_original_units_aux.remove( 'mass' )
+        unit_types_numerator_original_units_aux.insert( bisect(unit_types_numerator_original_units_aux, 'volume'), 'volume' )
+        conversion_possible_with_density = (
+            unit_types_numerator_original_units_aux == unit_types_numerator_goal_units and 
+            unit_types_denominator_original_units == unit_types_denominator_goal_units )
+        mass_volume_conversion_case = 1
+        
+    elif 'volume' in unit_types_numerator_original_units and 'mass' in unit_types_numerator_goal_units:
+        unit_types_numerator_original_units_aux = unit_types_numerator_original_units.copy()
+        unit_types_numerator_original_units_aux.remove( 'volume' )
+        unit_types_numerator_original_units_aux.insert( bisect(unit_types_numerator_original_units_aux, 'mass'), 'mass' )
+        conversion_possible_with_density = (
+            unit_types_numerator_original_units_aux == unit_types_numerator_goal_units and 
+            unit_types_denominator_original_units == unit_types_denominator_goal_units )
+        mass_volume_conversion_case = 2
+        
+    elif 'mass' in unit_types_denominator_original_units and 'volume' in unit_types_denominator_goal_units:
+        unit_types_denominator_original_units_aux = unit_types_denominator_original_units.copy()
+        unit_types_denominator_original_units_aux.remove( 'mass' )
+        unit_types_denominator_original_units_aux.insert( bisect(unit_types_denominator_original_units_aux, 'volume'), 'volume' )
+        conversion_possible_with_density = (
+            unit_types_numerator_original_units == unit_types_numerator_goal_units and 
+            unit_types_denominator_original_units_aux == unit_types_denominator_goal_units )
+        mass_volume_conversion_case = 3
+        
+    elif 'volume' in unit_types_denominator_original_units and 'mass' in unit_types_denominator_goal_units:
+        unit_types_denominator_original_units_aux = unit_types_denominator_original_units.copy()
+        unit_types_denominator_original_units_aux.remove( 'volume' )
+        unit_types_denominator_original_units_aux.insert( bisect(unit_types_denominator_original_units_aux, 'mass'), 'mass' )
+        conversion_possible_with_density = (
+            unit_types_numerator_original_units == unit_types_numerator_goal_units and 
+            unit_types_denominator_original_units_aux == unit_types_denominator_goal_units )
+        mass_volume_conversion_case = 4
+    
+    if not conversion_possible_with_density:
+        raise UnitsError(f"Unit conversion is not feasible between original units ({original_units}) and goal units ({goal_units}).")
+        
+    if density is None:
+        raise MissingDensity(f"convert_units: Density is needed to convert from original units: {original_units} to goal units: {goal_units}.")
+        
+    if density_units is not None:
+        try:
+            density_kg_m3 = convert_units(density, density_units, 'kg/m3')
+        except:
+            raise UnitsError(f"convert_units: An error occurred when converting density from original density units: {density_units}")
+    else:
+        density_kg_m3 = density
+    
+    if mass_volume_conversion_case in [ 1, 4 ]:
+        density_factor = 1 / density_kg_m3
+    else:
+        assert mass_volume_conversion_case in [ 2, 3 ]
+        density_factor = density_kg_m3
+    
+    original_basic_units_factor = _conversion_factor_to_basic_units( original_units )
+    goal_to_basic_units_factor = _conversion_factor_to_basic_units( goal_units )
+    conversion_factor = original_basic_units_factor*density_factor/goal_to_basic_units_factor
+    
+    conversion_function = lambda value: conversion_factor*value
     return conversion_function( input_value )
+        
 
 if __name__ == "__main__":
     # Test
@@ -714,5 +1000,17 @@ if __name__ == "__main__":
     print( f"850 W/m2 to BTU/km2 day: { convert_units( 850, 'W/m2', 'BTU/km2 day' ) }" )
     
     # Convert thermal conductivity
+    
     # Convert 0.5 W/m K to BTU/hr ft F
     print( f"0.5 W/m K to BTU/hr ft F: { convert_units( 0.5, 'W/m K', 'BTU/hr ft F' ) }" )
+    
+    # Convert specific energy
+    
+    # Convert 1 kWh/kg to J/m3 with density = 400 kg/m3
+    print( f"1 kWh/kg to J/m3 with density = 400 kg/m3: { convert_units( 1, 'kWh/kg', 'J/m3', density = 400 ) }" )
+    
+    # Convert 1 kWh/kg to J/m3 with density = 400 lb/m3
+    print( f"1 kWh/kg to J/m3 with density = 400 lb/m3: { convert_units( 1, 'kWh/kg', 'J/m3', density = 400, density_units = 'lb/m3' ) }" )
+    
+    # Convert 1 BTU/L to kWh/tonne with density = 800 lb/m3
+    print( f"1 BTU/L to kWh/tonne with density = 800 lb/m3: { convert_units( 1, 'BTU/L', 'kWh/tonne', density = 800, density_units = 'lb/m3' ) }" )

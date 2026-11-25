@@ -13,7 +13,7 @@ from .solar import SolarField
 from .storage import StorageTank
 from .heat_exchanger import HeatExchanger
 from .pump import Pump
-from .controller import SolarController, LoadTempController, TankChargeController
+from .controller import SolarController, LoadTempController, TankChargeController, ExcessTempShutDown
 from .fluids import Fluid
 import warnings
 
@@ -162,12 +162,25 @@ class HeatingSystem1( Simulation ):
             
             self, *,
             
-            operating_conditions,
             solar_field,
-            storage_tank,
-            max_iterations,
-            
-            ):
+            operating_conditions = None,
+            demand_profile = None,
+            meteo_profile = None,
+            time_step = None,
+            storage_tank = None,
+            HX1 = None,
+            HX2 = None,
+            tank_charge_controller = None,
+            tank_charge_min_dT = None,
+            solar_field_flowrate = None,
+            tank_charge_flowrate = None,
+            tank_discharge_flowrate = None,
+            tank_discharge_turnoff_dT = None,
+            tank_discharge_turnon_dT = None,
+            max_iterations = None, ):
+        
+        # self._initializing_arguments = locals()
+        # self._initializing_arguments.pop( 'self' )
         
         self._operating_conditions = operating_conditions
         
@@ -207,21 +220,46 @@ class HeatingSystem1( Simulation ):
         solar_field_fluid = Fluid("Ethylene Glycol 30%", T_ref = 60)
         self._solar_field.outlet.flowrate = 0
         self._solar_field.outlet.state = solar_field_fluid.state( T = 40 )
-
-        self._solar_controller = SolarController( min_irradiance = 150, controlled_pump = self._solar_field_pump )
         
-        self._tank_to_SF_controller = TankChargeController(
+        self._security_shutdown_controller = ExcessTempShutDown(
             
-            controlled_pump = self._tank_to_SF_pump,
-            heat_exchanger = self._HX1,
-            min_dT = 5,
-            temp_tolerance = 0.5,
-            heat_source_controller = self._solar_controller,
             tank = self._storage_tank,
             tank_max_temp = 100,
-            tank_hysteresis = 10,
-            last_signal_weight = 0,
-            iteration_cycle = [ 0, 0, 1, 0 ] )
+            hysteresis = 5)
+
+        self._solar_controller = SolarController(
+            
+            min_irradiance = 150,
+            controlled_pump = self._solar_field_pump,
+            security_shutdown = self._security_shutdown_controller )
+        
+        if tank_charge_controller:
+            
+            if tank_charge_min_dT is None:
+                tank_charge_min_dT = 5
+            
+            try:
+                tank_charge_min_dT = float( tank_charge_min_dT )
+            except:
+                raise TypeError("HeatingSystem1: Argument 'tank_charge_min_dT' must be convertible to type 'float'.")
+            if not tank_charge_min_dT > 0:
+                raise ValueError("HeatingSystem1: Argument 'tank_charge_min_dT' must be larger than zero.")
+            
+            self._tank_to_SF_controller = TankChargeController(
+                
+                controlled_pump = self._tank_to_SF_pump,
+                heat_exchanger = self._HX1,
+                min_dT = tank_charge_min_dT,
+                temp_tolerance = tank_charge_min_dT*0.1,
+                heat_source_controller = self._solar_controller,
+                last_signal_weight = 0,
+                iteration_cycle = [ 0, 0, 1, 0 ] )
+            
+            tank_to_load_controller_iteration_cycle = [ 1, 0, 0, 0, ]
+            
+        else:
+            self._tank_to_SF_pump.set_connections( controller = self._solar_controller )
+            tank_to_load_controller_iteration_cycle = [ 1, 0, ]
         
         self._tank_to_load_controller = LoadTempController(
             
@@ -232,11 +270,12 @@ class HeatingSystem1( Simulation ):
             turn_off_dT = self._operating_conditions.min_dT*0.1,
             temp_tolerance = self._operating_conditions.min_dT*0.02,
             last_signal_weight = 0,
-            iteration_cycle = [ 1, 0, 0, 0, ] )
+            iteration_cycle = tank_to_load_controller_iteration_cycle )
         
         self._devices_list = [
             
             self._system_inlet,
+            self._security_shutdown_controller,
             self._solar_controller,
             self._solar_field,
             self._solar_field_pump,
@@ -244,9 +283,17 @@ class HeatingSystem1( Simulation ):
             self._tank_to_SF_pump,
             self._storage_tank,
             self._tank_to_load_pump,
-            self._HX2,
-            self._tank_to_SF_controller,
-            self._tank_to_load_controller ]
+            self._HX2, ]
+        
+        if tank_charge_controller:
+            
+            self.devices_list = self.devices_list + [
+                
+                self._tank_to_SF_controller,
+                self._tank_to_load_controller ]
+        
+        else:
+            self.devices_list = self.devices_list + [ self._tank_to_load_controller ]
         
         for device in self._devices_list:
             

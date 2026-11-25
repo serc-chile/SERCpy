@@ -56,9 +56,9 @@ class Controller( Device ):
         try:
             value = float( value )
         except:
-            raise TypeError("ControlSignal: signal value must be a float.")
+            raise TypeError("{class_name}: signal value must be a float.")
         if not ( value >= 0 and value <= 1 ):
-            raise ValueError("ControlSignal: signal value must be in the range 0 <= signal_value <= 1.")
+            raise ValueError("{class_name}: signal value must be in the range 0 <= signal_value <= 1.")
         self._control_signal = value
     
     @property
@@ -79,12 +79,20 @@ class Controller( Device ):
 
 class SolarController( Controller ):
     
-    def __init__(self, min_irradiance, controlled_pump):
+    def __init__(self, min_irradiance, controlled_pump, security_shutdown = None ):
         
         from .pump import Pump
         
         if not isinstance(controlled_pump, Pump):
             raise TypeError("SolarController: Argument 'controlled_pump' must be an instance of sercpy.pump.Pump.")
+        if security_shutdown is None:
+            self._security_shutdown = Controller()
+        else:
+            if not isinstance(security_shutdown, Controller):
+                raise TypeError("SolarController: Argument 'security_shutdown' is expected to be a controller.")
+            self._security_shutdown = security_shutdown
+            
+        self._security_control_signal_last = 1
             
         controlled_pump.set_connections( controller = self )
         
@@ -106,19 +114,32 @@ class SolarController( Controller ):
             raise ValueError("SolarController.compute_outputs: Argument 'iteration_number' must be >= 0.")
         
         if iteration_number == 0:
-            self._convergence = False
+            convergence = False
             if type( operating_conditions ) is not dict:
                 raise TypeError("SolarController.compute_outputs: Argument 'operating_conditions' must be a dictionary.")
             if not 'irradiance_first_row' in operating_conditions:
                 raise KeyError("SolarController.compute_outputs: Irradiance data could not be retrieved from 'operating_conditions'. Maybe you forgot to call the method 'MeteoProfile.compute_poa_irradiance'. After this, redefine the instance of `OperatingConditions` for the change to be applied.")
-            if operating_conditions[ 'irradiance_first_row' ] >= self._min_irradiance:
-                self._control_signal = 1
-            else:
-                self._control_signal = 0
+            self._irradiance_last = operating_conditions[ 'irradiance_first_row' ]
         else:
-            self._convergence = True
-
-
+            convergence = True
+        
+        new_signal = 1 * ( self._irradiance_last >= self._min_irradiance )
+        
+        try:
+            security_control_signal = self._security_shutdown._control_signal
+        except AttributeError:
+            self._convergence = False
+            self._control_signal = new_signal
+            return
+        
+        if not security_control_signal in [ 0, 1 ]:
+            raise ValueError(f"SolarController: Only 1 and 0 should be received from security shutdown controller. Value received: {security_control_signal}")
+        
+        self._convergence = convergence and ( security_control_signal == self._security_control_signal_last )
+        self._security_control_signal_last = security_control_signal
+        
+        self._control_signal = new_signal * ( security_control_signal == 1 )
+        
 class LoadTempController( Controller ):
     
     def __init__( self, *,
@@ -322,6 +343,50 @@ class LoadTempController( Controller ):
     def update_state(self):
         
         self._current_state = self._new_state
+        
+class ExcessTempShutDown( Controller ):
+    
+    def __init__( self, *,
+                 
+                 tank,
+                 tank_max_temp,
+                 hysteresis,
+                 
+                 ):
+        
+        self._control_signal = 1
+        self._current_state = 'on'
+        self._new_state = 'on'
+        self._convergence = False
+        
+        self._tank = tank
+        self._tank_max_temp = tank_max_temp
+        self._hysteresis = hysteresis
+        
+    def compute_outputs( self, operating_conditions, iteration_number ):
+        
+        if type( iteration_number ) is not int:
+            raise TypeError("ExcessTempShutDown.compute_outputs: Argument 'iteration_number' is expected to be an 'int'.")
+            if not iteration_number >= 0:
+                raise ValueError("ExcessTempShutDown.compute_outputs: Argument 'iteration_number' must be >= 0.")
+        
+        if iteration_number == 0:
+            self._convergence = False
+            tank_top_temp = self._tank.top_temp
+            if tank_top_temp > self._tank_max_temp:
+                self._control_signal = 0
+                self._new_state = 'off'
+            elif tank_top_temp > self._tank_max_temp - self._hysteresis and self._current_state == 'off':
+                self._control_signal = 0
+                self._new_state = 'off'
+            else:
+                self._control_signal = 1
+                self._new_state = 'on'
+        else:
+            self._convergence = True
+    
+    def update_state(self):
+        self._current_state = self._new_state
 
 class TankChargeController( Controller ):
     
@@ -332,9 +397,6 @@ class TankChargeController( Controller ):
                   min_dT,
                   temp_tolerance,
                   heat_source_controller,
-                  tank,
-                  tank_max_temp,
-                  tank_hysteresis,
                   last_signal_weight = None,
                   iteration_cycle = None ):
         
@@ -348,8 +410,6 @@ class TankChargeController( Controller ):
             raise TypeError("TankChargeController: Argument 'controlled_pump' must be an instance of sercpy.pump.Pump.")
         if not isinstance(heat_exchanger, HeatExchanger):
             raise TypeError("TankChargeController: Argument 'heat_exchanger' must be an instance of sercpy.pump.HeatExchanger.")
-        if not isinstance(tank, StorageTank):
-            raise TypeError("TankChargeController: Argument 'tank' must be an instance of sercpy.pump.StorageTank.")
         if not isinstance(heat_source_controller, Controller):
             raise TypeError("TankChargeController: Argument 'heat_source_controller' must be an instance of sercpy.pump.Controller.")
             
@@ -366,20 +426,6 @@ class TankChargeController( Controller ):
             raise TypeError("TankChargeController: 'temp_tolerance' must be convertible to type 'float'.")
         if not temp_tolerance > 0:
             raise ValueError("TankChargeController: Argument 'temp_tolerance' must be larger than zero.")
-            
-        try:
-            tank_max_temp = float( tank_max_temp )
-        except:
-            raise TypeError("TankChargeController: 'tank_max_temp' must be convertible to type 'float'.")
-        if not tank_max_temp > 0:
-            raise ValueError("TankChargeController: Argument 'tank_max_temp' must be larger than zero.")
-        
-        try:
-            tank_hysteresis = float( tank_hysteresis )
-        except:
-            raise TypeError("TankChargeController: 'tank_hysteresis' must be convertible to type 'float'.")
-        if not tank_hysteresis > 0:
-            raise ValueError("TankChargeController: Argument 'tank_hysteresis' must be larger than zero.")
             
         if last_signal_weight is not None:
             try:
@@ -401,10 +447,8 @@ class TankChargeController( Controller ):
         ## Assign attributes
         
         self._control_signal = 1
-        self._current_state = 'on'
         self._controlled_pump = controlled_pump
         self._heat_exchanger = heat_exchanger
-        self._tank = tank
         self._heat_source_controller = heat_source_controller
         
         self._iteration_cycle = iteration_cycle
@@ -413,22 +457,15 @@ class TankChargeController( Controller ):
         
         self._min_dT = min_dT
         self._temp_tolerance = temp_tolerance
-        self._tank_max_temp = tank_max_temp
-        self._tank_hysteresis = tank_hysteresis
         
         self._min_signal = controlled_pump.minimum_flowrate / controlled_pump.rated_flowrate
         controlled_pump.set_connections( controller = self )
         
-    def _check_condition( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp ):
+    def _check_condition( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out ):
         
         current_signal = self._control_signal
         
-        if current_signal == 0 and any( [
-                
-                heat_source_control_signal == 0 ,
-                tank_top_temp > self._tank_max_temp ,
-                tank_top_temp > self._tank_max_temp - self._tank_hysteresis and self._current_state == 'off' , ] ):
-            
+        if current_signal == 0 and heat_source_control_signal == 0:
             return True
         
         desired_state_out = HX_load_state_in.fluid.state( T = HX_load_state_in.T + self._min_dT )
@@ -444,14 +481,9 @@ class TankChargeController( Controller ):
         
         return False
     
-    def _update_signal_value( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp):
+    def _update_signal_value( self, heat_source_control_signal, HX_load_state_in, HX_load_state_out ):
         
-        if any( [ 
-                
-                heat_source_control_signal == 0,
-                tank_top_temp > self._tank_max_temp,
-                tank_top_temp > self._tank_max_temp - self._tank_hysteresis and self._current_state == 'off' ] ):
-            
+        if heat_source_control_signal == 0:
             self._control_signal = 0
             return
         
@@ -492,26 +524,16 @@ class TankChargeController( Controller ):
             self._convergence = False
             return
         
-        tank_top_temp = self._tank.top_temp
-        
-        if self._current_state == 'on' and tank_top_temp > self._tank_max_temp:
-            self._new_state = 'off'
-        elif self._current_state == 'off' and tank_top_temp < self._tank_max_temp - self._tank_hysteresis:
-            self._new_state = 'on'
-        else:
-            self._new_state = self._current_state
-        
         if iteration_number == 0:
             self._convergence = False
-            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp )
+            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out )
             return
         else:
             prior = self._check_condition(
                 
                 heat_source_control_signal,
                 HX_load_state_in,
-                HX_load_state_out,
-                tank_top_temp )
+                HX_load_state_out )
             
             self.compute_input_convergence(
                 relative_inputs = [ heat_source_control_signal, HX_load_flowrate ],
@@ -523,8 +545,4 @@ class TankChargeController( Controller ):
                 
                 ):
             
-            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out, tank_top_temp )
-    
-    def update_state(self):
-        
-        self._current_state = self._new_state
+            self._update_signal_value( heat_source_control_signal, HX_load_state_in, HX_load_state_out )
