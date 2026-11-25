@@ -6,7 +6,7 @@ Created on Fri Nov 13 16:14:16 2026
 """
 
 from .devices import Outlet, Device
-from .units import get_unit_type, convert_units
+from .units import get_unit_types, convert_units
 import warnings
 
 pump_allowed_arguments = [
@@ -261,7 +261,7 @@ class Pump( Device ):
             except:
                 raise TypeError("Pump: Argument 'power_units' must be convertible to type 'str'.")
             
-            if get_unit_type( value ) != "power":
+            if get_unit_types( value ) != "power":
                 raise ValueError(f"Pump: Argument 'power_units' ( value specified: '{value}' ) was not recognized as a power unit.")
             
         if argument_name == "flowrate_units":
@@ -270,9 +270,9 @@ class Pump( Device ):
             except:
                 raise TypeError("Pump: Argument 'flowrate_units' must be convertible to type 'str'.")
             
-            unit_type = get_unit_type( value )
+            unit_type = get_unit_types( value )
             
-            if not unit_type in [ "volumetric_flowrate", "mass_flowrate" ]:
+            if not unit_type in [ "volume / time", "mass / time" ]:
                 raise ValueError(f"Pump: Argument 'flowrate_units' ( value specified: '{value}' ) was not recognized as a flowrate unit.")
             
             if unit_type == "volumetric_flowrate":
