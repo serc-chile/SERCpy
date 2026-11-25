@@ -77,13 +77,7 @@ DemandProfile_accepted_args = [
     
     "monthly_consumption",
     "heat_source",
-    "consumption_units",
-    "heater_efficiency",
-    "heat_source_heating_value",
-    "heat_source_heating_value_units",
-    "heat_source_density",
-    "heat_source_density_units",
-    "condensation_boiler",
+    "heater",
     
     "monthly_production",
     
@@ -415,13 +409,7 @@ class DemandProfile:
             
             monthly_consumption = None,
             consumption_units = None,
-            heater_efficiency = None,
-            heat_source = None,
-            heat_source_heating_value = None,
-            heat_source_heating_value_units = None,
-            heat_source_density = None,
-            heat_source_density_units = None,
-            condensation_boiler = None,
+            heater = None,
             
             daily_demand_profile = None,
             daily_demand_profile_saturday = None,
@@ -522,65 +510,7 @@ class DemandProfile:
                 except UnitsError:
                     raise ValueError( f"Class DemandProfile: monthly_heat_demand could not be converted from the energy units provided: {heat_demand_units}." )
         elif monthly_consumption is not None:
-            monthly_consumption = self._validate_argument("monthly_consumption", monthly_consumption)
-            if consumption_units is None:
-                raise ValueError("Class DemandProfile: Argument 'consumption_units' must be provided along with 'monthly_consumption'.")
-            consumption_units = self._validate_argument("consumption_units", consumption_units)
-            if heater_efficiency is None:
-                heater_efficiency = 0.8
-            else:
-                heater_efficiency = self._validate_argument("heater_efficiency", heater_efficiency)
-            
-            heat_source = self._validate_argument("heat_source", heat_source)
-            
-            if heat_source == "ELECTRICITY":
-                self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'J' )
-                self._monthly_heat_demand = self.consumption_to_thermal_demand(monthly_consumption, consumption_units, heat_source, "J", heater_efficiency)
-                return
-            
-            heat_source_density = self._validate_argument("heat_source_density", heat_source_density)
-            heat_source_density_units = self._validate_argument("heat_source_density_units", heat_source_density_units)
-            
-            heat_source_heating_value = self._validate_argument("heat_source_heating_value", heat_source_heating_value)
-            heat_source_heating_value_units = self._validate_argument("heat_source_heating_value_units", heat_source_heating_value_units)
-            
-            if heat_source_density is not None and heat_source_density_units is not None:
-                try:
-                    heat_source_density = convert_units(heat_source_density, heat_source_density_units, 'kg/m3')
-                except UnitsError:
-                    raise ValueError( "Class DemandProfile: heat_source_density could not be converted from the units specified: {heat_source_density_units}." )
-            elif heat_source_density is None and heat_source in Energy_Sources_Database:
-                heat_source_density = Energy_Sources_Database[ heat_source ][ 'density' ]
-            
-            if heat_source_heating_value is not None and heat_source_heating_value_units is not None:
-                try:
-                    heat_source_heating_value = convert_units( heat_source_heating_value, heat_source_heating_value_units, 'J/kg' )
-                except UnitsError:
-                    raise ValueError( "Class DemandProfile: heat_source_heating_value could not be converted from the units specified: {heat_source_heating_value_units}." )
-            elif heat_source_heating_value is None and heat_source in Energy_Sources_Database:
-                if condensation_boiler is not None:
-                    condensation_boiler = self._validate_argument("condensation_boiler", condensation_boiler)
-                else:
-                    condensation_boiler = False
-                if condensation_boiler:
-                    heat_source_heating_value = Energy_Sources_Database[ heat_source ][ 'HHV' ]
-                else:
-                    heat_source_heating_value = Energy_Sources_Database[ heat_source ][ 'LHV' ]
-                    
-            if heat_source_heating_value is None:
-                raise ValueError( "Class DemandProfile: Unidentified heat source. Heating value could not be determined. This value can be specified manually through the argument 'heat_source_heating_value'." )
-            
-            if heat_source_density is None and get_unit_types( consumption_units )[0] != { 'mass' }:
-                raise ValueError( "Class DemandProfile: Unidentified heat source. Heat source density could not be determined. Possible fixes: (1) Specify consumption in terms of mass, (2) Specify a valid heat source name, (3) Specify the heat source density manually through the argument 'heat_source_density'." )
-            
-            self._monthly_consumption = convert_units( monthly_consumption, consumption_units, 'kg', density = heat_source_density )
-            self._monthly_heat_demand = self.consumption_to_thermal_demand(
-                
-                energy_source_consumption=monthly_consumption,
-                consumption_units = consumption_units,
-                heater_efficiency = heater_efficiency,
-                fuel_density = heat_source_density,
-                fuel_HV = heat_source_heating_value )
+            pass
 
         else:
             raise ValueError("Class DemandProfile: Either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
@@ -728,170 +658,6 @@ class DemandProfile:
     @property
     def heat_transfer_fluid(self):
         return self._fluid
-        
-    @staticmethod
-    def consumption_to_thermal_demand(
-            
-            energy_source_consumption: float | list[ float ],
-            consumption_units: str,
-            energy_source_name = None,
-            goal_units: str = 'J',
-            heater_efficiency: float = 1,
-            HV_type: str = 'LHV',
-            fuel_density = None,
-            fuel_density_units = None,
-            fuel_HV = None,
-            fuel_HV_units = None ):
-        """
-        Static method that converts the consumption of a certain energy source (electricity or fuel) to heat demand, assuming a constant efficiency for the heater.
-        
-        DemandProfile objects call this method automatically when `monthly_consumption` is provided to the initializing function.
-
-        Parameters
-        ----------
-        energy_source_consumption : float or list of float
-            Consumption or list of consumption values to convert.
-        consumption_units : str
-            Units in which `energy_source_consumption` is being specified. If `energy_source_name` is `'electricity'`, energy units are required. For fuels, volume or mass units are required. See :doc:`/units/units`.
-        energy_source_name : str, optional
-            Name of the energy source. Not needed if `fuel_density` and `fuel_HV` are specified. If not provided, it defaults to None.
-        goal_units : str, optional
-            Energy units in which the heat demand should be returned. If not provided, it defaults to `"J"`.
-        heater_efficiency : float, optional
-            Efficiency of the heater as a floating point decimal value; e.g. 80% efficiency must be specified as 0.8. The default is 1.
-        HV_type : str, optional
-            Type of heating value to use. Its value must be either `"LHV"` (for lower heating value) or `"HHV"` (for higher heating value). The default is `"LHV"`.
-        fuel_density : float, optional
-            Density of the fuel used. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
-        fuel_density_units : str, optional
-            Units in which `fuel_density` is being provided. If not provided, `"kg/m3"` is assumed. See :doc:`/units/units`
-        fuel_HV : float, optional
-            Heating value of the fuel used as heat source, in terms of `energy/mass`. Only required if `energy_source_name` is not provided; optional otherwise. The default is None.
-        fuel_HV_units : str, optional
-            Units in which `fuel_HV` is being provided. Only specific energy in terms of mass is allowed. If not provided, `"J/kg"` is assumed. See :doc:`/units/units`
-
-        Returns
-        -------
-        float or list of float
-            Consumption converted to energy demand. It has the same format as the parameter `energy_source_consumption` (float or list of float).
-
-        """
-        
-        try:
-            heater_efficiency = float( heater_efficiency )
-            assert heater_efficiency > 0
-        except:
-            ValueError("DemandProfile.consumption_to_thermal_demand: heater_efficiency must be a value > 0 convertible to type 'float'.")
-        if energy_source_name is not None:
-            try:
-                energy_source_name = str(energy_source_name)
-                energy_source_name = energy_source_name.upper()
-            except:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: energy_source_name must be None or a variable convertible to string.")
-        energy_source_unknown = energy_source_name is not None and ( not energy_source_name in Energy_Sources_Database )
-        if energy_source_name == "ELECTRICITY":
-            try:
-                energy_source_consumption = float( energy_source_consumption )
-                return heater_efficiency*convert_units(energy_source_consumption, consumption_units, goal_units)
-            except:
-                try:
-                    energy_source_consumption = [ float(value) for value in energy_source_consumption ]
-                    return heater_efficiency*convert_units(energy_source_consumption, consumption_units, goal_units)
-                except:
-                    raise ValueError("DemandProfile.consumption_to_thermal_demand: energy_source_consumption must be either a value convertible to float, or a list of values convertible to float.")
-        if fuel_HV is not None and fuel_density is not None:
-            try:
-                fuel_HV = float( fuel_HV )
-            except:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_HV must be None or a value convertible to float.")
-            try:
-                fuel_density = float( fuel_density )
-            except:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_density must be None or a value convertible to float.")
-            if fuel_HV_units is not None:
-                fuel_HV = convert_units(fuel_HV, fuel_HV_units, 'J/kg')
-            if fuel_density_units is not None:
-                fuel_density = convert_units(fuel_density, fuel_density_units, 'kg/m3')
-        elif fuel_density is not None:
-            try:
-                fuel_density = float( fuel_density )
-            except:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_density must be None or a value convertible to float.")
-            if fuel_density_units is not None:
-                fuel_density = convert_units(fuel_density, fuel_density_units, 'kg/m3')
-            if energy_source_name is None:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: Energy source not identified. Heating value must be provided manually.")
-            elif energy_source_unknown:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: Energy source name unknown. Heating value must be provided manually.")
-            if not HV_type in [ 'LHV', 'HHV' ]:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: HV_type must be one of the strings: 'LHV' and 'HHV'.")
-            if HV_type == 'LHV':
-                fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'LHV' ]
-            else:
-                try:
-                    fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'HHV' ]
-                except KeyError:
-                    warnings.warn(f"DemandProfile.consumption_to_thermal_demand: No higher heating value registered for the fuel specified: {energy_source_name}. Using lower heating value instead.")
-                    fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'LHV' ]
-        elif fuel_HV is not None:
-            try:
-                fuel_HV = float(fuel_HV)
-            except:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: fuel_HV must be None or a value convertible to float.")
-            if fuel_HV_units is not None:
-                fuel_HV = convert_units(fuel_HV, fuel_HV_units, 'J/kg')
-            if energy_source_name is None or energy_source_unknown:
-                try:
-                    assert consumption_units in [ 'kg', 'ton', 'lb' ]
-                except:
-                    raise ValueError("DemandProfile.consumption_to_thermal_demand: Energy source unidentified. Density must either be provided, or consumption must be specified in mass units: 'kg', 'ton', 'lb'.")
-                fuel_density = None
-            else:
-                fuel_density = Energy_Sources_Database[ energy_source_name ][ 'density' ]
-        else:
-            if not energy_source_name in Energy_Sources_Database:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: Either a valid energy source must be provided, or heating value and density must be provided manually.")
-            if not HV_type in [ 'LHV', 'HHV' ]:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: HV_type must be one of the strings: 'LHV' and 'HHV'.")
-            if HV_type == 'LHV':
-                fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'LHV' ]
-            else:
-                try:
-                    fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'HHV' ]
-                except KeyError:
-                    warnings.warn(f"DemandProfile.consumption_to_thermal_demand: No higher heating value registered for the fuel specified: {energy_source_name}. Using lower heating value instead.")
-                    fuel_HV = Energy_Sources_Database[ energy_source_name ][ 'LHV' ]
-            fuel_density = Energy_Sources_Database[ energy_source_name ][ 'density' ]
-        
-        try:
-            energy_source_consumption = float( energy_source_consumption )
-        except TypeError:
-            try:
-                energy_source_consumption = [ float(value) for value in energy_source_consumption ]
-            except TypeError:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: energy_source_consumption must be either a value convertible to float, or a list of values convertible to float.")
-        
-        if type( energy_source_consumption ) is float:
-            if energy_source_consumption < 0:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: energy_source_consumption must be >= 0.")
-            try:
-                energy_source_consumption = convert_units(energy_source_consumption, consumption_units, 'kg', density = fuel_density)
-            except UnitsError:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
-            energy_demand_J = heater_efficiency*fuel_HV*energy_source_consumption
-            return convert_units( energy_demand_J, 'J', goal_units )
-        
-        elif type( energy_source_consumption ) is list:
-            if any( [ value < 0 for value in energy_source_consumption ] ):
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: All values within list energy_source_consumption must be >= 0.")
-            try:
-                energy_source_consumption = [ convert_units(value, consumption_units, 'kg', density = fuel_density) for value in energy_source_consumption  ]
-            except UnitsError:
-                raise ValueError("DemandProfile.consumption_to_thermal_demand: Units provided are not valid.")
-            energy_demand_J = [ heater_efficiency*fuel_HV*value for value in energy_source_consumption ]
-            return convert_units(energy_demand_J, 'J', goal_units)
-        
-        raise Exception("DemandProfile.consumption_to_thermal_demand: Unknown error.")
         
     ## Alternative initialization using the library "loadcast"
     @classmethod
