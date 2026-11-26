@@ -242,6 +242,63 @@ class AutomaticBoiler( Device ):
             heat_source = 'Electricity',
             emission_factor = 0.3,
             emission_factor_units = 'kg/kWh' )
+        
+        # The emission factor can then be retrieved with the attribute 'emission_factor'
+        # The value is expressed in SI units: "kg/J"
+        
+        print( f"Emissions factor: {boiler.emission_factor}" )
+        
+        # The units in which the emission factor is being returned can be accessed with
+        # the attribute 'emission_factor_units'
+        
+        print( f"Emissions factor units: {boiler.emission_factor_units}" )
+        
+    Boilers that use one of the supported fuels listed above do not need the
+    emission factor to be specified because a default value is available. However,
+    that default value can be overriden by the user.
+    
+    It must also be noticed that, although the user can specify the emission factor
+    in terms of CO2 equivalent mass per energy unit of the fuel, it gets stored
+    internally in terms of CO2-equivalent mass per fuel mass unit.
+    
+    .. code-block:: python
+        
+        from sercpy.boiler import AutomaticBoiler as Boiler
+        
+        # Using the default emission factor of a fuel
+        
+        boiler = Boiler( 
+            
+            efficiency = 0.8,
+            heat_source = 'NG' )
+        
+        # An emission factor is now available without specifying it
+        
+        print( f"Emissions factor (defualt): {boiler.emission_factor}" )
+        
+        # The units are now 'kg/kg'
+        
+        print( f"Emissions factor units (defualt): {boiler.emission_factor_units}" )
+        
+        # The default emission factor can be overriden by manually introducing it
+        # In the following example, it is being introduced in terms of
+        # CO2-equivalent mass per fuel-equivalent energy
+        # However, it is still stored internally in terms of kg/kg
+        
+        boiler = Boiler( 
+            
+            efficiency = 0.8,
+            heat_source = 'NG',
+            emission_factor = 0.15,
+            emission_factor_units = 'kg/kWh'
+            
+            )
+        
+        print( f"Emissions factor (custom value): {boiler.emission_factor}" )
+        
+        # The units are now 'kg/kg'
+        
+        print( f"Emissions factor units (custom value): {boiler.emission_factor_units}" )
     
     """
     
@@ -270,7 +327,7 @@ class AutomaticBoiler( Device ):
         emission_factor = self._validate_argument("emission_factor", emission_factor)
         emission_factor_units = self._validate_argument("emission_factor_units", emission_factor_units)
         
-        if heat_source_corrected in [ 'E', 'ELEC', 'ELECTRICITY' ]:
+        if heat_source_corrected in [ 'E', 'ELEC', 'ELECTRICITY', 'ELECTRICPOWER',  ]:
             
             if self._efficiency > 1:
                 raise ValueError("AutomaticBoiler: Argument 'efficiency' must be <= 1.")
@@ -303,8 +360,6 @@ class AutomaticBoiler( Device ):
         fuel_pressure = self._validate_argument("fuel_pressure", fuel_pressure )
         fuel_pressure_abs = self._validate_argument("fuel_pressure_abs", fuel_pressure_abs )
         pressure_units = self._validate_argument("pressure_units", pressure_units )
-        emission_factor = self._validate_argument("emission_factor", emission_factor )
-        emission_factor_units = self._validate_argument("emission_factor_units", emission_factor_units )
         
         known_fuel = ( heat_source_corrected in _fuel_database or
                        heat_source_corrected in _fuel_alias_dict   )
@@ -356,7 +411,7 @@ class AutomaticBoiler( Device ):
                         raise TypeError("AutomaticBoiler: Argument 'emission_factor_units' has the form 'mass / volume'. In order for this format to be allowed, the density of the fuel must be provided.")
                     if emission_factor_unit_types == 'mass / energy':
                         emission_factor_mass_per_energy_SI_units = convert_units( emission_factor, emission_factor_units, 'kg/J' )
-                        emission_factor_kg_per_kg = emission_factor_mass_per_energy_SI_units * self._heating_value
+                        emission_factor_kg_per_kg = emission_factor_mass_per_energy_SI_units * self._fuel_heating_value
                     else:
                         emission_factor_kg_per_kg = convert_units( emission_factor, emission_factor_units, 'kg/kg', density = self._density )
                     self._emission_factor = emission_factor_kg_per_kg
@@ -468,7 +523,7 @@ class AutomaticBoiler( Device ):
                     raise ValueError("AutomaticBoiler: Argument 'emission_factor_units' must be a string representing units with one of the allowed forms: 'mass / mass', 'mass / volume', or 'mass / energy'")
                 if emission_factor_unit_types == 'mass / energy':
                     emission_factor_mass_per_energy_SI_units = convert_units( emission_factor, emission_factor_units, 'kg/J' )
-                    emission_factor_kg_per_kg = emission_factor_mass_per_energy_SI_units * self._heating_value
+                    emission_factor_kg_per_kg = emission_factor_mass_per_energy_SI_units * self._fuel_heating_value
                 else:
                     emission_factor_kg_per_kg = convert_units( emission_factor, emission_factor_units, 'kg/kg', density = self._density )
                 self._emission_factor = emission_factor_kg_per_kg
@@ -480,16 +535,37 @@ class AutomaticBoiler( Device ):
         self.outlet = Outlet()
     
     @property
+    def efficiency(self):
+        return self._efficiency
+    
+    @property
     def heat_source(self):
         return self._heat_source
     
     @property
-    def consumption_units(self):
-        pass
+    def fuel_heating_value(self):
+        return self._fuel_heating_value
     
     @property
-    def efficiency(self):
-        return self._efficiency
+    def fuel_density(self):
+        return self._fuel_density
+    
+    @property
+    def emission_factor(self):
+        return self._emission_factor
+    
+    @property
+    def emission_factor_units(self):
+        if self._emission_factor is None:
+            return None
+        if self._heat_source == "Electricity":
+            return "kg/J"
+        else:
+            return "kg/kg"
+    
+    @property
+    def consumption_units(self):
+        return None
     
     @property
     def condensing_boiler(self):
