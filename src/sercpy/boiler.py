@@ -34,8 +34,13 @@ _fuel_alias_dict = {
     'LIQUIDPETROLGAS': 'LPG',
     'LIQUEFIEDOILGAS': 'LPG',
     'LIQUIDOILGAS': 'LPG',
+    'PETROLEUMGAS': 'LPG',
+    'PETROLGAS': 'LPG',
+    'OILGAS': 'LPG',
     'LPGAS': 'LPG',
+    'GLP': 'LPG',
     'NATURALGAS': 'NG',
+    'GN': 'NG',
     'METHANE': 'CH4',
     'PROPANE': 'C3H8',
     'BUTANE': 'C4H10',
@@ -201,14 +206,42 @@ class AutomaticBoiler( Device ):
     emission_factor_units : str
         Units in which `emission_factor` is being specified.
         For boilers that use electricity, the units must have the form
-        `CO2_mass/electric_energy`, e.g. `kg/kWh`.
+        "CO2-equivalent mass per electric energy unit", e.g. `"kg/kWh"`, `"tonne/MWh"`.
         For fuels, it can be defined in three different
-        ways: **(1)** CO2 mass per fuel mass;
-        **(2)** CO2 mass per fuel volume; and
-        **(3)** CO2 mass per fuel-equivalent energy.
+        ways: **(1)** CO2-equivalent mass per fuel mass (e.g. `"kg/kg"`);
+        **(2)** CO2-equivalent mass per fuel volume (e.g. `"tonne/m3"`); and
+        **(3)** CO2-equivalent mass per fuel-equivalent energy (e.g. `"lb/MWh"`).
         In the latter case, the equivalence
         between fuel and energy is computed with the
         heating value of the fuel.
+        
+    Examples
+    --------
+    The simplest way to initialize a boiler is using one of the
+    fuels that are listed above and an efficiency value.
+    
+    .. code-block:: python
+        
+        from sercpy.boiler import AutomaticBoiler as Boiler
+        
+        boiler = Boiler( 
+            
+            efficiency = 0.8,
+            heat_source = 'LPG' )
+        
+    To initialize an electric boiler, the emission factor must be specified by
+    the user; otherwise, emissions will not be computed.
+    
+    .. code-block:: python
+        
+        from sercpy.boiler import AutomaticBoiler as Boiler
+        
+        boiler = Boiler( 
+            
+            efficiency = 0.8,
+            heat_source = 'Electricity',
+            emission_factor = 0.3,
+            emission_factor_units = 'kg/kWh' )
     
     """
     
