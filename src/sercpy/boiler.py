@@ -181,14 +181,34 @@ class AutomaticBoiler( Device ):
     
     pressure_units : str
         Units in which `fuel_pressure` or `fuel_pressure_abs` is being specified.
-        See :doc:`Units </units/units>`.
+        See :doc:`Units </units/units>`. If not provided, this parameter defaults
+        to `"Pa"`.
     
     emission_factor : float
-        
+        Value that defines the ratio between the
+        emissions produced by the boiler's
+        operation and its consumption.
+        For boilers that use electricity, this parameter
+        **must** be provided in order for the boiler to compute its
+        emissions. There is no default value for the emission factor
+        associated to electric energy because
+        this value is highly dependent on the
+        technology used by energy producers.
+        For the other supported heat sources (fuels) there are default
+        emission factors. That value can be
+        overriden by specifying this parameter.
     
     emission_factor_units : str
-        
-    
+        Units in which `emission_factor` is being specified.
+        For boilers that use electricity, the units must have the form
+        `CO2_mass/electric_energy`, e.g. `kg/kWh`.
+        For fuels, it can be defined in three different
+        ways: **(1)** CO2 mass per fuel mass;
+        **(2)** CO2 mass per fuel volume; and
+        **(3)** CO2 mass per fuel-equivalent energy.
+        In the latter case, the equivalence
+        between fuel and energy is computed with the
+        heating value of the fuel.
     
     """
     
