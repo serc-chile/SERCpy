@@ -103,13 +103,14 @@ class AutomaticBoiler( Device ):
     ----------
     efficiency : float
         Thermal efficiency of the boiler. Its value must be >= 0.01 (i.e. 1%).
-        It can be larger than one if the lower heating value (LHV) of one of the
-        supported fuels is being used (see the argument `heating_value_type`).
+        It can be larger than one if it is defined using the lower heating
+        value (LHV) of the fuel as reference
+        (see the argument `heating_value_type`).
     
     heat_source : str
         One of the supported heat sources listed above. If not provided
         (or if the string provided does not correspond to one of the supported heat sources),
-        the features of the fuel can be introduces with the parameters below.
+        the features of the fuel can be specified with the parameters below.
 
     heating_value_type : str, optional
         String defining whether the higher- or the lower heating value of
