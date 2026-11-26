@@ -10,6 +10,7 @@ The concept of "device", in the context of **SERCpy**, encompasses the classes t
 - :doc:`Heat Exchangers <heat_exchanger/heat_exchanger_class>`
 - :doc:`Controllers <controller/controller>`
 - :doc:`Pumps <pump/pump>`
+- :doc:`Boilers <boiler/automatic_boiler_class>`
 
 .. toctree::
   :hidden:
@@ -20,6 +21,7 @@ The concept of "device", in the context of **SERCpy**, encompasses the classes t
   heat_exchanger/heat_exchanger_class
   controller/controller
   pump/pump
+  boiler/automatic_boiler_class
 
 .. _class_outlet:
 
