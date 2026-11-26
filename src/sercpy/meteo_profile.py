@@ -45,14 +45,7 @@ MeteoProfile_valid_args = [
     "api_key",
     
     "tmy_file_path",
-    "ghi_col_name",
-    "dni_col_name",
-    "dhi_col_name",
-    "Tamb_col_name",
     "tmy_utc_offset",
-    "sep",
-    "delimiter",
-    "skiprows",
     
     "irradiance_units",
     "temp_units",
@@ -75,109 +68,152 @@ MeteoProfile_valid_args = [
 
 class MeteoProfile:
     """
-    Class that imports, computes and stores the meteorological conditions during an entire year, on a certain location.
+    Class that imports, computes and stores the
+    meteorological conditions during an entire year, on a certain location.
     
-    The class is meant to work with TMY (typical meteorological year) data. Time resolutions accepted for user-provided data range from 1 minute (maximal resolution) to 1 hour (minimal resolution).
+    The class is meant to work with TMY (typical meteorological year)
+    data. Time resolutions accepted for user-provided data range
+    from 1 minute (maximal resolution) to 1 hour (minimal resolution).
     
-    For simulations within the Chilean territory, the class is able to automatically download TMY data, provided that the user owns an API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+    For simulations within the Chilean territory, the class is able to
+    automatically download TMY data, provided that the user owns an API key for
+    `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
     
-    The class works for any location on the planet; however, for places outside Chile, the user must provide the meteorological data. The time zone is automatically inferred from the location, unless manually provided by the user; this includes eventual time changes due to daylight saving time.
+    The class works for any location on the planet; however, for places
+    outside Chile, the user must provide the meteorological data.
+    The time zone is automatically inferred from the location, unless
+    manually provided by the user; this includes eventual
+    time changes due to daylight saving time.
     
-    It is strongly recommended to follow the :doc:`tutorial on the use of this class </meteo_profile/MeteoProfile_tutorial>` for some examples on how to construct the instances and get results from them. 
+    It is strongly recommended to follow the :doc:`tutorial on the use
+    of this class </meteo_profile/MeteoProfile_tutorial>` for some examples
+    on how to construct the instances and get results from them. 
     
     Parameters
     ----------
     location : tuple of two float, optional
-        Tuple with the form `(latitude, longitude)` defining the place where the simulation will be performed. Only needed when: (1) the user provides a custom-format file, or (2) the TMY is downloaded internally by the class instance from `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+        Tuple with the form `(latitude, longitude)` defining the place
+        where the simulation will be performed. Only needed
+        when: **(1)** the user provides a custom-format file,
+        or **(2)** the TMY is downloaded internally by the class
+        instance from `Ministry of Energy's
+        "Renewable Energies API" <https://api.minenergia.cl/>`__.
     
     latitude : float, optional
-        If provided along with `longitude`, it is a substitute for the argument `location`.
+        If provided along with `longitude`,
+        it is a substitute for the argument `location`.
     
     longitude : float, optional
-        If provided along with `latitude`, it is a substitute for the argument `location`.
+        If provided along with `latitude`,
+        it is a substitute for the argument `location`.
     
     ground_albedo : float, optional
-        Irradiance fraction reflected by the ground. If not provided, it defaults to 0.2.
+        Irradiance fraction reflected by
+        the ground. If not provided, it defaults to 0.2.
     
     api_key : str, optional
-        User's API key for `Ministry of Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
-        Only needed when no data file is provided by the user.
-        An alternative to providing this argument is :ref:`using the function config.set_api_key <apy_key_storing>` to store the key permanently.
+        User's API key for `Ministry of
+        Energy's "Renewable Energies API" <https://api.minenergia.cl/>`__.
+        Only needed when no data file
+        is provided by the user.
+        An alternative to providing this argument
+        is :ref:`using the function config.set_api_key <apy_key_storing>`
+        to store the key permanently.
     
     tmy_file_path : str, optional
-        Path of the user-provided csv data file. If the file does not align with one of the standard formats known to the platform (see the :doc:`tutorial about the class </meteo_profile/MeteoProfile_tutorial>`, Section 1, for more information), then the next arguments, up to `elevation_units`, might be useful to the user.
-        In the next arguments, the terms 'custom format' and 'custom file' refer to any csv file that does not have the `SAM <https://sam.nlr.gov/>`__ nor the `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
-    
-    ghi_col_name : str, optional
-        Name of the GHI (global horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'GHI'.
-    
-    dni_col_name : str, optional
-        Name of the DNI (direct normal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DNI'.
-    
-    dhi_col_name : str, optional
-        Name of the DHI (diffuse horizontal irradiance) column of the csv file. Only needed for custom files, in which the name of this column is different from 'DHI'.
-    
-    Tamb_col_name : str, optional
-        Name of the ambient temperature column of the csv file. Only needed for custom files, in which the name of this column is different from 'Tamb'.
+        Path of the user-provided csv data file. If the file does
+        not align with one of the standard formats known to
+        the platform (see the :doc:`tutorial about the
+        class </meteo_profile/MeteoProfile_tutorial>`,
+        Section 1, for more information), then the next arguments,
+        up to `elevation_units`, might be useful to the user.
+        In the next arguments, the terms 'custom format'
+        and 'custom file' refer to any csv file that does
+        not have the `SAM <https://sam.nlr.gov/>`__ nor the
+        `Solar Explorer <https://solar.minenergia.cl/inicio>`__ form.
     
     tmy_utc_offset : str, optional
-        UTC offset of the data in the csv file provided by the user. Only needed for custom files. If not provided, this parameter will be inferred from the location; however, this can lead to large errors.
+        UTC offset of the data in the csv file provided by the user.
+        Only needed for custom files. If not provided, this parameter
+        will be inferred from the location; however, this can
+        lead to large errors.
     
     sep : str, optional
-        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user. If not provided, it defaults to `","`.
-    
-    delimiter : str, optional
-        Alias for `sep`.
-    
-    skiprows : int, optional
-        Same effect as in the function `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__. Only considered when a custom csv file is provided by the user.
+        Same effect as in the function
+        `pandas.read_csv <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html>`__.
+        Only considered when a custom csv file
+        is provided by the user. If not provided,
+        it defaults to `","`.
     
     irradiance_units : str, optional
-        Units in which irradiance is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, 'W/m2' is assumed. See :doc:`/units/units`.
+        Units in which irradiance is expressed in the csv file.
+        Only considered when a custom csv file is provided
+        by the user. If not provided, 'W/m2' is assumed.
+        See :doc:`/units/units`.
     
     temp_units : str, optional
-        Units in which ambient temperature is expressed in the csv file. Only considered when a custom csv file is provided by the user. If not provided, '°C' is assumed. See :doc:`/units/units`.
-    
-    T_units : str, optional
-        Alias for temp_units.
+        Units in which ambient temperature is expressed in the
+        csv file. Only considered when a custom csv file
+        is provided by the user. If not provided, '°C'
+        is assumed. See :doc:`/units/units`.
     
     elevation : float, optional
-        Terrain elevation of the place where the TMY is taken from. It is used to compute the atmospheric pressure in that location. If not provided, the value 0 is assumed.
+        Terrain elevation of the place where the TMY is taken from.
+        It is used to compute the atmospheric pressure
+        in that location. If not provided, the value 0 is assumed.
     
     elevation_units : str, optional
-        Units in which elevation is being provided. If not provided, 'm' is assumed. See :doc:`/units/units`.
+        Units in which elevation is being provided.
+        If not provided, 'm' is assumed. See :doc:`/units/units`.
     
     tz : str, optional
-        Name of the time zone corresponding to the location; e.g. 'America/New_York' or 'America/Santiago'. This argument is most likely unncesessary since the time zone is automatically determined from the location, unless it is provided.
+        Name of the time zone corresponding to the location;
+        e.g. 'America/New_York' or 'America/Santiago'.
+        This argument is most likely unncesessary since
+        the time zone is automatically determined from
+        the location, unless it is provided.
     
     time_zone : str, optional
         Alias for tz.
     
     solar_field : :doc:`SolarField </devices/solar/solar_field_class>`
-        Used to compute the irradiance on the plane of the array, IAM factors and self-shading effects.
+        Used to compute the irradiance on the
+        plane of the array, IAM factors and self-shading effects.
         
     Attributes
     ----------
     elevation : float
-        Terrain elevation in the location where the simulation is carried out, in meters.
+        Terrain elevation in the location
+        where the simulation is carried out, in meters.
     
     atmospheric_pressure : float
-        Atmoshperic pressure computed for the location, in Pa.
+        Atmoshperic pressure computed
+        for the location, in Pa.
         
     tz : str
-        Time zone name used by the MeteoProfile instance. Unless provided by the user, it is determined internally based on the location.
+        Time zone name used by the MeteoProfile
+        instance. Unless provided by the user,
+        it is determined internally based on the location.
     
     time_zone : str
         Alias for `tz`.
     
     tmy_utc_offset : float
-        UTC offset of the TMY (typical meteorological year) data, in hours. If not provided by the user (strongly recommended for custom csv files), it is determined based on the location.
+        UTC offset of the TMY (typical meteorological year) data,
+        in hours. If not provided by the user
+        (strongly recommended for custom csv files),
+        it is determined based on the location.
     
     ground_albedo : float
-        Albedo of the ground, i.e., irradiance fraction reflected by it. The fraction is expressed as a decimal value in the range 0 - 1.
+        Albedo of the ground, i.e., irradiance fraction
+        reflected by it. The fraction is expressed
+        as a decimal value in the range 0 - 1.
     
     solar_field : :doc:`SolarField </devices/solar/solar_field_class>`
-        Object used to compute the plane-of-array irradiance, IAM factors, and self-shading effects. Only available if provided during initialization, or if the method `compute_poa_irradiance` has been called after initialization.
+        Object used to compute the plane-of-array irradiance, IAM factors,
+        and self-shading effects. Only available if provided during
+        initialization, or if the method `compute_poa_irradiance`
+        has been called after initialization.
         
     """
     
@@ -194,18 +230,11 @@ class MeteoProfile:
             api_key = None,
             
             tmy_file_path = None,
-            ghi_col_name = None,
-            dni_col_name = None,
-            dhi_col_name = None,
-            Tamb_col_name = None,
             tmy_utc_offset = None,
             sep = None,
-            delimiter = None,
-            skiprows = None,
             
             irradiance_units = None,
             temp_units = None,
-            T_units = None,
             
             elevation = None,
             elevation_units = None,
@@ -257,25 +286,12 @@ class MeteoProfile:
         
         self._tmy_file_path = self._validate_argument("tmy_file_path", tmy_file_path)
         
-        self._ghi_col_name = self._validate_argument("ghi_col_name", ghi_col_name)
-        self._dni_col_name = self._validate_argument("dni_col_name", dni_col_name)
-        self._dhi_col_name = self._validate_argument("dhi_col_name", dhi_col_name)
-        self._Tamb_col_name = self._validate_argument("Tamb_col_name", Tamb_col_name)
-        
         self._tmy_utc_offset = self._validate_argument("tmy_utc_offset", tmy_utc_offset)
         
-        if sep is None and delimiter is not None:
-            self._sep = self._validate_argument("delimiter", delimiter)
-        else:
-            self._sep = self._validate_argument( "sep", sep )
-        
-        self._skiprows = self._validate_argument( "skiprows", skiprows )
+        self._sep = self._validate_argument( "sep", sep )
         
         self._irradiance_units = self._validate_argument( "irradiance_units", irradiance_units )
-        if temp_units is None and T_units is not None:
-            self._temp_units = self._validate_argument( "T_units", T_units )
-        else:
-            self._temp_units = self._validate_argument( "temp_units", temp_units )
+        self._temp_units = self._validate_argument( "temp_units", temp_units )
         
         elevation = self._validate_argument( "elevation", elevation )
         elevation_units = self._validate_argument( "elevation_units", elevation_units )
@@ -761,55 +777,30 @@ class MeteoProfile:
         """
         
         tmy_file_path = self._tmy_file_path
-        ghi_col_name = self._ghi_col_name
-        dni_col_name = self._dni_col_name
-        dhi_col_name = self._dhi_col_name
-        Tamb_col_name = self._Tamb_col_name
         sep = self._sep
-        skiprows = self._skiprows
         
         if sep is None:
             sep = ','
-        
+            
         try:
-            
-            df = pd.read_csv( 
-                
-                tmy_file_path,
-                sep = sep,
-                skiprows = skiprows
-                
-                )
-            
-            columns = df.columns.tolist()
-            
-            columns_to_rename = {}
-            columns_to_keep = []
-            
-            if Tamb_col_name is not None:
-                columns_to_rename[ Tamb_col_name ] = 'Tamb'
-            elif not 'Tamb' in columns:
-                raise FileFormatError("MeteoProfile._import_custom_file: Ambient temperature column must be present in the csv file. If the name of the column is not 'Tamb', it must be provided through the argument 'Tamb_col_name'.")
-            columns_to_keep.append( 'Tamb' )
-            
-            irradiance_custom_names = [ ghi_col_name, dni_col_name, dhi_col_name ]
-            irradiance_standard_names = [ 'GHI', 'DNI', 'DHI' ]
-            
-            for i in range( 3 ):
-                if irradiance_custom_names[ i ] is not None:
-                    columns_to_rename[ irradiance_custom_names[ i ] ] = irradiance_standard_names[ i ]
-                    columns_to_keep.append( irradiance_standard_names[ i ] )
-                elif irradiance_standard_names[ i ] in columns:
-                    columns_to_keep.append( irradiance_standard_names[ i ] )
-                    
-            if len( columns_to_keep ) < 3:
-                raise FileFormatError("MeteoProfile._import_custom_file: At least two of three irradiance components must be present in the csv file (GHI, DNI, DHI). If the name of the data columns in file are not as mentioned, they must be provided through the arguments 'ghi_col_name','dni_col_name','dhi_col_name'.")
-            
-            df = df.rename( columns = columns_to_rename )
-            df = df.filter( columns_to_keep )
-        
+            df = pd.read_csv( tmy_file_path, sep = sep, )
         except:
-            raise FileFormatError("MeteoProfile._import_custom_file: File could not be imported.")
+            raise TypeError("MeteoProfile: Data file failed to be imported.")
+        
+        df_columns = df.columns.tolist()
+        
+        if len( df_columns ) == 1:
+            raise ValueError("MeteoProfile: Imported dataset has only one column. The column separator (parameter 'sep', default: ',') may need to be adjusted.")
+        
+        if not 'Tamb' in df_columns:
+            raise KeyError("MeteoProfile: Column 'Tamb' was not found in the imported data.")
+        
+        if sum( [ irradiance_name in df_columns for irradiance_name in [ 'GHI', 'DNI', 'DHI' ] ] ) < 2:
+            raise ValueError("MeteoProfile: At least two of three irradiance columns have be present in the dataset: 'GHI', 'DNI', 'DHI'.")
+        
+        columns_to_keep = [ 'Tamb' ] + [ irradiance_name for irradiance_name in [ 'GHI', 'DNI', 'DHI' ] if irradiance_name in df_columns ]
+        
+        df = df.filter( columns_to_keep )
         
         self._df_tmy = df
     

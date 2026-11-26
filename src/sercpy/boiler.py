@@ -2,7 +2,7 @@
 """
 Created on Thu Nov 19 10:38:19 2026
 
-@author: adria
+@author: Adrian Riebel Brummer
 """
 
 from .devices import Outlet, Device
@@ -108,14 +108,13 @@ class AutomaticBoiler( Device ):
     ----------
     efficiency : float
         Thermal efficiency of the boiler. Its value must be >= 0.01 (i.e. 1%).
-        It can be larger than one if it is defined using the lower heating
-        value (LHV) of the fuel as reference
-        (see the argument `heating_value_type`).
+        It can be larger than `1` if it is defined using the fuel's lower heating
+        value (LHV) as reference (see the argument `heating_value_type`).
     
     heat_source : str
         One of the supported heat sources listed above. If not provided
         (or if the string provided does not correspond to one of the supported heat sources),
-        the features of the fuel can be specified with the parameters below.
+        the fuel's features can be specified with the parameters below.
 
     heating_value_type : str, optional
         String defining whether the higher- or the lower heating value of
@@ -127,7 +126,7 @@ class AutomaticBoiler( Device ):
         this parameter defaults to `"LHV"`.
     
     fuel_heating_value : float
-        Heating value of the fuel used by the boiler. If `heat_source` is not
+        Heating value of the boiler's fuel. If `heat_source` is not
         specified, this parameter is mandatory. If a supported fuel is introduced
         through `heat_source` and `fuel_heating_value` is also provided, the value
         specified in `fuel_heating_value` overrides the one used
@@ -143,7 +142,7 @@ class AutomaticBoiler( Device ):
         defaults to `"J/kg"`
     
     fuel_density : float
-        Density of the fuel used by the boiler.
+        Density of the boiler's fuel.
         This parameter is never mandatory.
         However, if no supported fuel is introduced
         through `heat_source` and this parameter
@@ -213,7 +212,7 @@ class AutomaticBoiler( Device ):
         **(3)** CO2-equivalent mass per fuel-equivalent energy (e.g. `"lb/MWh"`).
         In the latter case, the equivalence
         between fuel and energy is computed with the
-        heating value of the fuel.
+        heating value of the boiler's fuel.
         
     Examples
     --------
@@ -258,7 +257,7 @@ class AutomaticBoiler( Device ):
     that default value can be overriden by the user.
     
     It must also be noticed that, although the user can specify the emission factor
-    in terms of CO2 equivalent mass per energy unit of the fuel, it gets stored
+    in terms of CO2-equivalent mass per fuel-equivalent energy unit, it gets stored
     internally in terms of CO2-equivalent mass per fuel mass unit.
     
     .. code-block:: python
@@ -273,11 +272,9 @@ class AutomaticBoiler( Device ):
             heat_source = 'NG' )
         
         # An emission factor is now available without specifying it
-        
         print( f"Emissions factor (defualt): {boiler.emission_factor}" )
         
         # The units are now 'kg/kg'
-        
         print( f"Emissions factor units (defualt): {boiler.emission_factor_units}" )
         
         # The default emission factor can be overriden by manually introducing it
@@ -290,15 +287,33 @@ class AutomaticBoiler( Device ):
             efficiency = 0.8,
             heat_source = 'NG',
             emission_factor = 0.15,
-            emission_factor_units = 'kg/kWh'
-            
-            )
+            emission_factor_units = 'kg/kWh' )
         
         print( f"Emissions factor (custom value): {boiler.emission_factor}" )
         
-        # The units are now 'kg/kg'
-        
+        # The units are still 'kg/kg'
         print( f"Emissions factor units (custom value): {boiler.emission_factor_units}" )
+    
+    Other features of the fuel, such as its heating value, can be introduced
+    manually by the user, thereby overriding the value used by default.
+    
+    .. code-block:: python
+    
+        from sercpy.boiler import AutomaticBoiler as Boiler
+        
+        # Overriding the default heating value of a fuel
+    
+        boiler = Boiler( 
+            
+            efficiency = 0.8,
+            heat_source = 'NG',
+            fuel_heating_value = 9300,
+            heating_value_units = 'kcal/m3' )
+        
+        # The heating value can be obtained thereafter from the attribute 'fuel_heating_value'
+        # The value is always expressed in SI units: 'J/kg'
+        
+        print( f"Custom heating value: {boiler.fuel_heating_value}" )
     
     """
     
@@ -327,6 +342,7 @@ class AutomaticBoiler( Device ):
         emission_factor = self._validate_argument("emission_factor", emission_factor)
         emission_factor_units = self._validate_argument("emission_factor_units", emission_factor_units)
         
+        # Case 1: The boiler uses electricity
         if heat_source_corrected in [ 'E', 'ELEC', 'ELECTRICITY', 'ELECTRICPOWER',  ]:
             
             if self._efficiency > 1:
@@ -364,6 +380,8 @@ class AutomaticBoiler( Device ):
         known_fuel = ( heat_source_corrected in _fuel_database or
                        heat_source_corrected in _fuel_alias_dict   )
         
+        # Case 2: The fuel used by the boiler is not registered in the database
+        # All features must be obtained from parameters provided by the user.
         if not known_fuel:
             
             if self._efficiency > 1:
@@ -394,7 +412,7 @@ class AutomaticBoiler( Device ):
                 if not heating_value_unit_types in [ 'energy / mass', 'energy / volume' ]:
                     raise ValueError("AutomaticBoiler: Argument 'heating_value_units' must be a string representing units with the form 'energy / mass' or 'energy / volume'")
                 if heating_value_unit_types == 'energy / volume' and self._fuel_density is None:
-                    raise TypeError("AutomaticBoiler: Argument 'heating_value_units' has the form 'energy / volume'. In order for this format to be allowed, the density of the fuel must be provided.")
+                    raise TypeError("AutomaticBoiler: Argument 'heating_value_units' has the form 'energy / volume'. In order for this format to be allowed, the fuel's density must be provided.")
                 self._fuel_heating_value = convert_units( fuel_heating_value, heating_value_units, 'J/kg', density = self._fuel_density )
             else:
                 self._fuel_heating_value = fuel_heating_value
@@ -408,7 +426,7 @@ class AutomaticBoiler( Device ):
                     if not emission_factor_unit_types in [ 'mass / mass', 'mass / volume', 'mass / energy' ]:
                         raise ValueError("AutomaticBoiler: Argument 'emission_factor_units' must be a string representing units with one of the allowed forms: 'mass / mass', 'mass / volume', or 'mass / energy'")
                     if emission_factor_unit_types == 'mass / volume' and self._fuel_density is None:
-                        raise TypeError("AutomaticBoiler: Argument 'emission_factor_units' has the form 'mass / volume'. In order for this format to be allowed, the density of the fuel must be provided.")
+                        raise TypeError("AutomaticBoiler: Argument 'emission_factor_units' has the form 'mass / volume'. In order for this format to be allowed, the fuel's density must be provided.")
                     if emission_factor_unit_types == 'mass / energy':
                         emission_factor_mass_per_energy_SI_units = convert_units( emission_factor, emission_factor_units, 'kg/J' )
                         emission_factor_kg_per_kg = emission_factor_mass_per_energy_SI_units * self._fuel_heating_value
@@ -423,6 +441,8 @@ class AutomaticBoiler( Device ):
             self.outlet = Outlet()
             return
         
+        # Case 3: The fuel is registered in the database
+        # Fuel's features will be set to default values unless they are overriden by the user
         try:
             heat_source_data = _fuel_database[ heat_source_corrected ]
         except KeyError:
@@ -562,35 +582,18 @@ class AutomaticBoiler( Device ):
             return "kg/J"
         else:
             return "kg/kg"
+        
+    @property
+    def emission_rate(self):
+        if not hasattr(self, "_emission_rate"):
+            raise AttributeError("AutomaticBoiler: Attribute 'emission_rate' has not been computed. This attribute gets computed for the first time when the method `compute_outputs` is called.")
+        return self._emission_rate
     
     @property
-    def consumption_units(self):
-        return None
-    
-    @property
-    def condensing_boiler(self):
-        return self._condensing_boiler
-        
-    def demand_to_consumption( self, state_in = None, state_set = None, flowrate = None, demanded_power = None, consumption_units = None ):
-        
-        if state_in is not None and state_set is not None and flowrate is not None:
-            demanded_power = max([  flowrate*( state_set.h - state_in.h ) , 0 ] )
-        else:
-            if demanded_power is None:
-                raise ValueError("AutomaticBoiler.demand_to_consumption: Not enough data was provided to compute the consumption.")
-        
-        consumption = demanded_power / self._efficiency
-        
-        if self._heat_source != 'Electricity':
-            consumption = consumption / self._fuel_heating_value
-            
-        # if self._emission_factor_units
-        
-        return consumption
-    
-    def compute_outputs(self, operating_conditions, iteration_numer ):
-        
-        pass
+    def consumption_rate(self):
+        if not hasattr(self, "_consumption_rate"):
+            raise AttributeError("AutomaticBoiler: Attribute 'consumption_rate' has not been computed. This attribute gets computed for the first time when the method `compute_outputs` is called.")
+        return self._consumption_rate
     
     @staticmethod
     def _validate_argument( argument_name, value ):
@@ -683,7 +686,7 @@ class AutomaticBoiler( Device ):
             except:
                 raise TypeError(f"AutomaticBoiler: Argument '{argument_name}' must be convertible to float. The string 'l' is also allowed for liquefied gases.")
         
-        if argument_name in [ 
+        if argument_name in [
                 
                  "heating_value_units",
                  "density_units",
@@ -699,6 +702,61 @@ class AutomaticBoiler( Device ):
         
         return value
     
-    def compute_outputs( operating_conditions, time_step_number ):
+    def set_connections(self, *, inlet ):
+        super().set_connections( inlet = inlet )
+        
+    def consumption_to_thermal_energy( self, consumption, consumption_units, thermal_energy_units = None ):
+        
+        try:
+            unit_type_consumption = get_unit_types( consumption_units )
+        except:
+            raise ValueError(f"AutomaticBoiler.consumption_to_thermal_energy: consumption units could not be identified. Value provided: { consumption_units }")
+        
+        if thermal_energy_units is not None:
+            try:
+                unit_type_thermal_energy = get_unit_types( thermal_energy_units )
+            except:
+                raise ValueError(f"AutomaticBoiler.consumption_to_thermal_energy: thermal energy units could not be identified. Value provided: { thermal_energy_units }")
+            if unit_type_thermal_energy != 'energy':
+                raise ValueError("AutomaticBoiler.consumption_to_thermal_energy: Argument 'thermal_energy_units' must correspond to energy units.")
+                
+        if self._heat_source == 'Electricity':
+            if unit_type_consumption != 'energy':
+                raise ValueError("AutomaticBoiler.consumption_to_thermal_energy: For electric boilers, the argument 'consumption_units' must correspond to energy units.")
+            thermal_energy = self._efficiency * convert_units( consumption, consumption_units, 'J'  )
+            
+        else:
+            if self._fuel_density is None and unit_type_consumption == 'volume':
+                raise ValueError(f"AutomaticBoiler.consumption_to_thermal_energy: Consumption cannot be processed in terms of volumetric consumption because the fuel's density is not known. Consumption units specified: {consumption_units}")
+            if not unit_type_consumption in [ 'mass', 'volume' ]:
+                raise ValueError("AutomaticBoiler.consumption_to_thermal_energy: For non-electric boilers, consumption must be specified in terms of mass or volume.")
+            thermal_energy = self._efficiency * self._fuel_heating_value * convert_units( consumption, consumption_units, 'kg', density = self._fuel_density  )
+        
+        if thermal_energy_units is not None:
+            thermal_energy = convert_units( thermal_energy, 'J', thermal_energy_units )
+        
+        if type( thermal_energy ) is np.ndarray:
+            thermal_energy = thermal_energy.astype(float).tolist()
+        
+        return thermal_energy
+    
+    def compute_outputs(self, operating_conditions, iteration_numer ):
+        
+        
+        
+        if state_in is not None and state_set is not None and flowrate is not None:
+            demanded_power = max([  flowrate*( state_set.h - state_in.h ) , 0 ] )
+        else:
+            if demanded_power is None:
+                raise ValueError("AutomaticBoiler.demand_to_consumption: Not enough data was provided to compute the consumption.")
+        
+        consumption = demanded_power / self._efficiency
+        
+        if self._heat_source != 'Electricity':
+            consumption = consumption / self._fuel_heating_value
+            
+        # if self._emission_factor_units
+        
+        return consumption
         
         pass

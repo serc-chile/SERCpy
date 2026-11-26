@@ -40,9 +40,6 @@ demand_cluster_coefficients = { 0: {"m_h": -0.015442188, "b_h": 1.085192073, "m_
 # List of argument names accepted by the DemandProfile class initializer function
 DemandProfile_accepted_args = [
     
-    "T_in_profile",
-    "T_set_profile",
-    "flowrate_profile",
     "fluid",
     "fluid_cp",
     "fluid_cp_units",
@@ -85,7 +82,6 @@ DemandProfile_accepted_args = [
     "T_in",
     
     "Tamb_dependence",
-    "Tamb_dependence_mode",
     "Tamb_profile",
     
     "smooth_Tamb_profile",
@@ -168,6 +164,8 @@ class DemandProfile:
         Heater currently used to provide heat to the system. It is used to convert
         the consumption introduced through `monthly_consumption` to thermal energy
         demand. This parameter is only needed if `monthly_consumption` is specified.
+        If this is not the case and this parameter is provided anyway, it will still be
+        stored as an attribute of the class, in order to be retrieved later.
         
     daily_demand_profile : list of float, optional
         List of floating point values with length
@@ -440,7 +438,6 @@ class DemandProfile:
             
             Tamb_dependence = None,
             
-            
             smooth_Tamb_profile = None,
             
             **kwargs,
@@ -485,7 +482,9 @@ class DemandProfile:
                 self._fluid = Fluid( fluid, p = 800000, T_ref = float( ( np.mean( self._monthly_T_in ) + np.mean( self._monthly_T_set ) )/2 ) )
             except FluidNameError:
                 raise TypeError(f"Class DemandProfile: Fluid (sercpy.fluids.Fluid) instance could not be constructed because the fluid name entered (= {fluid}) is not valid.")
-                
+        
+        self._heater = self._validate_argument("heater", heater)
+        
         if all( [ keyword in kwargs for keyword in [
                 
                 "flowrate_profile",
@@ -509,8 +508,19 @@ class DemandProfile:
                     self._monthly_heat_demand = convert_units(self._monthly_heat_demand, heat_demand_units, 'J')
                 except UnitsError:
                     raise ValueError( f"Class DemandProfile: monthly_heat_demand could not be converted from the energy units provided: {heat_demand_units}." )
+        
         elif monthly_consumption is not None:
-            pass
+            
+            if self._heater is None:
+                raise TypeError("Class DemandProfile: Argument 'heater' must be provided in order for thermal demand to be computed from 'monthly_consumption'.")
+            consumption_units = self._validate_argument( "consumption_units", consumption_units )
+            if consumption_units is None:
+                raise TypeError("Class DemandProfile: Argument 'consumption_units' must be provided when 'monthly_consumption' is provided.")
+            try:
+                consumption_unit_type = get_unit_types( consumption_units )
+            except:
+                raise ValueError(f"Class DemandProfile: consumption units could not be identified. Value provided: '{ consumption_units }'.")
+            self._monthly_heat_demand = self._heater.consumption_to_thermal_energy( monthly_consumption, consumption_units )
 
         else:
             raise ValueError("Class DemandProfile: Either 'monthly_heat_demand' or 'monthly_consumption' must be specified.")
@@ -661,7 +671,7 @@ class DemandProfile:
         
     ## Alternative initialization using the library "loadcast"
     @classmethod
-    def from_loadcast( cls, T_set, T_in, fluid, meteo_profile = None, **loadcast_params ):
+    def from_loadcast( cls, T_set, T_in, fluid, meteo_profile = None, heater = None, **loadcast_params ):
         """
         Alternative initialization of the `DemandProfile` instance that uses
         the result returned by the function `generate`
@@ -820,6 +830,7 @@ class DemandProfile:
             fluid = fluid,
             T_in = monthly_T_in,
             T_set = monthly_T_set,
+            heater = heater,
             flowrate_profile = flowrate_profile,
             demanded_power_profile = demanded_power_profile,
             T_in_profile = T_in_profile,
@@ -1226,18 +1237,6 @@ class DemandProfile:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a string with format 'hh:mm', with 'hh' from '00' to '24' and 'mm' equal to '00' or '30'. '24:30' is not allowed.")
         
         if argument_name in [
-                "T_in_profile",
-                "T_set_profile",
-                "flowrate_profile" ]:
-            try:
-                value = list(value)
-                assert len(value) == 8760*60
-                value = [ float(v) for v in value ]
-                assert all( [ v >=  0 for v in value ] )
-            except:
-                raise ValueError(f"Class DemandProfile: {argument_name} must be a list of values convertible to type 'float', with length {8760*60}. The values must be >= 0.")
-        
-        if argument_name in [
                 "peak_demand_ratio_saturday",
                 "peak_demand_ratio_sunday",
                 "daily_demand_ratio_saturday",
@@ -1299,31 +1298,6 @@ class DemandProfile:
             
             if not ( type(value) is str or isinstance( value, Fluid ) ):
                 raise TypeError("Class DemandProfile: Argument 'fluid' must be a string or an instance of sercpy.fluids.Fluid.")
-        
-        if argument_name == "fluid_cp":
-            
-            try:
-                value = float(value)
-                assert value > 500
-            except:
-                raise ValueError("Class DemandProfile: Argument 'fluid_cp' must be a value > 500 convertible to string.")
-        
-        if argument_name in [ "fluid_density",
-                              "fuel_density", ]:
-            
-            try:
-                value = float(value)
-                assert value > 0.5
-            except:
-                raise ValueError("Class DemandProfile: Argument 'fluid_density' must be a value > 0.5 convertible to string.")
-        
-        if argument_name == "pressure":
-            
-            try:
-                value = float(value)
-                assert value > 0
-            except:
-                raise ValueError("Class DemandProfile: Argument 'pressure' must be a value > 0 convertible to type 'float'.")
                 
         if argument_name == "weekly_demand_factors":
             
@@ -1360,7 +1334,7 @@ class DemandProfile:
                     value = [ float(v) for v in value ]
                     assert all([ v >= temp_limits[0] and v <= temp_limits[1] for v in value ])
                 except:
-                    raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
+                    raise TypeError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
             except AssertionError:
                 raise ValueError(f"Class DemandProfile: {argument_name} must be a numeric value in the range {temp_limits[0]} <= T <= {temp_limits[1]}, or a list of 12 values in the same range.")
         
@@ -1368,9 +1342,9 @@ class DemandProfile:
             temp_limits = [ 2, 130 ]
             
             try:
-                value_2 = float( value )
-                value_2 = [ value_2 ]*12
-                value = value_2
+                value = float(value)
+                assert value >= temp_limits[0] and value <= temp_limits[1]
+                value = [ value ]*12
             except:
                 try:
                     value_2 = [ float( v ) for v in value ]
@@ -1401,13 +1375,6 @@ class DemandProfile:
                 except:
                     raise ValueError("Class DemandProfile: Tamb_dependence must be either a callable function, a numeric value between 0 and 3, the string 'auto', or None.")
         
-        if argument_name == "Tamb_dependence_mode":
-            
-            try:
-                assert type(value) is str and value in [ "manual", "auto" ]
-            except:
-                raise ValueError("Class DemandProfile: Argument 'Tamb_dependence_mode' must be one of the strings: 'manual' or 'auto'.")
-        
         if argument_name == "Tamb_profile":
             try:
                 value = [ float(v) for v in value ]
@@ -1431,81 +1398,22 @@ class DemandProfile:
             if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
                 raise ValueError("Class DemandProfile: smooth_Tamb_profile must be a boolean value.")
             value = bool( value )
-                
-        if argument_name == "year":
-            
-            try:
-                value = int(value)
-                assert value >= 2000 and value <= 2050
-            except:
-                raise ValueError("Class DemandProfile: Argument 'year' must be a numberic value convertible to type 'int'. It must be >= 2000 and <= 2050.")
         
-        if argument_name == "heat_source":
-            try:
-                value = str(value)
-                value = value.upper()
-            except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source' must be convertible to string.")
-                
         if argument_name == "consumption_units":
             try:
                 value = str(value)
             except:
                 raise ValueError("Class DemandProfile: Argument 'consumption_units' must be convertible to string.")
         
-        if argument_name == "heater_efficiency":
-            try:
-                value = float(value)
-            except:
-                raise TypeError("Class DemandProfile: Argument 'heater_efficiency' must be convertible to type 'float'.")
-            if value <= 0:
-                raise ValueError("Class DemandProfile: Argument 'heater_efficiency' must be > 0.")
-        
-        if argument_name == "heat_source_heating_value":
-            try:
-                value = float(value)
-            except:
-                raise TypeError("Class DemandProfile: Argument 'heat_source_heating_value' must be convertible to type 'float'.")
-            if value <= 0:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value' must be > 0.")
-                
-        if argument_name == "heat_source_density":
-            try:
-                value = float(value)
-            except:
-                raise TypeError("Class DemandProfile: Argument 'heat_source_density' must be convertible to type 'float'.")
-            if value <= 0:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_density' must be > 0.")
-        
-        if argument_name == "heat_source_heating_value_units":
-            try:
-                value = str(value)
-            except:
-                raise TypeError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string.")
-            try:
-                assert get_unit_types( value ) in [ 'energy / mass', 'energy / volume' ]
-            except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string representing units with the form 'energy / mass' or 'energy / volume'.")
-                
-        if argument_name == "heat_source_density_units":
-            try:
-                value = str(value)
-            except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_density_units' must be a string.")
-            try:
-                assert get_unit_types( value ) == 'mass / volume'
-            except:
-                raise ValueError("Class DemandProfile: Argument 'heat_source_heating_value_units' must be a string representing units with the form 'mass / volume'.")
-                
-        if argument_name == "condensation_boiler":
-            if not ( type(value) is bool or ( type( value ) is int and value in [ 0, 1 ] ) ):
-                raise ValueError("Class DemandProfile: Argument 'condensation_boiler' must be boolean.")
-            value = bool( value )
-            
         if argument_name == "meteo_profile":
             
             if not isinstance( value, MeteoProfile ):
                 raise TypeError("Class DemandProfile: Argument 'meteo_profile' must be a meteo_profile.MeteoProfile instance.")
+        
+        if argument_name == "heater":
+            from .boiler import AutomaticBoiler
+            if not isinstance(value, AutomaticBoiler):
+                raise TypeError("Class DemandProfile: Argument 'heater' must be an instance of sercpy.boiler.AutomaticBoiler.")
         
         return value
         
