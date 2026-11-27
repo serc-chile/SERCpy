@@ -46,6 +46,7 @@ MeteoProfile_valid_args = [
     
     "tmy_file_path",
     "tmy_utc_offset",
+    "sep",
     
     "irradiance_units",
     "temp_units",
@@ -156,6 +157,9 @@ class MeteoProfile:
         csv file. Only considered when a custom csv file
         is provided by the user. If not provided, '°C'
         is assumed. See :doc:`/units/units`.
+        
+    T_units : str, optional
+        Alias for `temp_units`.
     
     elevation : float, optional
         Terrain elevation of the place where the TMY is taken from.
@@ -235,6 +239,7 @@ class MeteoProfile:
             
             irradiance_units = None,
             temp_units = None,
+            T_units = None,
             
             elevation = None,
             elevation_units = None,
@@ -273,7 +278,7 @@ class MeteoProfile:
         else:
             
             if tmy_file_path is None:
-                raise ValueError("MeteoProfile: A meteorological data file must be provided if no location is provided.")
+                raise ValueError("Class MeteoProfile: A meteorological data file must be provided if no location is provided.")
             
             self._latitude = None
             self._longitude = None
@@ -291,7 +296,15 @@ class MeteoProfile:
         self._sep = self._validate_argument( "sep", sep )
         
         self._irradiance_units = self._validate_argument( "irradiance_units", irradiance_units )
-        self._temp_units = self._validate_argument( "temp_units", temp_units )
+        
+        if temp_units is not None and T_units is not None and temp_units != T_units:
+            raise TypeError("Class MeteoProfile: Only one of the arguments 'temp_units' and 'T_units' must be provided.")
+        elif temp_units is not None:
+            self._temp_units = self._validate_argument( "temp_units", temp_units )
+        elif T_units is not None:
+            self._temp_units = self._validate_argument( "temp_units", T_units )
+        else:
+            self._temp_units = None
         
         elevation = self._validate_argument( "elevation", elevation )
         elevation_units = self._validate_argument( "elevation_units", elevation_units )
@@ -303,8 +316,8 @@ class MeteoProfile:
         else:
             self._elevation = 0
         
-        if tz != "auto" and time_zone != "auto":
-            raise ValueError("MeteoProfile: Argument 'time_zone' is an alternative name for 'tz'. Both arguments cannot be provided together.")
+        if tz != "auto" and time_zone != "auto" and tz != time_zone:
+            raise ValueError("Class MeteoProfile: Argument 'time_zone' is an alternative name for 'tz'. Both arguments cannot be provided together.")
         elif tz != "auto":
             self._tz = self._validate_argument( "tz", tz )
         elif time_zone != "auto":
@@ -869,12 +882,12 @@ class MeteoProfile:
                 self._complete_irradiance_data()
                 
                 if irradiance_units is not None:
-                    self._df_tmy[ 'GHI' ] = convert_units( self._df_tmy[ 'GHI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
-                    self._df_tmy[ 'DNI' ] = convert_units( self._df_tmy[ 'DNI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
-                    self._df_tmy[ 'DHI' ] = convert_units( self._df_tmy[ 'DHI' ].values.astype(float).tolist(), self._irradiance_units, "W/m2" )
+                    self._df_tmy[ 'GHI' ] = convert_units( self._df_tmy[ 'GHI' ].values.astype(float).tolist(), irradiance_units, "W/m2" )
+                    self._df_tmy[ 'DNI' ] = convert_units( self._df_tmy[ 'DNI' ].values.astype(float).tolist(), irradiance_units, "W/m2" )
+                    self._df_tmy[ 'DHI' ] = convert_units( self._df_tmy[ 'DHI' ].values.astype(float).tolist(), irradiance_units, "W/m2" )
                     
                 if temp_units is not None:
-                    self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), self._temp_units, "°C" )
+                    self._df_tmy[ 'Tamb' ] = convert_units( self._df_tmy[ 'Tamb' ].values.astype(float).tolist(), temp_units, "°C" )
         
         self._atmospheric_pressure = self.altitude_to_pressure( self._elevation )
         

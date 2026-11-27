@@ -163,59 +163,147 @@ class HeatingSystem1( Simulation ):
             self, *,
             
             solar_field,
-            operating_conditions = None,
-            demand_profile = None,
-            meteo_profile = None,
-            time_step = None,
+            operating_conditions,
             storage_tank = None,
             HX1 = None,
             HX2 = None,
+            solar_field_pump = None,
+            tank_charge_pump = None,
+            tank_discharge_pump = None,
+            tank_max_temp = None,
+            shutdown_hysteresis_dT = None,
             tank_charge_controller = None,
             tank_charge_min_dT = None,
-            solar_field_flowrate = None,
-            tank_charge_flowrate = None,
-            tank_discharge_flowrate = None,
+            solar_field_fluid = None,
             tank_discharge_turnoff_dT = None,
             tank_discharge_turnon_dT = None,
+            relative_tolerance = None,
             max_iterations = None, ):
         
-        # self._initializing_arguments = locals()
-        # self._initializing_arguments.pop( 'self' )
+        if not isinstance(solar_field, SolarField):
+            raise TypeError("HeatingSystem1: Argument 'solar_field' must be an instance of sercpy.solar.SolarField'.")
+        self._solar_field = solar_field
         
+        if not isinstance( operating_conditions, OperatingConditions ):
+            raise TypeError("HeatingSystem1: Argument 'solar_field' must be an instance of sercpy.operating_conditions.OperatingConditions'.")
         self._operating_conditions = operating_conditions
         
-        self._solar_field = solar_field
-        self._storage_tank = storage_tank
+        if storage_tank is None:
+            
+            if tank_max_temp is None:
+                tank_max_temp = max( [ self._operating_conditions.max_Tin + 30, self._operating_conditions.max_Tset + 20 ] )
+            
+            else:
+                try:
+                    tank_max_temp = float( tank_max_temp )
+                except:
+                    raise TypeError("HeatingSystem1: Argument 'tank_max_temp' must be a numeric value.")
+                if not ( tank_max_temp >= 30 and tank_max_temp <= 250 ):
+                    raise ValueError("HeatingSystem1: Argument 'tank_max_temp' must be in the range 30°C <= tank_max_temp <= 250°C.")
+                if tank_max_temp <= self._operating_conditions.max_Tin:
+                    raise ValueError(f"HeatingSystem1: Maximum allowed temperature of the tank (argument 'tank_max_temp', value {tank_max_temp} is lower than (or equal to) the system's inlet temperature: {self._operating_conditions.max_Tin})")
+            
+            tank_fluid_T_ref = ( tank_max_temp + self._operating_conditions.min_Tin ) / 2
+            
+            if tank_max_temp <= 120:
+                tank_fluid = Fluid( 'water', p = 400000, T_ref = tank_fluid_T_ref  )
+                tank_volume = 0.12 * self._solar_field.collection_area
+            else:
+                tank_fluid = Fluid( 'therminol 66', T_ref = tank_fluid_T_ref )
+                tank_volume = 0.26 * self._solar_field.collection_area
+            
+            
+            tank_aspect_ratio = 1.5
+            self._storage_tank = StorageTank(
+                
+                volume = tank_volume,
+                aspect_ratio = tank_aspect_ratio,
+                stored_fluid = tank_fluid )
+            
+        else:
+            if not isinstance(storage_tank, StorageTank):
+                raise TypeError("HeatingSystem1: Argument 'storage_tank' must be an instance of sercpy.storage.StorageTank.")
+            self._storage_tank = storage_tank
+            
+            if storage_tank.stored_fluid.can_boil:
+                tank_max_allowed_temp = storage_tank.stored_fluid.T_sat - 5
+            else:
+                tank_max_allowed_temp = storage_tank.stored_fluid.T_max - 2
+            
+            if tank_max_temp is None:
+                tank_max_temp = max( [ self._operating_conditions.max_Tin + 30, self._operating_conditions.max_Tset + 20 ] )
+                if tank_max_temp < tank_max_allowed_temp:
+                    tank_max_temp = max( [ self._operating_conditions.max_Tin + 20, self._operating_conditions.max_Tset + 10 ] )
+                if tank_max_temp < tank_max_allowed_temp:
+                    if 'Glycol' in storage_tank.stored_fluid.fluid_name:
+                        raise ValueError("HeatingSystem1: Models for water-glycol mixtures are limited to 120°C. The system's operating temperature is too high for this fluid to be used as energy-storing fluid inside the tank. Consider switching to a thermal oil as energy storing fluid.")
+                    raise ValueError("HeatingSystem1: The boiling temperature of the fluid stored inside the tank is too low for the system's operating temperature. Consider switching to a thermal oil as energy storing fluid, or rising the pressure of the water inside the tank.")
+            else:
+
+                try:
+                    tank_max_temp = float( tank_max_temp )
+                except:
+                    raise TypeError("HeatingSystem1: Argument 'tank_max_temp' must be a numeric value.")
+                if not ( tank_max_temp >= 30 and tank_max_temp <= 250 ):
+                    raise ValueError("HeatingSystem1: Argument 'tank_max_temp' must be in the range 30°C <= tank_max_temp <= 250°C.")
+                if tank_max_temp <= self._operating_conditions.max_Tin:
+                    raise ValueError(f"HeatingSystem1: Maximum allowed temperature of the tank (argument 'tank_max_temp', value {tank_max_temp} is lower than (or equal to) the system's inlet temperature: {self._operating_conditions.max_Tin})")
+                if tank_max_temp < tank_max_allowed_temp:
+                    if 'Glycol' in storage_tank.stored_fluid.fluid_name:
+                        raise ValueError(f"HeatingSystem1: Models for water-glycol mixtures are limited to 120°C. The maximum temperature set for the tank ({tank_max_temp}°C) is too close to this limit or higher than it. Consider switching to a thermal oil, or pressurized water, as energy storing fluid.")
+                    raise ValueError(f"HeatingSystem1: The boiling temperature of the fluid stored inside the tank is too low for the maximum temperature set for the tank ({tank_max_temp}°C). Consider switching to a thermal oil as energy storing fluid, or rising the pressure of the water inside the tank.")
         
         if not self._storage_tank.io_positions_defined:
             self._storage_tank.io_relative_heights = [ ( 1, 0 ), ( 0, 1 ) ]
         
-        self._max_iterations = max_iterations
+        if HX1 is None:
+            self._HX1 = HeatExchanger(
+                rated_effectiveness = 0.85,
+                rated_water_flowrate = self._solar_field.rated_flowrate )
+        else:
+            if not isinstance(HX1, HeatExchanger):
+                raise TypeError("HeatingSystem1: Argument 'HX1' must be an instance of sercpy.heat_exchanger.HeatExchanger.")
+            self._HX1 = HX1
         
-        self._HX1 = HeatExchanger(
+        if HX2 is None:
+            self._HX2 = HeatExchanger(
+                rated_effectiveness = 0.85,
+                rated_water_flowrate = self._operating_conditions.max_flowrate )
+        else:
+            if not isinstance(HX2, HeatExchanger):
+                raise TypeError("HeatingSystem1: Argument 'HX2' must be an instance of sercpy.heat_exchanger.HeatExchanger.")
+            self._HX2 = HX2
+        
+        if solar_field_pump is None:
+            self._solar_field_pump = Pump( self._solar_field.rated_flowrate )
+        else:
+            if not isinstance( solar_field_pump, Pump ):
+                raise TypeError("HeatingSystem1: Argument 'solar_field_pump' must be an instance of sercpy.pump.Pump.")
+            self._solar_field_pump = solar_field_pump
+                
+        if tank_charge_pump is None:
+            self._tank_charge_pump = Pump( self._solar_field.rated_flowrate )
+        else:
+            if not isinstance( tank_charge_pump, Pump ):
+                raise TypeError("HeatingSystem1: Argument 'tank_charge_pump' must be an instance of sercpy.pump.Pump.")
+            self._tank_charge_pump = tank_charge_pump
             
-            rated_effectiveness = 0.85,
-            rated_water_flowrate = self._solar_field.rated_flowrate )
-        
-        self._solar_field_pump = Pump( self._solar_field.rated_flowrate )
-        self._tank_to_SF_pump = Pump( self._solar_field.rated_flowrate )
-        
-        self._tank_to_load_pump = Pump( self._operating_conditions.max_flowrate )
-        
-        self._HX2 = HeatExchanger( 
-            
-            rated_effectiveness = 0.85,
-            rated_water_flowrate = self._operating_conditions.max_flowrate )
+        if tank_discharge_pump is None:
+            self._tank_discharge_pump = Pump( self._operating_conditions.max_flowrate )
+        else:
+            if not isinstance( tank_discharge_pump, Pump ):
+                raise TypeError("HeatingSystem1: Argument 'tank_discharge_pump' must be an instance of sercpy.pump.Pump.")
+            self._tank_discharge_pump = tank_discharge_pump
         
         self._system_inlet = SystemInlet()
         
         self._solar_field.set_connections( inlet = self._solar_field_pump.outlet )
         self._solar_field_pump.set_connections( inlet = self._HX1.outlet_source )
-        self._HX1.set_connections( inlet_source = self._solar_field.outlet, inlet_load = self._tank_to_SF_pump.outlet )
-        self._tank_to_SF_pump.set_connections( inlet = self._storage_tank.outlet_1 )
+        self._HX1.set_connections( inlet_source = self._solar_field.outlet, inlet_load = self._tank_charge_pump.outlet )
+        self._tank_charge_pump.set_connections( inlet = self._storage_tank.outlet_1 )
         self._storage_tank.set_connections( inlet_1 = self._HX1.outlet_load, inlet_2 = self._HX2.outlet_source )
-        self._tank_to_load_pump.set_connections( inlet = self._storage_tank.outlet_2 )
-        self._HX2.set_connections( inlet_source = self._tank_to_load_pump.outlet, inlet_load = self._system_inlet.outlet )
+        self._tank_discharge_pump.set_connections( inlet = self._storage_tank.outlet_2 )
+        self._HX2.set_connections( inlet_source = self._tank_discharge_pump.outlet, inlet_load = self._system_inlet.outlet )
         
         solar_field_fluid = Fluid("Ethylene Glycol 30%", T_ref = 60)
         self._solar_field.outlet.flowrate = 0
@@ -224,8 +312,8 @@ class HeatingSystem1( Simulation ):
         self._security_shutdown_controller = ExcessTempShutDown(
             
             tank = self._storage_tank,
-            tank_max_temp = 100,
-            hysteresis = 5)
+            tank_max_temp = tank_max_temp,
+            hysteresis = shutdown_hysteresis_dT )
 
         self._solar_controller = SolarController(
             
@@ -247,7 +335,7 @@ class HeatingSystem1( Simulation ):
             
             self._tank_to_SF_controller = TankChargeController(
                 
-                controlled_pump = self._tank_to_SF_pump,
+                controlled_pump = self._tank_charge_pump,
                 heat_exchanger = self._HX1,
                 min_dT = tank_charge_min_dT,
                 temp_tolerance = tank_charge_min_dT*0.1,
@@ -258,12 +346,12 @@ class HeatingSystem1( Simulation ):
             tank_to_load_controller_iteration_cycle = [ 1, 0, 0, 0, ]
             
         else:
-            self._tank_to_SF_pump.set_connections( controller = self._solar_controller )
+            self._tank_charge_pump.set_connections( controller = self._solar_controller )
             tank_to_load_controller_iteration_cycle = [ 1, 0, ]
         
         self._tank_to_load_controller = LoadTempController(
             
-            controlled_pump = self._tank_to_load_pump,
+            controlled_pump = self._tank_discharge_pump,
             heat_exchanger = self._HX2,
             tank = self._storage_tank,
             turn_on_dT = self._operating_conditions.min_dT*0.3,
@@ -280,9 +368,9 @@ class HeatingSystem1( Simulation ):
             self._solar_field,
             self._solar_field_pump,
             self._HX1,
-            self._tank_to_SF_pump,
+            self._tank_charge_pump,
             self._storage_tank,
-            self._tank_to_load_pump,
+            self._tank_discharge_pump,
             self._HX2, ]
         
         if tank_charge_controller:
@@ -294,13 +382,34 @@ class HeatingSystem1( Simulation ):
         
         else:
             self.devices_list = self.devices_list + [ self._tank_to_load_controller ]
+            
+        if relative_tolerance is None:
+            relative_tolerance = 1e-3
+        else:
+            try:
+                relative_tolerance = float( relative_tolerance )
+            except:
+                raise TypeError(f"HeatingSystem1: Argument 'relative_tolerance' must a numeric value, not {type(relative_tolerance)}.")
+            if not ( relative_tolerance >= 1e-8 and relative_tolerance <= 5e-2 ):
+                raise ValueError("HeatingSystem1: Argument 'relative_tolerance' must be in the range: 1e-8 <= relative_tolerance <= 5e-2.")
+            
         
         for device in self._devices_list:
             
             device.set_convergence_criteria(
                 
-                relative_tolerance = 1e-3,
+                relative_tolerance = relative_tolerance,
                 temp_normalization_range = operating_conditions.min_dT )
+            
+        if max_iterations is None:
+            self._max_iterations = 200
+        else:
+            try:
+                assert max_iterations.is_integer()
+            except:
+                raise TypeError("HeatingSystem1: Argument 'max_iterations' must be an integer value.")
+            max_iterations = int( max_iterations )
+            self._max_iterations = max_iterations
         
     def record_time_step( self, results_record, convergence ):
         

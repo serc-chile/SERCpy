@@ -73,7 +73,7 @@ DemandProfile_accepted_args = [
     "heat_demand_units",
     
     "monthly_consumption",
-    "heat_source",
+    "consumption_units",
     "heater",
     
     "monthly_production",
@@ -338,6 +338,12 @@ class DemandProfile:
     
     heat_transfer_fluid : :doc:`Fluid </fluids/fluid_class>`
         Alias for `fluid`.
+        
+    heater : :doc:`AutomaticBoiler </devices/boiler/automatic_boiler_class>`
+        Instance of :doc:`sercpy.boiler.AutomaticBoiler </devices/boiler/automatic_boiler_class>`
+        that was used to initialize the `DemandProfile` instance (parameter `heater`).
+        This attribute will be `None` if no boiler
+        was used to initialize the `DemandProfile` instance.
     
     Tamb_dependence : float
         Number between 0 and 3 defining the level of
@@ -465,7 +471,9 @@ class DemandProfile:
             self._monthly_T_in = self._Tin_from_meteo_profile( meteo_profile )
         else:
             self._monthly_T_in = T_in
-            if temp_units is not None:
+            if temp_units is not None and T_units is not None and temp_units != T_units:
+                raise TypeError("Class DemandProfile: Only one of the arguments 'temp_units' and 'T_units' must be provided.")
+            elif temp_units is not None:
                 self._monthly_T_in = convert_units( self._monthly_T_in, temp_units, "C" )
             elif T_units is not None:
                 self._monthly_T_in = convert_units( self._monthly_T_in, T_units, "C" )
@@ -606,7 +614,11 @@ class DemandProfile:
     def Tamb_dependence(self):
         "Number between 0 and 3 defining the level of dependence of thermal demand on the daily ambiente temperature."
         return self._Tamb_dependence
-        
+    
+    @property
+    def heater(self):
+        return self._heater
+    
     @property
     def monthly_T_set(self):
         "List of 12 values containing the setpoint temperature of the heating system for each month of the year, from January to December."

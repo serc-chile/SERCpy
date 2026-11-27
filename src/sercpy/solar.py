@@ -783,6 +783,34 @@ class SolarField( Device ):
     collector : :doc:`SolarCollector </devices/solar/solar_collector_class>`
         Object that models each indidual collector of the solar field.
         
+    total_colls : int
+        Total number of collectors that make up the solar field.
+        
+    collection_area : float
+        Area of each individual collector multiplied by the total
+        number of collectors.
+        
+    coll_tilt : float
+        Tilt of the collectors with respect to the ground (degree, °).
+    
+    coll_azimuth : float
+        Azimuthal angle of the collectors. Degrees east of north. See the
+        :doc:`documentation on azimuthal angles <azimuthal_angle>`
+        for more information on how the value is defined.
+    
+    coll_disposition : str
+        One of the following strings: 'HORIZONTAL', 'LANDSCAPE',
+        'VERTICAL', 'PORTRAIT'. See the argument with the same name in the class' documentation.
+    
+    tube_direction : str
+        One of the following strings: 'HORIZONTAL', 'VERTICAL',
+        'TILTED'. See the argument with the same name in the class' documentation.
+    
+    ground_fraction_covered : float
+        Ratio between the row spacing of the solar field and the
+        length of the collectors' tilted size.
+        It is used by the self-shading modeling algorithm.
+        
     rated_flowrate : float
         Nominal flowrate of the solar field. It is computed from the flowrate used
         to test the collectors, and the total number of collectors.
@@ -823,26 +851,6 @@ class SolarField( Device ):
         Boolean value stating whether convergence for the vapor release modeling
         was achieved the last time the method `SolarField.compute_outputs` was called.
         If no vapor is released, this value is set to True.
-    
-    coll_tilt : float
-        Tilt of the collectors with respect to the ground (degree, °).
-    
-    coll_azimuth : float
-        Azimuthal angle of the collectors. Degrees east of north. See the
-        :doc:`documentation on azimuthal angles <azimuthal_angle>`
-        for more information on how the value is defined.
-    
-    coll_disposition : str
-        One of the following strings: 'HORIZONTAL', 'LANDSCAPE',
-        'VERTICAL', 'PORTRAIT'. See the argument with the same name in the class' documentation.
-    
-    tube_direction : str
-        One of the following strings: 'HORIZONTAL', 'VERTICAL',
-        'TILTED'. See the argument with the same name in the class' documentation.
-    
-    ground_fraction_covered : float
-        Ratio between the row spacing of the solar field and the
-        length of the collectors' tilted size. It is used by the self-shading modeling algorithm.
     
     """
     
@@ -975,6 +983,18 @@ class SolarField( Device ):
         return self._collector
     
     @property
+    def total_colls(self):
+        "Total number of collectors that make up the solar field."
+        return self._total_colls
+    
+    @property
+    def collection_area(self):
+        "Area of each individual collector multiplied by the total number of collectors."
+        if not hasattr( self, "_collection_area" ):
+            self._collection_area = self._total_colls*self._collector.area
+        return self._collection_area
+    
+    @property
     def useful_power(self):
         "Useful power transferred to the heat transfer fluid (W). The word 'useful' is used to differentiate this value from the power used to generate undesired vapor that is then released. This attribute gets updated every time the method 'SolarField.compute_outputs' is called."
         if not hasattr( self, "_useful_power" ):
@@ -1032,7 +1052,9 @@ class SolarField( Device ):
     
     @property
     def rated_flowrate(self):
-        return self._total_colls*self._collector.area*self._collector.test_flowrate_per_m2
+        if not hasattr( self, "_rated_flowrate" ):
+            self._rated_flowrate = self._total_colls*self._collector.area*self._collector.test_flowrate_per_m2
+        return self._rated_flowrate
     
     @property
     def ground_albedo(self):
@@ -1087,6 +1109,9 @@ class SolarField( Device ):
         Method used by :doc:`MeteoProfile </meteo_profile/meteo_profile_class>` to set the attributes
         'coll_tilt' and 'coll_azimuth' based on the geographical location
         to which the `MeteoProfile` instance corresponds.
+        
+        The attribute 'ground_albedo' is also set if it was not set by the
+        user when the SolarField instance was initialized.
         
         This method **only** changes the attributes of the `SolarField`
         that have not been defined by the user at initialization.

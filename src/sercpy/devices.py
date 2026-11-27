@@ -567,6 +567,45 @@ class Device:
         return
     
 class SystemInlet( Device ):
+    """
+    This simple class has de goal of converting the parameters yielded by an
+    `OperatingConditions` instance to a flowrate and a fluid state, which are
+    then set as attributes of an `Outlet` instance.
+    
+    The `Outlet` instance that is an attribute of a SystemInlet instance can
+    then be used to establish connections with other devices of the system,
+    so that a simulation can be carried out.
+    
+    Attributes
+    ----------
+    outlet : :ref:`Outlet <outlet_class>`
+        Object that is used to establish
+        connections between the devices of the system.
+    
+    Examples
+    --------
+    
+    .. code-block:: python
+        
+        from sercpy.devices import SystemInlet
+        from sercpy.heat_exchanger import HeatExchanger
+        
+        system_inlet = SystemInlet()
+        
+        # heat_exchanger_1 represents the system's device that receives the
+        # heat transfer fluid as it enters the heating system
+        
+        heat_exchanger_1 = HeatExchanger(
+            
+            rated_effectiveness = 0.85,
+            rated_water_flowrate = 0.5, # kg/s
+            
+            )
+        
+        # A connection is established between system_inlet and heat_exchanger_1
+        heat_exchanger_1.set_connections( inlet_source = system_inlet.outlet )
+    
+    """
     
     def __init__(self):
         

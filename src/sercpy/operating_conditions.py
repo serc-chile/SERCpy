@@ -55,14 +55,14 @@ class OperatingConditions:
     time_steps_per_hour : int
         Number of time steps per hour. E.g.
         with a 6-minute time step, this value would be `10`.
-        
+    
     max_flowrate : float
         Maximum flowrate value during the
         whole year (kg/s). This value might slightly differ
         from the actual value obtained when
         carrying out a simulation, since it is obtained from the
-        original (minutal) data set.
-        
+        original (minutal) dataset.
+    
     min_dT : float
         Minimum difference between the
         setpoint temperature and the temperature
@@ -85,6 +85,14 @@ class OperatingConditions:
     
     heat_transfer_fluid : :doc:`Fluid </fluids/fluid_class>`
         Alias for `fluid`.
+    
+    heater : :doc:`AutomaticBoiler </devices/boiler/automatic_boiler_class>`
+        Instance of :doc:`sercpy.boiler.AutomaticBoiler </devices/boiler/automatic_boiler_class>`
+        that was used to initialize the `DemandProfile` instance
+        from which the `OperatingConditions` instance was created.
+        This attribute will be `None` if no boiler
+        was used to initialize the `DemandProfile`
+        instance.
     
     Methods
     -------
@@ -150,6 +158,7 @@ class OperatingConditions:
             self._set_time_step( time_step_min = time_step_min, time_step = time_step )
             
         self._fluid = demand_profile.fluid
+        self._heater = demand_profile.heater
             
     @property
     def time_step(self):
@@ -172,6 +181,8 @@ class OperatingConditions:
         except:
             raise TypeError("OperatingConditions: Attribute 'time_step' must be an integer value.")
         value = int( value )
+        if value == self.time_step:
+            return
         if not ( value%60 == 0 and value//60 in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ] ):
             raise ValueError("OperatingConditions: Attribute 'time_step' (in seconds) must be one of the following values: 60, 120, 180, 240, 300, 360, 600, 720, 900, 1200, 1800, 3600.")
         self._set_time_step( time_step = value )
@@ -183,6 +194,8 @@ class OperatingConditions:
         except:
             raise TypeError("OperatingConditions: Attribute 'time_step_min' must be an integer value.")
         value = int( value )
+        if value == self.time_step_min:
+            return
         if not value in [ 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60 ]:
             raise ValueError("OperatingConditions: Attribute 'time_step_min' (in minutes) must be one of the following values: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.")
         self._set_time_step( time_step_min = value )
@@ -220,6 +233,34 @@ class OperatingConditions:
         if not hasattr( self, "_max_flowrate" ):
             self._max_flowrate = max( self._minutal_profiles[ "flowrate" ] )
         return self._max_flowrate
+    
+    @property
+    def min_Tset(self):
+        "Minimum setpoint temperature throughout the year"
+        if not hasattr( self, "_min_Tset" ):
+            self._min_Tset = float( np.asarray( self._minutal_profiles[ "T_set" ] ).min() )
+        return self._min_Tset
+    
+    @property
+    def max_Tset(self):
+        "Maximum setpoint temperature throughout the year"
+        if not hasattr( self, "_max_Tset" ):
+            self._max_Tset = float( np.asarray( self._minutal_profiles[ "T_set" ] ).max() )
+        return self._max_Tset
+    
+    @property
+    def min_Tin(self):
+        "Minimum inlet temperature throughout the year"
+        if not hasattr( self, "_min_Tin" ):
+            self._min_Tin = float( np.asarray( self._minutal_profiles[ "T_in" ] ).min() )
+        return self._min_Tin
+    
+    @property
+    def max_Tin(self):
+        "Maximum inpoint temperature throughout the year"
+        if not hasattr( self, "_max_Tin" ):
+            self._max_Tin = float( np.asarray( self._minutal_profiles[ "T_in" ] ).max() )
+        return self._max_Tin
     
     @property
     def min_dT(self):
@@ -275,6 +316,15 @@ class OperatingConditions:
         """
         return self._fluid
     
+    @property
+    def heater(self):
+        """
+        Instance of sercpy.boiler.AutomaticBoiler
+        Boiler that was used to initialize the DemandProfile instance
+        from which the OperatingConditions instance was created.
+        """
+        return self._heater
+    
     def to_df(self):
         """
         Get the entire dataset stored by the `OperatingConditions` instance as a `pandas.DataFrame`.
@@ -299,12 +349,12 @@ class OperatingConditions:
         ----------
         azimuth_values : array-like
             List of solar azimuthal values with minutal resolution, during one simulation time step. Units: Degree (°).
-
+        
         Returns
         -------
         float
             Correct average azimuthal value, in degrees (0° to 360°).
-
+        
         """
         
         azimuth_values_corrected = []
