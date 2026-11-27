@@ -29,3 +29,13 @@ Outlet
 ------
 
 .. autoclass:: Outlet
+
+
+.. _class_system_inlet:
+
+SystemInlet
+-----------
+
+.. autoclass:: SystemInlet
+
+
